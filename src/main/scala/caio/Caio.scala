@@ -4,23 +4,20 @@ import cats.effect.IO
 
 
 sealed trait Caio[A] {
-//  def runAsync:IO[(A, EventLog)]
-//
-//  protected def eval(context:Context):IO[(A, EventLog)]
 
   def flatMap[B](f: A => Caio[B]): Caio[B]
 
   def map[B](f: A => B): Caio[B]
 
-  private[concentra] def combineContext(proceedingContext:Context):Caio[A]
+  private[caio] def combineContext(proceedingContext:Context):Caio[A]
 
-  private[concentra] def toRes(evalContext:Context):Res[A]
+  private[caio] def toRes(evalContext:Context):Res[A]
 
   def runAsync():IO[(Either[Throwable, A], EventLog)]
 }
 
 
-private[concentra] sealed trait Res[A] {
+private[caio] sealed trait Res[A] {
   def map[B](f: A => B): Res[B]
   def mapC[B](proceedingContext:Context)(f: A => B): Res[B]
   def flatMapC[B](proceedingContext:Context)(f: A => Caio[B]): Res[B]
@@ -28,14 +25,14 @@ private[concentra] sealed trait Res[A] {
   def toIO: IO[PureRes[A]]
 }
 
-private[concentra] sealed trait PureRes[A] extends Res[A] {
+private[caio] sealed trait PureRes[A] extends Res[A] {
   def map[B](f: A => B): PureRes[B]
   def mapC[B](proceedingContext:Context)(f: A => B): PureRes[B]
   def combineContext(proceedingContext:Context):PureRes[A]
 }
 
 
-private[concentra] final case class SuccessReturn[A] private(a:A, context:Context) extends PureRes[A] {
+private[caio] final case class SuccessReturn[A] private(a:A, context:Context) extends PureRes[A] {
   def map[B](f: A => B): SuccessReturn[B] =
     SuccessReturn(f(a), context)
 
@@ -53,7 +50,7 @@ private[concentra] final case class SuccessReturn[A] private(a:A, context:Contex
 
 }
 
-private[concentra] final case class ErrorReturn[A] private(e:Throwable, context:Context) extends PureRes[A] {
+private[caio] final case class ErrorReturn[A] private(e:Throwable, context:Context) extends PureRes[A] {
   @inline
   private def shiftValue[B]: ErrorReturn[B] = this.asInstanceOf[ErrorReturn[B]]
 
@@ -74,7 +71,7 @@ private[concentra] final case class ErrorReturn[A] private(e:Throwable, context:
 
 }
 
-private[concentra] final case class IOReturn[A](io:IO[PureRes[A]]) extends Res[A] {
+private[caio] final case class IOReturn[A](io:IO[PureRes[A]]) extends Res[A] {
   def mapC[B](proceedingContext:Context)(f: A => B): IOReturn[B] =
     IOReturn(io.map(_.mapC(proceedingContext)(f)))
 
@@ -105,7 +102,7 @@ object IOReturn {
     IOReturn[A](f.map(SuccessReturn(_, Context.empty)))
 }
 
-private[concentra] final case class CaioPure[A](a:A) extends Caio[A] {
+private[caio] final case class CaioPure[A](a:A) extends Caio[A] {
 
   def map[B](f: A => B): Caio[B] =
     CaioPure(f(a))
@@ -116,14 +113,14 @@ private[concentra] final case class CaioPure[A](a:A) extends Caio[A] {
   def combineContext(proceedingContext: Context): Caio[A] =
     CaioContext(a, proceedingContext)
 
-  private[concentra] def toRes(proceedingContext:Context):Res[A] =
+  private[caio] def toRes(proceedingContext:Context):Res[A] =
     SuccessReturn(a, proceedingContext)
 
-  def runAsync(): IO[(A, EventLog)] =
+  def runAsync():IO[(Either[Throwable, A], EventLog)] =
     IO.delay(Right(a) -> EventLog.empty)
 }
 
-private[concentra] final case class CaioError[A](e:Throwable, context:Context) extends Caio[A] {
+private[caio] final case class CaioError[A](e:Throwable, context:Context) extends Caio[A] {
 
   def map[B](f: A => B):Caio[B] =
     this.asInstanceOf[Caio[B]]
@@ -131,19 +128,19 @@ private[concentra] final case class CaioError[A](e:Throwable, context:Context) e
   def flatMap[B](f: A => Caio[B]):Caio[B] =
     this.asInstanceOf[Caio[B]]
 
-  private[concentra] def combineContext(proceedingContext: Context) =
+  private[caio] def combineContext(proceedingContext: Context) =
     CaioError(e, proceedingContext + context)
 
-  private[concentra] def toRes(proceedingContext:Context):Res[A] =
+  private[caio] def toRes(proceedingContext:Context):Res[A] =
     ErrorReturn(e, proceedingContext + context)
 
-  def runAsync(): IO[(A, EventLog)] =
+  def runAsync():IO[(Either[Throwable, A], EventLog)] =
     IO.delay(Left(e) -> Context.getLog(context))
 }
 
 
 
-private[concentra] final case class CaioContext[A](a:A, context:Context) extends Caio[A] {
+private[caio] final case class CaioContext[A](a:A, context:Context) extends Caio[A] {
 
   def map[B](f: A => B): Caio[B] =
     CaioPure(f(a))
@@ -151,18 +148,19 @@ private[concentra] final case class CaioContext[A](a:A, context:Context) extends
   def flatMap[B](f: A => Caio[B]): Caio[B] =
     f(a).combineContext(context)
 
-  private[concentra] def combineContext(proceedingContext: Context) =
+  private[caio] def combineContext(proceedingContext: Context) =
     CaioContext(a, proceedingContext + context)
 
-  private[concentra] def toRes(proceedingContext:Context):Res[A] =
+  private[caio] def toRes(proceedingContext:Context):Res[A] =
     SuccessReturn(a, proceedingContext + context)
 
   def runAsync(): IO[(Either[Throwable, A], EventLog)] =
+    IO.delay(Right(a) -> Context.getLog(context))
 
 }
 
 
-final case class CaioKleisli[A](func:Context => Res[A]) extends Caio[A] {
+private[caio] final case class CaioKleisli[A](func:Context => Res[A]) extends Caio[A] {
 
   def flatMap[B](f: A => Caio[B]):Caio[B] =
     CaioKleisli(c => func(c).flatMapC(c)(f))
@@ -171,10 +169,18 @@ final case class CaioKleisli[A](func:Context => Res[A]) extends Caio[A] {
   def map[B](f: A => B):Caio[B] =
     CaioKleisli { c => func(c).map(f) }
 
-  private[concentra] def combineContext(proceedingContext: Context) =
+  private[caio] def combineContext(proceedingContext: Context) =
     CaioKleisli(func.andThen(_.combineContext(proceedingContext)))
 
-  private[concentra] def toRes(evalContext:Context):Res[A] =
+  private[caio] def toRes(evalContext:Context):Res[A] =
     func(evalContext)
+
+  def runAsync(): IO[(Either[Throwable, A], EventLog)] =
+    IO.delay(func(Context.empty).toIO.map{
+      case ErrorReturn(e, c) =>
+        Left(e) -> Context.getLog(c)
+      case SuccessReturn(a, c) =>
+        Right(a) -> Context.getLog(c)
+    }).flatMap(identity)
 }
 
