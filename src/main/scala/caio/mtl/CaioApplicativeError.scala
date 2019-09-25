@@ -8,6 +8,6 @@ trait CaioApplicativeError extends ApplicativeError[Caio, Throwable] with CaioAp
     CaioError(e, State.empty)
 
   def handleErrorWith[A](fa: Caio[A])(f: Throwable => Caio[A]): Caio[A] =
-    ???
+    fa.handleError(f)
 
 }

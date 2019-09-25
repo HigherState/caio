@@ -11,8 +11,17 @@ case class Throwables(head:Throwable, tail:List[Throwable]) extends Throwable {
 }
 
 object Throwables {
-  def apply(head:Throwable, tail:Throwable*):Throwables =
-    Throwables(head, tail.toList)
+
+  def append:Function[(Throwable, Throwable), Throwable] = {
+    case (Throwables(h1, t1), Throwables(h2, t2)) =>
+      Throwables(h1,t1 ++ (h2 :: t2))
+    case (t, Throwables(h2, t2)) =>
+      Throwables(t, h2 :: t2)
+    case (Throwables(h1, t1), t) =>
+      Throwables(h1, t1 :+ t)
+    case (t1, t2) =>
+      Throwables(t1, List(t2))
+  }
 }
 
 object Failures {
