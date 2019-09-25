@@ -11,11 +11,14 @@ sealed trait Caio[A] {
 
   def map[B](f: A => B): Caio[B]
 
-  private[caio] def combineContext(proceedingContext:Context):Caio[A]
+  private[caio] def combineState(proceedingState:State):Caio[A]
 
   private[caio] def toResult(evalContext:Context):Result[A]
 
-  private[Caio] def mapContext(f: Context => Context):Caio[A]
+  //Can operate on error cases
+  private[caio] def mapState(f: State => State): Caio[A]
+
+  private[caio] def mapWithState[B](f: (A, State) => (B, State)): Caio[B]
 
   def runAsync():IO[(Either[Throwable, A], EventLog)]
 }
@@ -23,47 +26,46 @@ sealed trait Caio[A] {
 
 private[caio] sealed trait Result[A] {
   def map[B](f: A => B): Result[B]
-  def mapC[B](proceedingContext:Context)(f: A => B): Result[B]
-  def contextMap[B](f:Context => Context):Result[A]
-  def flatMapC[B](proceedingContext:Context)(f: A => Caio[B]): Result[B]
-  def combineContext(proceedingContext:Context):Result[A]
+  def mapState[B](f:State => State):Result[A]
+  def mapWithState[B](f: (A, State) => (B, State)): Result[B]
+  def flatMapC[B](context:Context)(f: A => Caio[B]): Result[B]
+  def combineState(proceedingState:State):Result[A]
   def toIO: IO[PureResult[A]]
 
 }
 
 private[caio] sealed trait PureResult[A] extends Result[A] {
   def map[B](f: A => B): PureResult[B]
-  def contextMap[B](f:Context => Context):PureResult[A]
-  def mapC[B](proceedingContext:Context)(f: A => B): PureResult[B]
-  def combineContext(proceedingContext:Context):PureResult[A]
-  def context:Context
+  def mapState[B](f:State => State):PureResult[A]
+  def mapWithState[B](f: (A, State) => (B, State)): PureResult[B]
+  def combineState(proceedingState:State):PureResult[A]
+  def state:State
 }
 
 
-private[caio] final case class SuccessResult[A] private(a:A, context:Context) extends PureResult[A] {
+private[caio] final case class SuccessResult[A] private(a:A, state:State) extends PureResult[A] {
   def map[B](f: A => B): PureResult[B] =
-    ResultOps.tryCatchPure(context)(SuccessResult(f(a), context))
+    ResultOps.tryCatchPure(state)(SuccessResult(f(a), state))
 
-  def mapC[B](proceedingContext:Context)(f: A => B): PureResult[B] = {
-    val newContext = proceedingContext + context
-    ResultOps.tryCatchPure(newContext)(SuccessResult(f(a), newContext))
-  }
-
-  def combineContext(proceedingContext: Context): PureResult[A] =
-    SuccessResult(a, proceedingContext + context)
+  def combineState(proceedingState: State): PureResult[A] =
+    SuccessResult(a, proceedingState + state)
 
   def toIO: IO[PureResult[A]] = IO.delay(this)
 
-  def flatMapC[B](proceedingContext: Context)(f: A => Caio[B]): Result[B] =
-    f(a).toResult(proceedingContext)
+  def flatMapC[B](context:Context)(f: A => Caio[B]): Result[B] =
+    ResultOps.tryCatch(state)(f(a).toResult(context))
 
-  def contextMap[B](f:Context => Context):PureResult[A] = {
-    ResultOps.tryCatchPure(context)(SuccessResult(a, context))
-  }
+  def mapState[B](f:State => State):PureResult[A] =
+    ResultOps.tryCatchPure(state)(SuccessResult(a, state))
 
+  def mapWithState[B](f: (A, State) => (B, State)): PureResult[B] =
+    ResultOps.tryCatchPure(state){
+      val (b, newState) = f(a, state)
+      SuccessResult(b, newState)
+    }
 }
 
-private[caio] final case class ErrorResult[A] private(e:Throwable, context:Context) extends PureResult[A] {
+private[caio] final case class ErrorResult[A] private(e:Throwable, state:State) extends PureResult[A] {
   @inline
   private def shiftValue[B]: ErrorResult[B] =
     this.asInstanceOf[ErrorResult[B]]
@@ -71,45 +73,41 @@ private[caio] final case class ErrorResult[A] private(e:Throwable, context:Conte
   def map[B](f: A => B): ErrorResult[B] =
     shiftValue[B]
 
-  def mapC[B](proceedingContext:Context)(f: A => B): ErrorResult[B] =
-    ErrorResult(e, proceedingContext + context)
-
-  def combineContext(proceedingContext: Context): PureResult[A] =
-    ErrorResult(e, proceedingContext + context)
+  def combineState(proceedingState: State): PureResult[A] =
+    ErrorResult(e, proceedingState + state)
 
   def handleWith[B](f: Throwable => B): B = f(e)
 
   def toIO: IO[PureResult[A]] = IO.delay(this)
 
-  def flatMapC[B](proceedingContext: Context)(f: A => Caio[B]): Result[B] =
-    ErrorResult(e, proceedingContext + context)
+  def flatMapC[B](context:Context)(f: A => Caio[B]): Result[B] =
+    this.asInstanceOf[Result[B]]
 
-  def contextMap[B](f:Context => Context):PureResult[A] = {
-    ResultOps.tryCatchPure(context, e)(ErrorResult(e, context))
+  def mapState[B](f:State => State):PureResult[A] = {
+    ResultOps.tryCatchPure(state, e)(ErrorResult(e, state))
   }
+
+  def mapWithState[B](f: (A, State) => (B, State)): PureResult[B] =
+    shiftValue[B]
 
 }
 
 private[caio] final case class IOResult[A](io:IO[PureResult[A]]) extends Result[A] {
-  import ResultOps._
-
-  def mapC[B](proceedingContext:Context)(f: A => B): IOResult[B] =
-    IOResult(io.map(_.mapC(proceedingContext)(f)))
 
   def map[B](f: A => B): IOResult[B] =
     IOResult(io.map(_.map(f)))
 
-  def combineContext(proceedingContext: Context): Result[A] =
-    IOResult(io.map(_.combineContext(proceedingContext)))
+  def combineState(proceedingState: State): Result[A] =
+    IOResult(io.map(_.combineState(proceedingState)))
 
   def mapRes[B](f: Result[A] => Result[B]): IOResult[B] =
     IOResult(io.flatMap(a => f(a).toIO))
 
   def toIO: IO[PureResult[A]] = io
 
-  def flatMapC[B](proceedingContext: Context)(f: A => Caio[B]): Result[B] =
+  def flatMapC[B](context:Context)(f: A => Caio[B]): Result[B] =
     IOResult(io.flatMap{ r =>
-      r.flatMapC(proceedingContext)(f) match {
+      r.flatMapC(context)(f) match {
         case IOResult(io2) =>
           io2
         case pure:PureResult[B] =>
@@ -117,105 +115,137 @@ private[caio] final case class IOResult[A](io:IO[PureResult[A]]) extends Result[
       }
     })
 
-  def contextMap[B](f:Context => Context):Result[A] = {
-    IOResult(io.map(_.contextMap(f)))
-  }
+  def mapState[B](f:State => State):Result[A] =
+    IOResult(io.map(_.mapState(f)))
+
+  def mapWithState[B](f: (A, State) => (B, State)): Result[B] =
+    IOResult(io.map(_.mapWithState(f)))
 
 }
 
 private[caio] object ResultOps {
 
   @inline
-  def tryCatchPure[A](context:Context)(f: => PureResult[A]):PureResult[A] =
+  def tryCatchPure[A](state:State)(f: => PureResult[A]):PureResult[A] =
     try {
       f
     } catch {
       case NonFatal(ex) =>
-        ErrorResult(ex, context)
+        ErrorResult(ex, state)
     }
 
   @inline
-  def tryCatchPure[A](context:Context, e:Throwable)(f: => PureResult[A]):PureResult[A] =
+  def tryCatchPure[A](state:State, e:Throwable)(f: => PureResult[A]):PureResult[A] =
     try {
       f
     } catch {
       case NonFatal(ex) =>
-        ErrorResult(Throwables(e, ex), context)
+        ErrorResult(Throwables(e, ex), state)
     }
 
   @inline
-  def tryCatch[A](context:Context)(f: => Result[A]):Result[A] =
+  def tryCatch[A](state:State)(f: => Result[A]):Result[A] =
     try {
       f
     } catch {
       case NonFatal(ex) =>
-        ErrorResult(ex, context)
+        ErrorResult(ex, state)
+    }
+
+  @inline
+  def tryCatch[A](f: => Result[A]):Result[A] =
+    try {
+      f
+    } catch {
+      case NonFatal(ex) =>
+        ErrorResult(ex, State.empty)
     }
 }
 
 private[caio] final case class CaioPure[A](a:A) extends Caio[A] {
 
   def map[B](f: A => B): Caio[B] =
-    CaioPure(f(a))
+    CaioOps.tryCatch(CaioPure(f(a)))
 
   def flatMap[B]( f: A => Caio[B]): Caio[B] =
-    f(a)
+    CaioOps.tryCatch(f(a))
 
-  def combineContext(proceedingContext: Context): Caio[A] =
-    CaioContext(a, proceedingContext)
+  def combineState(proceedingState: State): Caio[A] =
+    CaioState(a, proceedingState)
 
-  private[caio] def toResult(proceedingContext:Context):Result[A] =
-    SuccessResult(a, proceedingContext)
+  private[caio] def toResult(context:Context):Result[A] =
+    SuccessResult(a, State.empty)
 
   def runAsync():IO[(Either[Throwable, A], EventLog)] =
     IO.delay(Right(a) -> EventLog.empty)
 
-  private[Caio] def mapContext(f: Context => Context): Caio[A] =
-    CaioContext(a, f(Context.empty))
+  private[caio] def mapState(f: State => State): Caio[A] =
+    CaioOps.tryCatch(CaioState(a, f(State.empty)))
+
+  def mapWithState[B](f: (A, State) => (B, State)): Caio[B] =
+    CaioOps.tryCatch{
+      val (b, newState) = f(a, State.empty)
+      CaioState(b, newState)
+    }
+
 }
 
-private[caio] final case class CaioError[A](e:Throwable, context:Context) extends Caio[A] {
+private[caio] final case class CaioError[A](e:Throwable, state:State) extends Caio[A] {
+
+  @inline
+  private def shiftValue[B]: CaioError[B] =
+    this.asInstanceOf[CaioError[B]]
 
   def map[B](f: A => B):Caio[B] =
-    this.asInstanceOf[Caio[B]]
+    shiftValue[B]
 
   def flatMap[B](f: A => Caio[B]):Caio[B] =
-    this.asInstanceOf[Caio[B]]
+    shiftValue[B]
 
-  private[caio] def combineContext(proceedingContext: Context) =
-    CaioError(e, proceedingContext + context)
+  private[caio] def combineState(proceedingState: State) =
+    CaioError(e, proceedingState + state)
 
-  private[caio] def toResult(proceedingContext:Context):Result[A] =
-    ErrorResult(e, proceedingContext + context)
+  private[caio] def toResult(context:Context):Result[A] =
+    ErrorResult(e, state)
 
   def runAsync():IO[(Either[Throwable, A], EventLog)] =
-    IO.delay(Left(e) -> Context.getLog(context))
+    IO.delay(Left(e) -> State.getLog(state))
 
-  private[Caio] def mapContext(f: Context => Context): Caio[A] =
-    CaioOps.tryCatch(context, e)(CaioError(e, f(context)))
+  private[caio] def mapState(f: State => State): Caio[A] =
+    CaioOps.tryCatch(state, e)(CaioError(e, f(state)))
+
+  private[caio] def mapWithState[B](f: (A, State) => (B, State)): Caio[B] =
+    shiftValue[B]
+
 }
 
 
 
-private[caio] final case class CaioContext[A](a:A, context:Context) extends Caio[A] {
+private[caio] final case class CaioState[A](a:A, state:State) extends Caio[A] {
 
   def map[B](f: A => B): Caio[B] =
-    CaioPure(f(a))
+    CaioOps.tryCatch(state)(CaioState(f(a), state))
 
   def flatMap[B](f: A => Caio[B]): Caio[B] =
-    CaioOps.tryCatch(context)(f(a).combineContext(context))
+    CaioOps.tryCatch(state)(f(a).combineState(state))
 
-  private[caio] def combineContext(proceedingContext: Context) =
-    CaioContext(a, proceedingContext + context)
+  private[caio] def combineState(proceedingState: State) =
+    CaioState(a, proceedingState + state)
 
-  private[caio] def toResult(proceedingContext:Context):Result[A] =
-    SuccessResult(a, proceedingContext + context)
+  private[caio] def toResult(context:Context):Result[A] =
+    SuccessResult(a, state)
 
   def runAsync(): IO[(Either[Throwable, A], EventLog)] =
-    IO.delay(Right(a) -> Context.getLog(context))
+    IO.delay(Right(a) -> State.getLog(state))
 
-  private[Caio] def mapContext(f: Context => Context): Caio[A] =
-    f(context)
+  private[caio] def mapState(f: State => State): Caio[A] =
+    CaioOps.tryCatch(state)(CaioState(a, f(state)))
+
+  private[caio] def mapWithState[B](f: (A, State) => (B, State)): Caio[B] =
+    CaioOps.tryCatch(state){
+      val (b, newState) = f(a, state)
+      CaioState(b, newState)
+    }
 }
 
 
@@ -223,7 +253,7 @@ private[caio] final case class CaioKleisli[A](func:Context => Result[A]) extends
 
   def flatMap[B](f: A => Caio[B]):Caio[B] =
     CaioKleisli { c =>
-      ResultOps.tryCatch(c){
+      ResultOps.tryCatch{
         func(c).flatMapC(c)(f)
       }
     }
@@ -231,41 +261,56 @@ private[caio] final case class CaioKleisli[A](func:Context => Result[A]) extends
   def map[B](f: A => B):Caio[B] =
     CaioKleisli { c => func(c).map(f) }
 
-  private[caio] def combineContext(proceedingContext: Context) =
-    CaioKleisli(func.andThen(_.combineContext(proceedingContext)))
+  private[caio] def combineState(proceedingState: State) =
+    CaioKleisli(func.andThen(_.combineState(proceedingState)))
 
-  private[caio] def toResult(evalContext:Context):Result[A] =
-    func(evalContext)
+  private[caio] def toResult(context:Context):Result[A] =
+    ResultOps.tryCatch{func(context)}
 
   def runAsync(): IO[(Either[Throwable, A], EventLog)] =
     IO.delay(func(Context.empty).toIO.map{
       case ErrorResult(e, c) =>
-        Left(e) -> Context.getLog(c)
+        Left(e) -> State.getLog(c)
       case SuccessResult(a, c) =>
-        Right(a) -> Context.getLog(c)
+        Right(a) -> State.getLog(c)
     }).flatMap(identity)
     .handleErrorWith(e => IO.pure(Left(e) -> EventLog.empty))
+
+  private[caio] def mapState(f: State => State): Caio[A] =
+    CaioKleisli { c => func(c).mapState(f) }
+
+  private[caio] def mapWithState[B](f: (A, State) => (B, State)): Caio[B] =
+    CaioKleisli { c => func(c).mapWithState(f) }
 }
 
 
-private[Caio] object CaioOps {
+private[caio] object CaioOps {
 
   @inline
-  def tryCatch[A](context:Context)(f: => Caio[A]):Caio[A] =
+  def tryCatch[A](f: => Caio[A]):Caio[A] =
     try {
       f
     } catch {
       case NonFatal(ex) =>
-        CaioError(ex, context)
+        CaioError(ex, State.empty)
     }
 
   @inline
-  def tryCatch[A](context:Context, e:Throwable)(f: => Caio[A]):Caio[A] =
+  def tryCatch[A](state:State)(f: => Caio[A]):Caio[A] =
     try {
       f
     } catch {
       case NonFatal(ex) =>
-        CaioError(Throwables(ex, e), context)
+        CaioError(ex, state)
+    }
+
+  @inline
+  def tryCatch[A](state:State, e:Throwable)(f: => Caio[A]):Caio[A] =
+    try {
+      f
+    } catch {
+      case NonFatal(ex) =>
+        CaioError(Throwables(ex, e), state)
     }
 }
 
