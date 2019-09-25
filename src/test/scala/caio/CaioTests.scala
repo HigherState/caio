@@ -451,7 +451,7 @@ class CaioTests extends AsyncFunSpec with Matchers{
             a <- CaioKleisli(c => IOResult(IO.delay(ErrorResult[String](testEx, simpleState))))
             b <- CaioKleisli(c => ErrorResult[Int](testEx2, simpleState2))
           } yield a -> b
-        getResult(result) shouldBe toResult(testEx, combineState)
+        getResult(result) shouldBe toResult(testEx, simpleState)
       }
 
       it("Result in IO Success Kleisli, IO Success Kleisli") {

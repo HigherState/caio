@@ -53,7 +53,7 @@ private[caio] final case class SuccessResult[A] private(a:A, state:State) extend
   def toIO: IO[PureResult[A]] = IO.delay(this)
 
   def flatMapC[B](context:Context)(f: A => Caio[B]): Result[B] =
-    ResultOps.tryCatch(state)(f(a).toResult(context))
+    ResultOps.tryCatch(state)(f(a).combineState(state).toResult(context))
 
   def mapState[B](f:State => State):PureResult[A] =
     ResultOps.tryCatchPure(state)(SuccessResult(a, state))
