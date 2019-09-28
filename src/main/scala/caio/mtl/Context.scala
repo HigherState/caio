@@ -1,7 +1,7 @@
 package caio.mtl
 
 import cats.{Monad, MonadError}
-import cats.effect.{Async, Bracket, LiftIO, Sync}
+import cats.effect._
 import cats.mtl._
 
 trait Context[F[_], L, E] {
@@ -12,39 +12,68 @@ trait Context[F[_], L, E] {
 
 trait EnvironmentContext[F[_], L, E, C] {
 
-  type F2[A]
+  type FC[A]
 
-  implicit def AA:ApplicativeAsk[F2, C]
+  def applicativeAsk:ApplicativeAsk[FC, C]
 
-  implicit def monadErrorMap(implicit ME:MonadError[F2, E]):MonadError[F2, E]
+  def monadState:MonadState[FC, C]
 
-  implicit def syncMap(implicit S:Sync[F]):Sync[F2]
+  def monadError(implicit ME:MonadError[F, E]):MonadError[FC, E] = ???
 
-  implicit def monadMap(implicit M:Monad[F]):Monad[F2]
+  def sync(implicit S:Sync[F]):Sync[FC] = ???
 
-  implicit def asyncMap(implicit A:Async[F]):Async[F2]
+  def monad(implicit M:Monad[F]):Monad[FC] = ???
 
-  implicit def bracketMap(implicit A:Bracket[F, E]):Bracket[F2, E]
+  def async(implicit A:Async[F]):Async[FC] = ???
 
-  implicit def liftIOMap(implicit L:LiftIO[F]):LiftIO[F2]
+  def bracket(implicit A:Bracket[F, E]):Bracket[FC, E] = ???
 
-  def apply[A](c:C)(f:F2[A]):F[A]
+  def liftIO(implicit L:LiftIO[F]):LiftIO[FC] = ???
+
+  def concurrent(implicit C:Concurrent[F]):Concurrent[FC] = ???
+
+  def concurrentEffect(implicit C:ConcurrentEffect[F]):ConcurrentEffect[FC] = ???
+
+  def apply[A](c:C)(f:FC[A]):F[A]
 }
 
 
-//class Testing[F[_]:MonadValid:Sync:Context]{
-//  import FrameworkOps._
-//
-//  val CXT = implicitly[Context[F]]
-//
-//
-//  def run:F[String] = {
-//    implicit val C = CXT.apply[String]
-//    import C._
-//    C("hello")(internal[C.F2])
-//  }
-//
-//
-//  private def internal[F2[_]:ApplicativeAsk[?[_], String]:MonadValid:Sync]:F2[String] =
-//    pure[F2, String]("")
-//}
+trait EnvironmentLift {
+
+  type Aux[F[_], FO[_], L, E, C] = EnvironmentContext[F, L, E, C]{ type FC[A] = FO[A] }
+
+  implicit def toAux[F[_], L, E, C](implicit E:EnvironmentContext[F, L, E, C]): Aux[F, E.FC, L, E, C] =
+    E.asInstanceOf[Aux[F, E.FC, L, E, C]]
+
+  implicit def applicativeAskFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C]):ApplicativeAsk[FC, C] =
+    A.applicativeAsk
+
+  implicit def monadStateFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C]):MonadState[FC, C] =
+    A.monadState
+
+  implicit def monadErrorFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], ME:MonadError[F, E]):MonadError[FC, E] =
+   A.monadError
+
+  implicit def syncFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], S:Sync[F]):Sync[FC] =
+    A.sync
+
+  implicit def monadFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], M:Monad[F]):Monad[FC] =
+    A.monad
+
+  implicit def asyncFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], S:Async[F]):Async[FC] =
+    A.async
+
+  implicit def bracketFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], B:Bracket[F, E]):Bracket[FC, E] =
+    A.bracket
+
+  implicit def liftIOFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], L:LiftIO[F]):LiftIO[FC] =
+    A.liftIO
+
+  implicit def concurrentFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], C:Concurrent[F]):Concurrent[FC] =
+    A.concurrent
+
+  implicit def concurrentEffectFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], C:ConcurrentEffect[F]):ConcurrentEffect[FC] =
+    A.concurrentEffect
+}
+
+object EnvironmentLift extends EnvironmentLift

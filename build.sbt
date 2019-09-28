@@ -72,10 +72,11 @@ javacOptions ++= Seq("-target", "1.8", "-source", "1.8", "-Xlint:deprecation")
 libraryDependencies ++= Seq(
   "org.typelevel" %% "cats-mtl-core" % "0.7.0",
   "org.typelevel" %% "cats-effect" % "2.0.0",
+  "io.typechecked" %% "alphabet-soup" % "0.3.0",
   "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
 
-addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9" cross CrossVersion.binary)
+addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3" cross CrossVersion.binary)
 
 resolvers ++= Seq (
   "Maven Central Server" at "http://repo1.maven.org/maven2",
