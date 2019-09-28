@@ -35,4 +35,12 @@ class ContextTests {
     def run:M[String] = e.apply("Value")(service.run)
   }
 
+  class Dependency[M[_]:MonadError[*[_], Throwable]:LiftIO, MC[_]:WithContext[*[_], M, EventLog, Throwable, Int]]
+    (a:AskInt[MC]){
+
+    val e = implicitly[WithContext[MC, M, EventLog, Throwable, Int]]
+
+    def run:M[Int] = e.apply(3)(a.run)
+  }
+
 }
