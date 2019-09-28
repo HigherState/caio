@@ -54,6 +54,9 @@ trait EnvironmentLift {
   implicit def monadErrorFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], ME:MonadError[F, E]):MonadError[FC, E] =
    A.monadError
 
+  implicit def liftIOFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], L:LiftIO[F]):LiftIO[FC] =
+    A.liftIO
+
   implicit def syncFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], S:Sync[F]):Sync[FC] =
     A.sync
 
@@ -65,9 +68,6 @@ trait EnvironmentLift {
 
   implicit def bracketFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], B:Bracket[F, E]):Bracket[FC, E] =
     A.bracket
-
-  implicit def liftIOFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], L:LiftIO[F]):LiftIO[FC] =
-    A.liftIO
 
   implicit def concurrentFC[F[_], FC[_], L, E, C](implicit A:Aux[F, FC, L, E, C], C:Concurrent[F]):Concurrent[FC] =
     A.concurrent

@@ -2,7 +2,7 @@ package caio.mtl
 
 import caio.EventLog
 import cats.MonadError
-import cats.effect.Sync
+import cats.effect.LiftIO
 import cats.mtl.{ApplicativeAsk, MonadState}
 
 class ContextTests {
@@ -22,11 +22,11 @@ class ContextTests {
     def run:M[Int] = e.apply(3)(service.run)
   }
 
-  class ComplexStateString[M[_]:MonadState[*[_], String]:Sync:MonadError[*[_], Throwable]] {
+  class ComplexStateString[M[_]:MonadState[*[_], String]:MonadError[*[_], Throwable]:LiftIO] {
     def run:M[String] = MonadState[M,String].get
   }
 
-  class AddStateContext[M[_]:Sync:MonadError[*[_], Throwable]](implicit C:Context[M, EventLog, Throwable]) {
+  class AddStateContext[M[_]:MonadError[*[_], Throwable]:LiftIO](implicit C:Context[M, EventLog, Throwable]) {
     import EnvironmentLift._
 
     implicit val e: EnvironmentContext[M, EventLog, Throwable, String] = C.apply[String]
