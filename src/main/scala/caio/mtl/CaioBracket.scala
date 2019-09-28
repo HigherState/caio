@@ -1,6 +1,6 @@
 package caio.mtl
 
-import caio.{Caio, CaioError, CaioKleisli, State}
+import caio.{Caio, CaioError, CaioKleisli, Store}
 import cats.effect.{Bracket, ExitCase}
 
 trait CaioBracket extends Bracket[Caio, Throwable] with CaioMonadError {
@@ -11,7 +11,7 @@ trait CaioBracket extends Bracket[Caio, Throwable] with CaioMonadError {
       CaioKleisli { c =>
         ua.handleError{ ex =>
           release(a, ExitCase.error(ex))
-            .flatMap{ _ => CaioError(ex, State.empty)}
+            .flatMap{ _ => CaioError(ex, Store.empty)}
           }
           .flatMap { b =>
             release(a, ExitCase.Completed)

@@ -15,7 +15,7 @@ abstract class CaioConcurrent(implicit CS:ContextShift[IO]) extends Concurrent[C
           SuccessResult(Fiber(
             CaioKleisli(_ => IOResult(join)),
             liftIO(cancel)
-          ), State.empty)
+          ), Store.empty)
         }
       }
     }

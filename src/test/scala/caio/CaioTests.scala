@@ -7,23 +7,23 @@ class CaioTests extends AsyncFunSpec with Matchers{
   import Events._
   import Exceptions._
 
-  val simpleState:State = State(Vector(one, two)) + (Context.empty + "bob" + 123)
-  val simpleState2:State = State(Vector(three)) + (Context.empty + 413 + false)
-  val combineState:State = State(Vector(one, two, three)) + (Context.empty + "bob" + 413 + false)
+  val simpleState:Store = Store(Vector(one, two)) + (Arguments.empty + "bob" + 123)
+  val simpleState2:Store = Store(Vector(three)) + (Arguments.empty + 413 + false)
+  val combineState:Store = Store(Vector(one, two, three)) + (Arguments.empty + "bob" + 413 + false)
 
   //including context should effect tests
-  def getResult[A](c:Caio[A]):(Either[Throwable, A], State) =
-    c.toResult(Context.empty + 22L).toIO.unsafeRunSync() match {
+  def getResult[A](c:Caio[A]):(Either[Throwable, A], Store) =
+    c.toResult(Arguments.empty + 22L).toIO.unsafeRunSync() match {
       case SuccessResult(a, state) =>
         Right(a) -> state
       case ErrorResult(ex, state) =>
         Left(ex) -> state
     }
 
-  def toResult[A](t:Throwable, s:State):(Either[Throwable, A], State) =
+  def toResult[A](t:Throwable, s:Store):(Either[Throwable, A], Store) =
     Left(t) -> s
 
-  def toResult[A](a:A, s:State):(Either[Throwable, A], State) =
+  def toResult[A](a:A, s:Store):(Either[Throwable, A], Store) =
     Right(a) -> s
 
 
@@ -35,7 +35,7 @@ class CaioTests extends AsyncFunSpec with Matchers{
           for {
             a <- CaioPure("value")
           } yield a
-        getResult(result) shouldBe toResult("value", State.empty)
+        getResult(result) shouldBe toResult("value", Store.empty)
       }
       it("Result inState") {
         val result =
@@ -91,7 +91,7 @@ class CaioTests extends AsyncFunSpec with Matchers{
             a <- CaioPure("value")
             b <- CaioPure("value2")
           } yield a -> b
-        getResult(result) shouldBe toResult("value" -> "value2", State.empty)
+        getResult(result) shouldBe toResult("value" -> "value2", Store.empty)
       }
       it("Result inPure,State") {
         val result =
@@ -495,14 +495,14 @@ class CaioTests extends AsyncFunSpec with Matchers{
     it("Preserve in Kleisli") {
       val result =
         CaioKleisli(c => throw testEx)
-      getResult(result) shouldBe toResult(testEx, State.empty)
+      getResult(result) shouldBe toResult(testEx, Store.empty)
     }
 
     describe("Under a flat map") {
       it("Preserve in Pure") {
         val result =
           CaioPure("value").flatMap(_ => throw testEx)
-        getResult(result) shouldBe toResult(testEx, State.empty)
+        getResult(result) shouldBe toResult(testEx, Store.empty)
       }
       it("Preserve in State") {
         val result =
@@ -541,7 +541,7 @@ class CaioTests extends AsyncFunSpec with Matchers{
       it("Preserve in Pure") {
         val result =
           CaioPure("value").map(_ => throw testEx)
-        getResult(result) shouldBe toResult(testEx, State.empty)
+        getResult(result) shouldBe toResult(testEx, Store.empty)
       }
       it("Preserve in State") {
         val result =
