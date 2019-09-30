@@ -1,6 +1,6 @@
-package caio.mtl
+package caio.std
 
-import caio._
+import caio.{Caio, CaioError, Store}
 import cats.ApplicativeError
 
 trait CaioApplicativeError extends ApplicativeError[Caio, Throwable] with CaioApplicative {

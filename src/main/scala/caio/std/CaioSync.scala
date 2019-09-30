@@ -1,6 +1,6 @@
-package caio.mtl
+package caio.std
 
-import caio._
+import caio.{Caio, CaioKleisli, IOResult}
 import cats.effect.{IO, Sync}
 
 trait CaioSync extends Sync[Caio] with CaioBracket {

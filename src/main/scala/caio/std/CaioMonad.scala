@@ -1,6 +1,6 @@
-package caio.mtl
+package caio.std
 
-import caio._
+import caio.Caio
 import cats.StackSafeMonad
 
 trait CaioMonad extends StackSafeMonad[Caio] with CaioApplicative {

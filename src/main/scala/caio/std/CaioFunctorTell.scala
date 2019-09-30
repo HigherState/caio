@@ -1,4 +1,4 @@
-package caio.mtl
+package caio.std
 
 import caio.{Caio, CaioState, EventLog, Store}
 import cats.Functor

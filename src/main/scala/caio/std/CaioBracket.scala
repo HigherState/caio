@@ -1,4 +1,4 @@
-package caio.mtl
+package caio.std
 
 import caio.{Caio, CaioError, CaioKleisli, Store}
 import cats.effect.{Bracket, ExitCase}
@@ -20,4 +20,3 @@ trait CaioBracket extends Bracket[Caio, Throwable] with CaioMonadError {
       }
     }
 }
-

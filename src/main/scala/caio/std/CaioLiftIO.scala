@@ -1,6 +1,6 @@
-package caio.mtl
+package caio.std
 
-import caio._
+import caio.{Caio, CaioKleisli, ResultOps}
 import cats.effect.{IO, LiftIO}
 
 trait CaioLiftIO extends LiftIO[Caio]{

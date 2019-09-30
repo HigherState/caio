@@ -1,4 +1,4 @@
-package caio.mtl
+package caio.std
 
 import caio.{Caio, EventLog, Store}
 import cats.mtl.ApplicativeCensor

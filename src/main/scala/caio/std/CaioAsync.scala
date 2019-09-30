@@ -1,6 +1,6 @@
-package caio.mtl
+package caio.std
 
-import caio._
+import caio.{Caio, CaioKleisli, ResultOps}
 import cats.effect.{Async, IO}
 
 trait CaioAsync extends Async[Caio] with CaioSync {

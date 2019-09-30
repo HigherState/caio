@@ -74,7 +74,7 @@ private[caio] final case class CaioError[A](e:Throwable, store:Store) extends Ca
   def flatMap[B](f: A => Caio[B]):Caio[B] =
     shiftValue[B]
 
- def combineState(proceedingStore: Store) =
+  def combineState(proceedingStore: Store) =
     CaioError(e, proceedingStore + store)
 
   def toResult(arguments:Arguments):Result[A] =
@@ -161,7 +161,7 @@ private[caio] final case class CaioKleisli[A](func:Arguments => Result[A]) exten
       case SuccessResult(a, c) =>
         Right(a) -> Store.getLog(c)
     }).flatMap(identity)
-    .handleErrorWith(e => IO.pure(Left(e) -> EventLog.empty))
+      .handleErrorWith(e => IO.pure(Left(e) -> EventLog.empty))
 
   def mapStore(f: Store => Store): Caio[A] =
     CaioKleisli { c => func(c).mapStore(f) }

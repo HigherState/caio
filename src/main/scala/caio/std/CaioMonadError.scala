@@ -1,4 +1,4 @@
-package caio.mtl
+package caio.std
 
 import caio.Caio
 import cats.MonadError
