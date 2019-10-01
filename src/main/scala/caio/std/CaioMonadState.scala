@@ -1,28 +1,23 @@
 package caio.std
 
 import caio._
-import cats.Monad
+import cats.{Monad, Monoid}
 import cats.mtl.MonadState
 
-import scala.reflect.ClassTag
+class CaioMonadState[C, V, L: Monoid] extends MonadState[Caio[C, V, L, *], C] {
+  val monad: Monad[Caio[C, V, L, *]] =
+    new CaioMonad[C, V, L] {}
 
-class CaioMonadState[S](implicit T:ClassTag[S]) extends MonadState[Caio, S] {
-  val monad: Monad[Caio] =
-    new CaioMonad {}
-
-  def get: Caio[S] =
-    CaioKleisli{c =>
-      c.get(T).fold[PureResult[S]](ErrorResult(ContextNotFoundException(T), Store.empty)){ e =>
-        SuccessResult(e, Store.empty)
-      }
+  def get: Caio[C, V, L, C] =
+    CaioKleisli{c => SuccessResult(c, Store.empty)
     }
 
-  def set(s: S): Caio[Unit] =
-    CaioState((), Store.empty.set(s))
+  def set(s: C): Caio[C, V, L, Unit] =
+    CaioState((), ContentStore(s, implicitly[Monoid[L]].empty))
 
-  def inspect[A](f: S => A): Caio[A] =
+  def inspect[A](f: C => A): Caio[C, V, L, A] =
     get.map(f)
 
-  def modify(f: S => S): Caio[Unit] =
+  def modify(f: C => C): Caio[C, V, L, Unit] =
     get.flatMap(s => set(f(s)))
 }

@@ -1,19 +1,19 @@
 package caio.std
 
-import caio.{Caio, CaioState, EventLog, Store}
-import cats.Functor
+import caio.{Caio, CaioState, LogStore}
+import cats.{Functor, Monoid}
 import cats.mtl.FunctorTell
 
-trait CaioFunctorTell extends FunctorTell[Caio, EventLog]{
-  override lazy val functor: Functor[Caio] =
-    new CaioFunctor {}
+class CaioFunctorTell[C, V, L:Monoid] extends FunctorTell[Caio[C, V, L, *], L]{
+  override lazy val functor: Functor[Caio[C, V, L, *]] =
+    new CaioFunctor[C, V, L] {}
 
-  def tell(l: EventLog): Caio[Unit] =
-    CaioState((), Store(l))
+  def tell(l: L): Caio[C, V, L, Unit] =
+    CaioState((), LogStore(l))
 
-  def writer[A](a: A, l: EventLog): Caio[A] =
-    CaioState(a, Store(l))
+  def writer[A](a: A, l: L): Caio[C, V, L, A] =
+    CaioState(a, LogStore(l))
 
-  def tuple[A](ta: (EventLog, A)): Caio[A] =
+  def tuple[A](ta: (L, A)): Caio[C, V, L, A] =
     writer(ta._2, ta._1)
 }

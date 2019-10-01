@@ -1,9 +1,8 @@
 package caio.std
 
 import caio.mtl.{Context, EnvironmentContext}
-import caio.{Caio, EventLog}
+import caio.Caio
 
-trait CaioContext extends Context[Caio, EventLog, Throwable] {
-  def apply[C]: EnvironmentContext[Caio, EventLog, Throwable, C]
-
+trait CaioContext[C, V, L] extends Context[Caio[C, V, L, *], L, Throwable, V] {
+  def apply[C]: EnvironmentContext[Caio[C, V, L, *], L, Throwable, V, C] = ???
 }

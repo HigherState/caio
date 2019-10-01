@@ -2,47 +2,58 @@ package caio
 
 import cats.Monoid
 
-import scala.reflect.ClassTag
+/**
+ * Holds any State change and log information for the Caio Monad
+ * @tparam C State/environment arguments
+ * @tparam L Log
+ */
+private[caio] sealed trait Store[C, L] {
+  def +(s:Store[C, L]):Store[C, L]
 
-case class Store private(content:Map[ClassTag[_], Any], eventLog:EventLog) {
-  def +(c:Store):Store =
-    Store.monoid.combine(this, c)
+  def getOrElse(c:C):C
 
-  def +(c:Arguments):Store =
-    Store(content ++ c.content, eventLog)
+  def l:L
 
-  def set[S](s:S)(implicit T:ClassTag[S]):Store =
-    this.copy(content = content + (T -> s))
+  def map(f:L => L):Store[C, L]
+}
+
+private[caio] case class LogStore[C, L:Monoid](l:L)
+  extends Store[C, L] {
+
+  def +(s:Store[C, L]):Store[C, L] =
+    s match {
+      case ContentStore(c, l) =>
+        ContentStore(c, implicitly[Monoid[L]].combine(l, l))
+      case LogStore(l) =>
+        LogStore(implicitly[Monoid[L]].combine(l, l))
+    }
+
+  def getOrElse(c:C):C =
+    c
+
+  def map(f:L => L):Store[C, L] =
+    LogStore(f(l))
+}
+
+private[caio] case class ContentStore[C, L:Monoid](c:C, l:L)
+  extends Store[C, L] {
+
+  def +(s:Store[C, L]):Store[C, L] =
+    s match {
+      case ContentStore(c, l) =>
+        ContentStore(c, implicitly[Monoid[L]].combine(l, l))
+      case LogStore(l) =>
+        ContentStore(c, implicitly[Monoid[L]].combine(l, l))
+    }
+
+  def getOrElse(c:C):C =
+    c
+
+  def map(f:L => L):Store[C, L] =
+    ContentStore(c, f(l))
 }
 
 object Store {
-
-  val empty: Store = Store(Map.empty, Vector.empty)
-
-  def apply(arguments:Arguments):Store =
-    Store(arguments.content, Vector.empty)
-
-  def apply(log:EventLog):Store =
-    Store(Map.empty, log)
-
-  def getLog(store:Store): EventLog =
-    store.eventLog
-
-  def modifyLog(store:Store, f:EventLog => EventLog):Store =
-    store.copy(eventLog = f(store.eventLog))
-
-  implicit val monoid:Monoid[Store] =
-    new Monoid[Store]{
-      val empty: Store = Store.empty
-
-      def combine(x: Store, y: Store): Store = {
-        if (x == empty) y
-        else if (y == empty) x
-        else {
-          val lx = getLog(x)
-          val ly = getLog(y)
-          Store(x.content ++ y.content ,lx ++ ly)
-        }
-      }
-    }
+  def empty[C, L:Monoid]:Store[C, L] =
+    LogStore(implicitly[Monoid[L]].empty)
 }

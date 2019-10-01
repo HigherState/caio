@@ -8,7 +8,7 @@ import cats.mtl.{ApplicativeAsk, MonadState}
 class ContextTests {
 
   //Creating internal
-  class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
+  class AskInt[M[_]:ApplicativeAsk[*[_], Int]:LiftIO] {
     def run:M[Int] = ApplicativeAsk[M,Int].ask
   }
 
