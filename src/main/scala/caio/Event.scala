@@ -1,3 +1,0 @@
-package caio
-
-trait Event

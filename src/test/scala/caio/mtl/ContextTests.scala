@@ -1,6 +1,5 @@
 package caio.mtl
 
-import caio.EventLog
 import cats.MonadError
 import cats.effect.LiftIO
 import cats.mtl.{ApplicativeAsk, MonadState}

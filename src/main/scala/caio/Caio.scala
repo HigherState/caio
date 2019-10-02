@@ -1,6 +1,7 @@
 package caio
 
 import cats.Monoid
+import cats.data.NonEmptyList
 import cats.effect.IO
 
 import scala.util.control.NonFatal
@@ -20,16 +21,16 @@ sealed trait Caio[C, V, L, A] {
 
   def handleError[B](f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A]
 
-  def handleFailure[B](f: V => Caio[C, V, L, A]): Caio[C, V, L, A]
+  def handleFailures[B](f: NonEmptyList[V] => Caio[C, V, L, A]): Caio[C, V, L, A]
 
 
   def toResult(c:C):Result[C, V, L, A]
 
   def toIOResult(c:C):IOResult[C, V, L, A]
 
-  def toIO(c:C):IO[(Either[Throwable Either V, A], C, L)]
+  def toIO(c:C):IO[(Either[ErrorOrFailure[V], A], C, L)]
 
-  def unsafeRun(c:C):(Either[Throwable Either V, A], C, L) =
+  def unsafeRun(c:C):(Either[ErrorOrFailure[V], A], C, L) =
     toIO(c).unsafeRunSync()
 
 
@@ -53,7 +54,7 @@ private[caio] final case class CaioState[C, V, L, A](a:A, store:Store[C, L]) ext
   def toIOResult(c:C):IOResult[C, V, L, A] =
     IOResult(IO.pure(SuccessResult(a, store)))
 
-  def toIO(c:C):IO[(Either[Throwable Either V, A], C, L)] =
+  def toIO(c:C):IO[(Either[ErrorOrFailure[V], A], C, L)] =
     IO.delay((Right(a), store.getOrElse(c), store.l))
 
   def mapStore(f: Store[C, L] => Store[C, L]): Caio[C, V, L, A] =
@@ -68,11 +69,11 @@ private[caio] final case class CaioState[C, V, L, A](a:A, store:Store[C, L]) ext
   def handleError[B](f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A] =
     this
 
-  def handleFailure[B](f: V => Caio[C, V, L, A]): Caio[C, V, L, A] =
+  def handleFailures[B](f: NonEmptyList[V] => Caio[C, V, L, A]): Caio[C, V, L, A] =
     this
 }
 
-private[caio] final case class CaioError[C, V, L, A](e:Throwable, store:Store[C, L]) extends Caio[C, V, L, A] {
+private[caio] final case class CaioError[C, V, L, A](e:ErrorOrFailure[V], store:Store[C, L]) extends Caio[C, V, L, A] {
 
   @inline
   private def shiftValue[B]: CaioError[C, V, L, B] =
@@ -93,8 +94,8 @@ private[caio] final case class CaioError[C, V, L, A](e:Throwable, store:Store[C,
   def toIOResult(c:C):IOResult[C, V, L, A] =
     IOResult(IO.pure(ErrorResult(e, store)))
 
-  def toIO(c:C):IO[(Either[Throwable Either V, A], C, L)] =
-    IO.delay((Left(Left(e)), store.getOrElse(c), store.l))
+  def toIO(c:C):IO[(Either[ErrorOrFailure[V], A], C, L)] =
+    IO.delay((Left(e), store.getOrElse(c), store.l))
 
   def mapStore(f: Store[C, L] => Store[C, L]): Caio[C, V, L, A] =
     CaioOps.tryCatch(store)(CaioError(e, f(store)))
@@ -103,57 +104,22 @@ private[caio] final case class CaioError[C, V, L, A](e:Throwable, store:Store[C,
     shiftValue[B]
 
   def handleError[B](f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    CaioOps.tryCatch(store)(f(e).combine(store))
+    e.left.toOption.map{t =>
+      CaioOps.tryCatch(store)(f(t).combine(store))
+    }.getOrElse(this)
 
-  def handleFailure[B](f: V => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    this
-
-}
-
-private[caio] final case class CaioFail[C, V, L, A](v:V, store:Store[C, L]) extends Caio[C, V, L, A] {
-
-  @inline
-  private def shiftValue[B]: CaioFail[C, V, L, B] =
-    this.asInstanceOf[CaioFail[C, V, L, B]]
-
-  def map[B](f: A => B):Caio[C, V, L, B] =
-    shiftValue[B]
-
-  def flatMap[B](f: A => Caio[C, V, L, B]):Caio[C, V, L, B] =
-    shiftValue[B]
-
-  def combine(proceedingStore: Store[C, L]) =
-    CaioFail(v, proceedingStore + store)
-
-  def toResult(c:C):Result[C, V, L, A] =
-    FailureResult(v, store)
-
-  def toIOResult(c:C):IOResult[C, V, L, A] =
-    IOResult(IO.pure(FailureResult(v, store)))
-
-  def toIO(c:C):IO[(Either[Throwable Either V, A], C, L)] =
-    IO.delay((Left(Right(v)), store.getOrElse(c), store.l))
-
-  def mapStore(f: Store[C, L] => Store[C, L]): Caio[C, V, L, A] =
-    CaioOps.tryCatch(store)(CaioFail(v, f(store)))
-
-  def mapWithStore[B](f: (A, Store[C, L]) => (B, Store[C, L])): Caio[C, V, L, B] =
-    shiftValue[B]
-
-  def handleError[B](f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    this
-
-  def handleFailure[B](f: V => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    CaioOps.tryCatch(store)(f(v).combine(store))
+  def handleFailures[B](f: NonEmptyList[V] => Caio[C, V, L, A]): Caio[C, V, L, A] =
+    e.right.toOption.map{v =>
+      CaioOps.tryCatch(store)(f(v).combine(store))
+    }.getOrElse(this)
 
 }
 
-
-private[caio] final case class CaioKleisli[C, V, L, A](func:C => Result[C, V, L, A]) extends Caio[C, V, L, A] {
+private[caio] final case class CaioKleisli[C, V, L:Monoid, A](func:C => Result[C, V, L, A]) extends Caio[C, V, L, A] {
 
   def flatMap[B](f: A => Caio[C, V, L, B]):Caio[C, V, L, B] =
     CaioKleisli { c =>
-      ResultOps.tryCatch{
+      ResultOps.tryCatch(Store.empty[C, L]){
         func(c).flatMapC(c)(f)
       }
     }
@@ -161,25 +127,23 @@ private[caio] final case class CaioKleisli[C, V, L, A](func:C => Result[C, V, L,
   def map[B](f: A => B):Caio[C, V, L, B] =
     CaioKleisli { c => func(c).map(f) }
 
-  def combineState(proceedingStore: Store[C, L]): Caio[C, V, L, A] =
+  def combine(proceedingStore: Store[C, L]): Caio[C, V, L, A] =
     CaioKleisli{c => func(proceedingStore.getOrElse(c)).combine(proceedingStore)}
 
   def toResult(c:C):Result[C, V, L, A] =
-    ResultOps.tryCatch{func(c)}
+    ResultOps.tryCatch(Store.empty[C, L]){func(c)}
 
   def toIOResult(c:C):IOResult[C, V, L, A] =
-    IOResult(ResultOps.tryCatch{func(c)}.toIO)
+    IOResult(ResultOps.tryCatch(Store.empty[C, L]){func(c)}.toIO)
 
-  def toIO(c:C):IO[(Either[Throwable Either V, A], C, L)] =
+  def toIO(c:C):IO[(Either[ErrorOrFailure[V], A], C, L)] =
     IO.delay(func(c).toIO.map{
       case ErrorResult(e, store) =>
-        (Left(Left(e)), store.getOrElse(c), store.l)
-      case FailureResult(v, store) =>
-        (Left(Right(v)), store.getOrElse(c), store.l)
+        (Left(e), store.getOrElse(c), store.l)
       case SuccessResult(a, store) =>
         (Right(a), store.getOrElse(c), store.l)
     }).flatMap(identity)
-    .handleErrorWith(e => IO.pure(Left(Left(e)), c, ))
+    .handleErrorWith(e => IO.pure((Left(Left(e)), c, implicitly[Monoid[L]].empty)))
 
   def mapStore(f: Store[C, L] => Store[C, L]): Caio[C, V, L, A] =
     CaioKleisli { c => func(c).mapStore(f) }
@@ -190,8 +154,8 @@ private[caio] final case class CaioKleisli[C, V, L, A](func:C => Result[C, V, L,
   def handleError[B](f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A] =
     CaioKleisli { c => func(c).handleError(c)(f) }
 
-  def handleFailure[B](f: V => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    CaioKleisli { c => func(c).handleFailure(c)(f) }
+  def handleFailures[B](f: NonEmptyList[V] => Caio[C, V, L, A]): Caio[C, V, L, A] =
+    CaioKleisli { c => func(c).handleFailures(c)(f) }
 }
 
 
@@ -203,7 +167,7 @@ private[caio] object CaioOps {
       f
     } catch {
       case NonFatal(ex) =>
-        CaioError(ex, store)
+        CaioError(Left(ex), store)
     }
 }
 
@@ -216,7 +180,7 @@ private[caio] sealed trait Result[C, V, L, A] {
   def combine(proceedingStore:Store[C, L]):Result[C, V, L, A]
   def toIO: IO[PureResult[C, V, L, A]]
   def handleError[B](c:C)(f: Throwable => Caio[C, V, L, A]): Result[C, V, L, A]
-  def handleFailure[B](c:C)(f: V => Caio[C, V, L, A]): Result[C, V, L, A]
+  def handleFailures[B](c:C)(f: NonEmptyList[V] => Caio[C, V, L, A]): Result[C, V, L, A]
 
 }
 
@@ -254,11 +218,11 @@ private[caio] final case class SuccessResult[C, V, L, A] private(a:A, store:Stor
   def handleError[B](c:C)(f: Throwable => Caio[C, V, L, A]): Result[C, V, L, A] =
     this
 
-  def handleFailure[B](c: C)(f: V => Caio[C, V, L, A]): Result[C, V, L, A] =
+  def handleFailures[B](c: C)(f: NonEmptyList[V] => Caio[C, V, L, A]): Result[C, V, L, A] =
     this
 }
 
-private[caio] final case class ErrorResult[C, V, L, A](e:Throwable, store:Store[C, L]) extends PureResult[C, V, L, A] {
+private[caio] final case class ErrorResult[C, V, L, A](e:ErrorOrFailure[V], store:Store[C, L]) extends PureResult[C, V, L, A] {
   @inline
   private def shiftValue[B]: ErrorResult[C, V, L, B] =
     this.asInstanceOf[ErrorResult[C, V, L, B]]
@@ -276,46 +240,21 @@ private[caio] final case class ErrorResult[C, V, L, A](e:Throwable, store:Store[
     shiftValue[B]
 
   def mapStore[B](f:Store[C, L] => Store[C, L]):PureResult[C, V, L, A] =
-    ResultOps.tryCatchPure(store, e)(ErrorResult(e, store))
+    ResultOps.tryCatchPure(store)(ErrorResult(e, store))
 
   def mapWithStore[B](f: (A, Store[C, L]) => (B, Store[C, L])): PureResult[C, V, L, B] =
     shiftValue[B]
 
   def handleError[B](c:C)(f: Throwable => Caio[C, V, L, A]): Result[C, V, L, A] =
-    ResultOps.tryCatch(store, e)(f(e).combine(store).toResult(store.getOrElse(c)))
+    e.left.toOption.map { t =>
+      ResultOps.tryCatch(store)(f(t).combine(store).toResult(store.getOrElse(c)))
+    }.getOrElse(this)
 
-  def handleFailure[B](c: C)(f: V => Caio[C, V, L, A]): Result[C, V, L, A] =
-    this
-}
 
-private[caio] final case class FailureResult[C, V, L, A](v:V, store:Store[C, L]) extends PureResult[C, V, L, A] {
-  @inline
-  private def shiftValue[B]: FailureResult[C, V, L, B] =
-    this.asInstanceOf[FailureResult[C, V, L, B]]
-
-  def map[B](f: A => B): FailureResult[C, V, L, B] =
-    shiftValue[B]
-
-  def combine(proceedingStore: Store[C, L]): PureResult[C, V, L, A] =
-    FailureResult(v, proceedingStore + store)
-
-  def toIO: IO[PureResult[C, V, L, A]] =
-    IO.delay(this)
-
-  def flatMapC[B](c:C)(f: A => Caio[C, V, L, B]): Result[C, V, L, B] =
-    shiftValue[B]
-
-  def mapStore[B](f:Store[C, L] => Store[C, L]):PureResult[C, V, L, A] =
-    ResultOps.tryCatchPure(store)(FailureResult(v, store))
-
-  def mapWithStore[B](f: (A, Store[C, L]) => (B, Store[C, L])): PureResult[C, V, L, B] =
-    shiftValue[B]
-
-  def handleError[B](c:C)(f: Throwable => Caio[C, V, L, A]): Result[C, V, L, A] =
-    this
-
-  def handleFailure[B](c: C)(f: V => Caio[C, V, L, A]): Result[C, V, L, A] =
-    ResultOps.tryCatch(store)(f(v).combine(store).toResult(store.getOrElse(c)))
+  def handleFailures[B](c: C)(f: NonEmptyList[V] => Caio[C, V, L, A]): Result[C, V, L, A] =
+    e.right.toOption.map { v =>
+      ResultOps.tryCatch(store)(f(v).combine(store).toResult(store.getOrElse(c)))
+    }.getOrElse(this)
 }
 
 private[caio] final case class IOResult[C, V, L, A](io:IO[PureResult[C, V, L, A]]) extends Result[C, V, L, A] {
@@ -351,9 +290,9 @@ private[caio] final case class IOResult[C, V, L, A](io:IO[PureResult[C, V, L, A]
       }
     })
 
-  def handleFailure[B](c:C)(f: V => Caio[C, V, L, A]): Result[C, V, L, A] =
+  def handleFailures[B](c:C)(f: NonEmptyList[V] => Caio[C, V, L, A]): Result[C, V, L, A] =
     IOResult(io.flatMap{ r =>
-      r.handleFailure(c)(f) match {
+      r.handleFailures(c)(f) match {
         case IOResult(io2) =>
           io2
         case pure:PureResult[C, V, L, A] =>
@@ -372,7 +311,8 @@ private[caio] final case class IOResult[C, V, L, A](io:IO[PureResult[C, V, L, A]
 private[caio] object ResultOps {
 
   def fromIO[C, V, L:Monoid, A](ioa:IO[A]):IOResult[C, V, L, A] =
-    IOResult(ioa.map(a => SuccessResult(a, Store.empty[C, V, L, A])).handleErrorWith(ex => IO(ErrorResult[C, V, L, A](ex, Store.empty))))
+    IOResult(ioa.map(a => SuccessResult[C, V, L, A](a, Store.empty[C, L])).
+      handleErrorWith(ex => IO(ErrorResult[C, V, L, A](Left(ex), Store.empty[C, L]))))
 
   @inline
   def tryCatchPure[C, V, L, A](store:Store[C, L])(f: => PureResult[C, V, L, A]):PureResult[C, V, L, A] =
@@ -380,16 +320,7 @@ private[caio] object ResultOps {
       f
     } catch {
       case NonFatal(ex) =>
-        ErrorResult(ex, store)
-    }
-
-  @inline
-  def tryCatchPure[C, V, L, A](store:Store[C, L], e:Throwable)(f: => PureResult[C, V, L, A]):PureResult[C, V, L, A] =
-    try {
-      f
-    } catch {
-      case NonFatal(ex) =>
-        ErrorResult(Throwables.append(e -> ex), store)
+        ErrorResult(Left(ex), store)
     }
 
   @inline
@@ -398,18 +329,7 @@ private[caio] object ResultOps {
       f
     } catch {
       case NonFatal(ex) =>
-        ErrorResult(ex, store)
+        ErrorResult(Left(ex), store)
     }
-
-  @inline
-  def tryCatch[C, V, L, A](store:Store[C, L], e:Throwable)(f: => Result[C, V, L, A]):Result[C, V, L, A] =
-    try {
-      f
-    } catch {
-      case NonFatal(ex) =>
-        ErrorResult(Throwables.append(e -> ex), store)
-    }
-
-
 }
 

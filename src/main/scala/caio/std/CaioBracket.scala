@@ -10,9 +10,14 @@ class CaioBracket[C, V, L: Monoid] extends CaioMonadError[C, V, L] with Bracket[
     this.flatMap(acquire) { a =>
       val ua = use(a)
       CaioKleisli { c =>
-        ua.handleError{ ex =>
-          release(a, ExitCase.error(ex))
-            .flatMap{ _ => CaioError(ex, Store.empty[C, L])}
+        ua
+          .handleError{ ex =>
+            release(a, ExitCase.error(ex))
+              .flatMap{ _ => CaioError(Left(ex), Store.empty[C, L])}
+          }
+          .handleFailures{v =>
+            release(a, ExitCase.error(CaioFailuresAsThrowable(v)))
+              .flatMap{ _ => CaioError(Right(v), Store.empty[C, L])}
           }
           .flatMap { b =>
             release(a, ExitCase.Completed)

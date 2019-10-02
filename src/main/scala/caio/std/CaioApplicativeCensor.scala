@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{Caio, EventLog, Store}
+import caio.Caio
 import cats.mtl.ApplicativeCensor
 import cats.{Applicative, Monoid}
 
