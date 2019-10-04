@@ -13,12 +13,6 @@ sealed trait Caio[C, V, L, A] {
   def map[B](f: A => B): Caio[C, V, L, B]
 
 
-  //Can operate on error cases
-  def mapStore(f: Store[C, L] => Store[C, L]): Caio[C, V, L, A]
-
-  def mapWithStore[B](f: (A, Store[C, L]) => (B, Store[C, L])): Caio[C, V, L, B]
-
-
   def handleError[B](f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A]
 
   def handleFailures[B](f: NonEmptyList[V] => Caio[C, V, L, A]): Caio[C, V, L, A]
@@ -33,6 +27,11 @@ sealed trait Caio[C, V, L, A] {
   def unsafeRun(c:C):(Either[ErrorOrFailure[V], A], C, L) =
     toIO(c).unsafeRunSync()
 
+
+  //Can operate on error cases
+  private[caio] def mapStore(f: Store[C, L] => Store[C, L]): Caio[C, V, L, A]
+
+  private[caio] def mapWithStore[B](f: (A, Store[C, L]) => (B, Store[C, L])): Caio[C, V, L, B]
 
   private[caio] def combine(proceeding:Store[C, L]):Caio[C, V, L, A]
 }
