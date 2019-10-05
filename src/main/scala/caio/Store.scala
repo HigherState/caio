@@ -22,10 +22,10 @@ private[caio] case class LogStore[C, L:Monoid](l:L)
 
   def +(s:Store[C, L]):Store[C, L] =
     s match {
-      case ContentStore(c, l) =>
-        ContentStore(c, implicitly[Monoid[L]].combine(l, l))
-      case LogStore(l) =>
-        LogStore(implicitly[Monoid[L]].combine(l, l))
+      case ContentStore(c, l2) =>
+        ContentStore(c, implicitly[Monoid[L]].combine(l, l2))
+      case LogStore(l2) =>
+        LogStore(implicitly[Monoid[L]].combine(l, l2))
     }
 
   def getOrElse(c:C):C =
@@ -40,14 +40,14 @@ private[caio] case class ContentStore[C, L:Monoid](c:C, l:L)
 
   def +(s:Store[C, L]):Store[C, L] =
     s match {
-      case ContentStore(c, l) =>
-        ContentStore(c, implicitly[Monoid[L]].combine(l, l))
-      case LogStore(l) =>
-        ContentStore(c, implicitly[Monoid[L]].combine(l, l))
+      case ContentStore(c, l2) =>
+        ContentStore(c, implicitly[Monoid[L]].combine(l, l2))
+      case LogStore(l2) =>
+        ContentStore(c, implicitly[Monoid[L]].combine(l, l2))
     }
 
   def getOrElse(c:C):C =
-    c
+    this.c
 
   def map(f:L => L):Store[C, L] =
     ContentStore(c, f(l))

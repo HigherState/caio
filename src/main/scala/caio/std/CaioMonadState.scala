@@ -9,8 +9,7 @@ class CaioMonadState[C, V, L: Monoid] extends MonadState[Caio[C, V, L, *], C] {
     new CaioMonad[C, V, L] {}
 
   def get: Caio[C, V, L, C] =
-    CaioKleisli{c => SuccessResult(c, Store.empty)
-    }
+    CaioKleisli(c => SuccessResult(c, Store.empty))
 
   def set(s: C): Caio[C, V, L, Unit] =
     CaioState((), ContentStore(s, implicitly[Monoid[L]].empty))

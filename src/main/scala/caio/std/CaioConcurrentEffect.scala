@@ -2,7 +2,7 @@ package caio.std
 
 import caio._
 import cats.Monoid
-import cats.effect.{CancelToken, ConcurrentEffect, ContextShift, IO, SyncIO}
+import cats.effect._
 
 class CaioConcurrentEffect[C, V, L:Monoid]
   (c:C)

@@ -3,7 +3,7 @@ package caio.mtl
 import cats.mtl.{ApplicativeAsk, MonadState}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
-class ArgProjectorTests  extends AsyncFunSpec with Matchers{
+class ContextProjectorTests extends AsyncFunSpec with Matchers{
 
   class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
     def run:M[Int] = ApplicativeAsk[M,Int].ask
@@ -14,7 +14,7 @@ class ArgProjectorTests  extends AsyncFunSpec with Matchers{
   }
 
   class AskIntString[M[_]:ApplicativeAsk[*[_], (Int, String)]] {
-    import caio.mtl.ArgsProjector._
+    import caio.mtl.ContextProjector._
 
     val ai = new AskInt[M]
 
@@ -31,7 +31,7 @@ class ArgProjectorTests  extends AsyncFunSpec with Matchers{
 
   class MonadIntString[M[_]:MonadState[*[_], (Int, String)]] {
 
-    import caio.mtl.ArgsProjector._
+    import caio.mtl.ContextProjector._
 
     val ai = new MonadInt[M]
 
@@ -40,9 +40,9 @@ class ArgProjectorTests  extends AsyncFunSpec with Matchers{
 
 
   class MonadIntAskString[M[_]:MonadState[*[_], (Int, String)]] {
-    import caio.mtl.ArgsProjector._
+    import caio.mtl.ContextProjector._
 
-    val ai = new MonadInt[M]
+    val ai = new AskInt[M]
 
     val as = new AskString[M]
   }

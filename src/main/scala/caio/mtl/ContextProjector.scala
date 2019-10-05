@@ -5,7 +5,7 @@ import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
-trait ArgsProjector {
+trait ContextProjector {
 
   implicit def projectMonadState[M[_], A, B]
     (implicit MS: MonadState[M, A], EV: A =:!= B, M: Mixer[A, B]): MonadState[M, B] =
@@ -25,8 +25,9 @@ trait ArgsProjector {
         MS.modify(a => M.modify(f)(a))
     }
 
-  implicit def projectionApplicativeAsk[M[_], A]
-    (implicit eitherAndProjection: EitherAndProjection[M, A]): ApplicativeAsk[M, A] = null
+  implicit def projectApplicativeAsk[M[_], A]
+    (implicit eitherAndProjection: EitherAndProjection[M, A]): ApplicativeAsk[M, A] =
+    eitherAndProjection.apply()
 
   implicit def askProjection[M[_], A, B]
     (implicit AA:ApplicativeAsk[M, A], M:Mixer[A, B], EV: A =:!= B):EitherAndProjection[M, B] =
@@ -92,4 +93,4 @@ case class BothProjection[M[_], A1, A2, B](AA:ApplicativeAsk[M, A1], MS:MonadSta
 }
 
 
-object ArgsProjector extends ArgsProjector
+object ContextProjector extends ContextProjector
