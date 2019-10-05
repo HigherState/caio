@@ -3,10 +3,12 @@ package caio.mtl
 import cats.{Applicative, ApplicativeError, Functor, Monad, MonadError}
 import cats.effect._
 import cats.mtl._
+import io.typechecked.alphabetsoup.Mixer
+import shapeless.=:!=
 
-trait Context[F[_], L, E, V] {
+trait Context[F[_], C, L, E, V] {
 
-  def apply[C]:EnvironmentContext[F, L, E, V, C]
+  def apply[C2](implicit M:Mixer[C, C2], EV: C =:!= C2):EnvironmentContext[F, L, E, V, C2]
 }
 
 
