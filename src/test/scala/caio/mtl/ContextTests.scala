@@ -18,7 +18,8 @@ class ContextTests {
   class AddAskContext[M[_]:LiftIO](implicit C:Context[M, Unit, EventLog, Throwable, Failure]) {
     import EnvironmentLift._
 
-    implicit val e: EnvironmentContext[M, EventLog, Throwable, Failure, Int] = C.apply[Int]
+    implicit val e: EnvironmentContext[M, EventLog, Throwable, Failure, Int] =
+      C.apply[Int]
     val service = new AskInt[e.FC]
 
     def run:M[Int] = e.apply(3)(service.run)
