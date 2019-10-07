@@ -8,7 +8,7 @@ import shapeless.=:!=
 
 trait Context[F[_], C, L, E, V] {
 
-  def apply[C2](implicit M:Mixer[C, C2], EV: C =:!= C2):EnvironmentContext[F, L, E, V, C2]
+  def apply[C2](implicit M:Mixer[(C, C2), C2], EV: C =:!= C2):EnvironmentContext[F, L, E, V, C2]
 }
 
 
