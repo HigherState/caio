@@ -8,7 +8,7 @@ import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
 class CaioContext[C, V, L:Monoid] extends Context[Caio[C, V, L, *], C, L, Throwable, V] {
-  def apply[C2](implicit M:Mixer[C, C2], EV: C =:!= C2): EnvironmentContext[Caio[C, V, L, *], L, Throwable, V, C2] =
+  def apply[C2](implicit M:Mixer[(C, C2), C2], EV: C =:!= C2): EnvironmentContext[Caio[C, V, L, *], L, Throwable, V, C2] =
     new EnvironmentContext[Caio[C, V, L, *], L, Throwable, V, C2] {
 
       type FC[A] = Caio[C2, V, L, A]
@@ -17,14 +17,14 @@ class CaioContext[C, V, L:Monoid] extends Context[Caio[C, V, L, *], C, L, Throwa
 
       def monadState: MonadState[FC, C2] = ???
 
-      def apply[A](c: C2)(f: FC[A]): Caio[C, V, L, A] =
+      def apply[A](c2: C2)(f: FC[A]): Caio[C, V, L, A] =
         CaioKleisli[C, V, L, A]{c =>
           IOResult {
-            f.eval(M.mix(c)).map {
+            f.eval(M.mix(c -> c2)).map {
               case (Left(e), c2, l) =>
-                ErrorResult(e, ContentStore(M.inject(c2, c), l))
+                ErrorResult(e, ContentStore(M.inject(c2, c -> c2)._1, l))
               case (Right(a), c2, l) =>
-                SuccessResult(a, ContentStore(M.inject(c2, c), l))
+                SuccessResult(a, ContentStore(M.inject(c2, c -> c2)._1, l))
             }
           }
         }
