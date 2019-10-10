@@ -8,17 +8,19 @@ import shapeless.=:!=
 
 trait Context[F[_], C, L, E, V] {
 
-  def apply[C2](implicit M:Mixer[(C, C2), C2], EV: C =:!= C2):EnvironmentContext[F, L, E, V, C2]
+  def apply[C2](implicit M:Mixer[(C, C2), C2], EV: C =:!= C2):ContextApplicator[F, L, E, V, C, C2]
 }
 
 
-trait EnvironmentContext[F[_], L, E, V, C] {
+trait ContextApplicator[F[_], L, E, V, Init, Additional] {
 
   type FC[A]
 
+  type C = (Init, Additional)
+
   def applicativeAsk:ApplicativeAsk[FC, C]
 
-  def monadState:MonadState[FC, C]
+  def context:Context[FC, C, L, E, V]
 
   def applicative(implicit A:Applicative[F]):Applicative[FC] =
     A.asInstanceOf[Applicative[FC]]
@@ -55,53 +57,51 @@ trait EnvironmentContext[F[_], L, E, V, C] {
 
   def concurrentEffect(implicit C:ConcurrentEffect[F]):ConcurrentEffect[FC] = ???
 
-  def apply[A](c:C)(f:FC[A]):F[A]
-}
-
-case class EnvironmentWrapper[FC[_], F[_], L, E, V, C, A](fa:FC[A], A:WithContext[FC, F, L, E, V, C]) {
-  def applyContext(c:C):F[A] =
-    A.apply(c)(fa)
+  def apply[A](c:Additional)(f:FC[A]):F[A]
 }
 
 trait EnvironmentLift {
 
-  implicit def toAux[F[_], L, E, V, C](implicit E:EnvironmentContext[F, L, E, V, C]): WithContext[E.FC, F, L, E, V, C] =
-    E.asInstanceOf[WithContext[E.FC, F, L, E, V, C]]
+  implicit def toAux[F[_], L, E, V, Init, Additional](implicit E:ContextApplicator[F, L, E, V, Init, Additional]): WithContext[E.FC, F, L, E, V, Init, Additional] =
+    E.asInstanceOf[WithContext[E.FC, F, L, E, V, Init, Additional]]
 
-  implicit def applicativeAskFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C]):ApplicativeAsk[FC, C] =
+  implicit def context[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional]):Context[FC, (Init, Additional), L, E, V] =
+    A.context
+
+  implicit def applicativeAskFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional]):ApplicativeAsk[FC, (Init, Additional)] =
     A.applicativeAsk
 
-  implicit def monadStateFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C]):MonadState[FC, C] =
-    A.monadState
+//  implicit def monadStateFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional]):MonadState[FC, (Init, Additional)] =
+//    A.monadState
 
-  implicit def applicativeErrorFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], AE:ApplicativeError[F, E]):ApplicativeError[FC, E] =
+  implicit def applicativeErrorFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], AE:ApplicativeError[F, E]):ApplicativeError[FC, E] =
     A.applicativeError
 
-  implicit def monadErrorFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], ME:MonadError[F, E]):MonadError[FC, E] =
+  implicit def monadErrorFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], ME:MonadError[F, E]):MonadError[FC, E] =
    A.monadError
 
-  implicit def liftIOFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], L:LiftIO[F]):LiftIO[FC] =
+  implicit def liftIOFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], L:LiftIO[F]):LiftIO[FC] =
     A.liftIO
 
-  implicit def syncFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], S:Sync[F]):Sync[FC] =
+  implicit def syncFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], S:Sync[F]):Sync[FC] =
     A.sync
 
-  implicit def monadFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], M:Monad[F]):Monad[FC] =
+  implicit def monadFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], M:Monad[F]):Monad[FC] =
     A.monad
 
-  implicit def asyncFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], S:Async[F]):Async[FC] =
+  implicit def asyncFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], S:Async[F]):Async[FC] =
     A.async
 
-  implicit def bracketFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], B:Bracket[F, E]):Bracket[FC, E] =
+  implicit def bracketFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], B:Bracket[F, E]):Bracket[FC, E] =
     A.bracket
 
-  implicit def concurrentFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], C:Concurrent[F]):Concurrent[FC] =
+  implicit def concurrentFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], C:Concurrent[F]):Concurrent[FC] =
     A.concurrent
 
-  implicit def concurrentEffectFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], C:ConcurrentEffect[F]):ConcurrentEffect[FC] =
+  implicit def concurrentEffectFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], C:ConcurrentEffect[F]):ConcurrentEffect[FC] =
     A.concurrentEffect
 
-  implicit def applicativeFailFC[F[_], FC[_], L, E, V, C](implicit A:WithContext[FC, F, L, E, V, C], AF:ApplicativeFail[F, V]):ApplicativeFail[FC, V] =
+  implicit def applicativeFailFC[F[_], FC[_], L, E, V, Init, Additional](implicit A:WithContext[FC, F, L, E, V, Init, Additional], AF:ApplicativeFail[F, V]):ApplicativeFail[FC, V] =
     A.applicativeFail
 }
 

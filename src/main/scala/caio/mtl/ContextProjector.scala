@@ -25,6 +25,7 @@ trait ContextProjector {
         MS.modify(a => M.modify(f)(a))
     }
 
+
   implicit def projectApplicativeAsk[M[_], A]
     (implicit eitherAndProjection: EitherAndProjection[M, A]): ApplicativeAsk[M, A] =
     eitherAndProjection.apply()

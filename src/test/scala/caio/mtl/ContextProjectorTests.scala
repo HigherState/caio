@@ -21,6 +21,12 @@ class ContextProjectorTests extends AsyncFunSpec with Matchers{
     val as = new AskString[M]
   }
 
+  class AskIntIgnore[M[_]:ApplicativeAsk[*[_], Int]] {
+    import caio.mtl.ContextProjector._
+
+    val ai = new AskInt[M]
+  }
+
   class MonadInt[M[_]:MonadState[*[_], Int]] {
     def run:M[Int] = MonadState[M,Int].get
   }
