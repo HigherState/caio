@@ -1,7 +1,7 @@
 package caio.mtl
 
 import cats.{Applicative, Functor, Monad, MonadError}
-import cats.effect.{Async, Concurrent, LiftIO}
+import cats.effect.{Async, Concurrent, LiftIO, Sync}
 import cats.mtl.{ApplicativeAsk, MonadState}
 
 class ProviderConcurrentTests {
@@ -18,7 +18,7 @@ class ProviderConcurrentTests {
     def run:M[Int] = MonadState[M,Int].get
   }
 
-  class AskMonadError[M[_]:ApplicativeAsk[*[_], Int]:MonadError[*[_], E], E] {
+  class AskMonadError[M[_]:ApplicativeAsk[*[_], Int]:MonadError[*[_], Throwable]] {
     def run:M[Int] = ApplicativeAsk[M, Int].ask
   }
 
@@ -66,7 +66,7 @@ class ProviderConcurrentTests {
     val stateMonad = new StateMonad[E.FE]
   }
 
-  class MonadErrorCheck[M[_]:Provider:MonadError[*[_], E], E] {
+  class MonadErrorCheck[M[_]:Provider:Sync] {
 
     val functor = implicitly[Functor[M]]
 
@@ -74,7 +74,7 @@ class ProviderConcurrentTests {
 
     val monad = implicitly[Monad[M]]
 
-    val monadError = implicitly[MonadError[M, E]]
+    val monadError = implicitly[MonadError[M, Throwable]]
 
     import Contextual._
     implicit val E = Provider[M].apply[Int]

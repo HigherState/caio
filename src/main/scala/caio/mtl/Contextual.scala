@@ -19,6 +19,7 @@ trait Contextual {
 
 }
 
+// Only three levels of inheritance can be used without implicit diverging
 
 object Contextual
   extends Contextual
@@ -26,9 +27,9 @@ object Contextual
   with ContextualFunctor
   with ContextualMonad
   with ContextualMonadError
-//  with ContextualBracket
-//  with ContextualSync
-//  with ContextualLiftIO
-//  with ContextualAsync
-//  with ContextualConcurrent
+  with ContextualBracket
+  with ContextualSync
+  with ContextualLiftIO
+  with ContextualAsync
+  with ContextualConcurrent
   with ContextualWriter
