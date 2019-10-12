@@ -23,13 +23,6 @@ trait Contextual {
 
 object Contextual
   extends Contextual
-  with ContextualApplicative
-  with ContextualFunctor
-  with ContextualMonad
-  with ContextualMonadError
-  with ContextualBracket
-  with ContextualSync
-  with ContextualLiftIO
-  with ContextualAsync
   with ContextualConcurrent
   with ContextualWriter
+  with ContextualFail
