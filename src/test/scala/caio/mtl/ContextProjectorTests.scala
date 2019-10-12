@@ -36,7 +36,6 @@ class ContextProjectorTests extends AsyncFunSpec with Matchers{
   }
 
   class MonadIntString[M[_]:MonadState[*[_], (Int, String)]] {
-
     import caio.mtl.ContextProjector._
 
     val ai = new MonadInt[M]
@@ -46,17 +45,16 @@ class ContextProjectorTests extends AsyncFunSpec with Matchers{
 
 
   class MonadIntAskString[M[_]:MonadState[*[_], (Int, String)]] {
-    import caio.mtl.ContextProjector._
+    import caio.mtl.ContextCombinator._
 
     val ai = new AskInt[M]
 
     val as = new AskString[M]
   }
-//unresolved implicit diverging
-//
-//  class MonadIntAskStringF[M[_]:MonadState[*[_], Int]:ApplicativeAsk[*[_], String]] {
-//    import caio.mtl.ArgsProjector._
-//
-//    val as = new AskIntString[M]
-//  }
+
+  class MonadIntAskStringF[M[_]:MonadState[*[_], Int]:ApplicativeAsk[*[_], String]] {
+    import caio.mtl.ContextCombinator._
+
+    val as = new AskIntString[M]
+  }
 }

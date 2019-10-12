@@ -4,7 +4,6 @@ import cats.mtl.{ApplicativeAsk, MonadState}
 
 class ContextTests {
 
-  //Creating internal
   class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
     def run:M[Int] = ApplicativeAsk[M,Int].ask
   }
@@ -103,7 +102,7 @@ class ContextTests {
 
   }
 
-  class AskContextNeseted2[M[_]:Extender[*[_], (Int, String)]:ApplicativeAsk[*[_], (Int, String)]] {
+  class AskContextNested2[M[_]:Extender[*[_], (Int, String)]] {
     import ContextProjector._
     val string2 = new AskString[M]
 
@@ -150,15 +149,23 @@ class ContextTests {
     val string3 = new AskString[e.FE]
   }
 
-  class AddContextMixed2[M[_]:Extender[*[_], (Int, String)]:ApplicativeAsk[*[_], (Int, String)]] {
-    import Contextual._
+  class AddContextMixed2[M[_]:Extender[*[_], (Int, String)]] {
 
-    //val string2 = new AskString[M]
-//    val intString = new AskIntString[M]
-//    val intString2 = new StateIntString[M]
+    val string2 = {
+      import ContextProjector._
+      new AskString[M]
+    }
+    val intString = {
+      import ContextProjector._
+      new AskIntString[M]
+    }
+    val intString2 = {
+      import ContextProjector._
+      new StateIntString[M]
+    }
 
     implicit val e = implicitly[Extender[M, (Int, String)]].apply[Boolean]
-
+    import Contextual._
     val service = new AskInt[e.FE]
 
     val service2 = new AskIntString[e.FE]

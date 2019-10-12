@@ -26,6 +26,7 @@ class CaioReaderWriterStateErrorTests extends AsyncFunSpec with Matchers{
 
 
   implicit val MS_ :MonadState[CaioT, C] = new CaioMonadState[C, V, L]
+  implicit val AA_ :ApplicativeAsk[CaioT, C] = new CaioApplicativeAsk[C, V, L]
   implicit val AC:ApplicativeCensor[CaioT, EventLog] = new CaioApplicativeCensor[C, V, L] {}
   implicit val ME:MonadError[CaioT, Throwable] = new CaioMonadError[C, V, L] {}
   implicit val M:Monad[CaioT] = new CaioMonad[C, V, L] {}

@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.mtl.{ApplicativeFail, Context}
+import caio.mtl.ApplicativeFail
 import caio.{Caio, ErrorOrFailure}
 import cats.Monoid
 import cats.effect.{ConcurrentEffect, ContextShift, IO}

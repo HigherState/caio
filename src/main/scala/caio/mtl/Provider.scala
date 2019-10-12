@@ -8,19 +8,13 @@ trait Provider[F[_]] {
 
   def apply[E]:Provides[F, E]
 }
-//TODO Can nearly inherit from Applicative ask, and remove applicateAsk from contextual but it diverges
+
 trait Extender[F[_], E1] {
   def apply[E2](implicit M:Mixer[(E1, E2), E2], EV: E1 =:!= E2):Extends[F, E1, E2]
-}
 
-sealed trait Askable[F[_], E] {
-  type FE[A]
+  def applicativeAsk:ApplicativeAsk[F, E1]
 
-  def applicativeAsk[E2](M:Mixer[E, E2]):ApplicativeAsk[FE, E2]
-
-  def monadState[E2](M:Mixer[E, E2]):MonadState[FE, E2]
-
-  def extender[E2](M:Mixer[E, E2]):Extender[FE, E]
+  def monadState:MonadState[F, E1]
 }
 
 trait Provides[F[_], E] extends Askable[F, E] {

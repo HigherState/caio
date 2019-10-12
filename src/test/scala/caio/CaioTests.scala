@@ -35,10 +35,10 @@ class CaioTests extends AsyncFunSpec with Matchers {
         Left(ex) -> state
     }
 
-  def toResult[A](t:EoF, s:Store[C, L]):(Either[EoF, A], Store[C, L]) =
+  private[caio] def toResult[A](t:EoF, s:Store[C, L]):(Either[EoF, A], Store[C, L]) =
     Left(t) -> s
-  
-  def toResult[A](a:A, s:Store[C, L]):(Either[EoF, A], Store[C, L]) =
+
+  private[caio] def toResult[A](a:A, s:Store[C, L]):(Either[EoF, A], Store[C, L]) =
     Right(a) -> s
 
 
