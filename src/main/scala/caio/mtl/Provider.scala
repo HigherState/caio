@@ -25,3 +25,8 @@ trait Extends[F[_], E1, E2] extends Askable[F, (E1, E2)] {
 
   def apply[A](c:E2)(f:FE[A]):F[A]
 }
+
+
+object Provider {
+  def apply[F[_]](implicit P:Provider[F]):Provider[F] = P
+}

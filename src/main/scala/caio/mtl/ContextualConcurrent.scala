@@ -1,14 +1,14 @@
 package caio.mtl
 
-import cats.effect.{Async, Concurrent}
+import cats.effect.Concurrent
 
 trait ContextualConcurrent {
 
-  implicit def concurrentFE[F[_]](implicit C:ToConcurrent[F]):Async[F] =
+  implicit def concurrentFE[F[_]](implicit C:ToConcurrent[F]):Concurrent[F] =
     C.C
 
-  implicit def concurrentToConcurrent[F[_], FE[_]](implicit P:Transform[FE, F], C:Concurrent[F]):ToAsync[FE] =
-    ToAsync(P.transformAsync(C))
+  implicit def concurrentToConcurrent[F[_], FE[_]](implicit P:Transform[FE, F], C:Concurrent[F]):ToConcurrent[FE] =
+    ToConcurrent(P.transformConcurrent(C))
 }
 
 case class ToConcurrent[F[_]](C:Concurrent[F]) extends AnyVal
