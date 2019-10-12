@@ -3,7 +3,7 @@ package caio.mtl
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
 
-trait Askable[F[_], E] {
+trait Askable[F[_], E] extends ContextTransformers[F] {
   type FE[A]
 
   def applicativeAsk[E2](M:Mixer[E, E2]):ApplicativeAsk[FE, E2]

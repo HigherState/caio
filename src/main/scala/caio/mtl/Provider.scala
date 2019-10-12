@@ -16,12 +16,12 @@ trait Extender[F[_], E1] {
   def monadState:MonadState[F, E1]
 }
 
-trait Provides[F[_], E] extends Askable[F, E] with ContextTransformers[F] {
+trait Provides[F[_], E] extends Askable[F, E] {
 
   def apply[A](e:E)(f:FE[A]):F[A]
 }
 
-trait Extends[F[_], E1, E2] extends Askable[F, (E1, E2)] with ContextTransformers[F] {
+trait Extends[F[_], E1, E2] extends Askable[F, (E1, E2)] {
 
   def apply[A](c:E2)(f:FE[A]):F[A]
 }

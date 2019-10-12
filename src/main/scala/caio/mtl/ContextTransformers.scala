@@ -1,10 +1,11 @@
 package caio.mtl
 
-import cats.{Applicative, Functor, Monad}
-import cats.effect.{Async, Concurrent, LiftIO, Sync}
+import cats.{Applicative, Functor, Monad, MonadError}
+import cats.effect.{Async, Bracket, Concurrent, LiftIO, Sync}
 import cats.mtl.{ApplicativeCensor, FunctorListen, FunctorTell}
 
-trait ContextTransformers[F[_]] {
+trait ContextTransformers[F[_]]
+  extends ContextWriterTransformers[F] {
   type FE[A]
 
   def transformApplicative(A:Applicative[F]):Applicative[FE] =
@@ -16,8 +17,11 @@ trait ContextTransformers[F[_]] {
   def transformMonad(M:Monad[F]):Monad[FE] =
     M.asInstanceOf[Monad[FE]]
 
-  def transformMonadError(M:Monad[F]):Monad[FE] =
-    M.asInstanceOf[Monad[FE]]
+  def transformMonadError[E](M:MonadError[F, E]):MonadError[FE, E] =
+    M.asInstanceOf[MonadError[FE, E]]
+
+  def transformBracket[E](M:Bracket[F, E]):Bracket[FE, E] =
+    M.asInstanceOf[Bracket[FE, E]]
 
   def transformSync(S:Sync[F]):Sync[FE] =
     S.asInstanceOf[Sync[FE]]
