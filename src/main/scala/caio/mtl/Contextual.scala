@@ -28,6 +28,7 @@ object Contextual
   with ContextualMonadError
   with ContextualBracket
   with ContextualSync
+  with ContextualLiftIO
   with ContextualAsync
   with ContextualConcurrent
   with ContextualWriter

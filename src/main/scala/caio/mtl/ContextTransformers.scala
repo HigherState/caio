@@ -5,7 +5,8 @@ import cats.effect.{Async, Bracket, Concurrent, LiftIO, Sync}
 import cats.mtl.{ApplicativeCensor, FunctorListen, FunctorTell}
 
 trait ContextTransformers[F[_]]
-  extends ContextWriterTransformers[F] {
+  extends ContextWriterTransformers[F]
+  with ContextFailTransformers[F] {
   type FE[A]
 
   def transformApplicative(A:Applicative[F]):Applicative[FE] =
@@ -49,4 +50,11 @@ trait ContextWriterTransformers[F[_]] {
 
   def transformApplicativeCensor[L](A:ApplicativeCensor[F, L]):ApplicativeCensor[FE, L] =
     A.asInstanceOf[ApplicativeCensor[FE, L]]
+}
+
+trait ContextFailTransformers[F[_]] {
+  type FE[A]
+
+  def transformApplicativeFail[V](A:ApplicativeFail[F, V]):ApplicativeFail[FE, V] =
+    A.asInstanceOf[ApplicativeFail[FE, V]]
 }
