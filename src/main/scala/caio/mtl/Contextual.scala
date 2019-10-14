@@ -19,8 +19,6 @@ trait Contextual {
 
 }
 
-// Only three levels of inheritance can be used without implicit diverging
-
 object Contextual
   extends Contextual
   with ContextualConcurrent
