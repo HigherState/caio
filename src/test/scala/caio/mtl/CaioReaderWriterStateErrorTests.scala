@@ -87,7 +87,7 @@ class CaioReaderWriterStateErrorTests extends AsyncFunSpec with Matchers{
           _ <- AC.tell(Vector(event1))
           _ <- AC.tell(Vector(event2))
         } yield "finish"
-      run("Testing" -> 123, result)._2 shouldBe Vector(event1, event2)
+      run("Testing" -> 123, result)._3 shouldBe Vector(event1, event2)
     }
   }
 

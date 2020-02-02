@@ -1,8 +1,8 @@
 package caio.std
 
-import caio.{Caio, CaioKleisli, ContentStore, ErrorResult, IOResult, LogStore, SuccessResult, mtl}
+import caio.{Caio, CaioKleisli, ErrorResult, IOResult, LogStore, SuccessResult, mtl}
 import caio.mtl._
-import cats.{Applicative, Monoid}
+import cats.Monoid
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
@@ -14,11 +14,11 @@ class CaioProvider[V, L:Monoid] extends Provider[Caio[Unit, V, L, *]] {
 
 class CaioExtender[V, L:Monoid, E1] extends Extender[Caio[E1, V, L, *], E1] {
 
-  def apply[E2](implicit M:Mixer[(E1, E2), E2], EV: E1 =:!= E2):Extends[Caio[E1, V, L, *], E1, E2]
+  def apply[E2](implicit M: Mixer[(E1, E2), E2], EV: E1 =:!= E2): mtl.Extends[Caio[E1, V, L, *], E1, E2] = ???
 
-  def applicativeAsk:ApplicativeAsk[Caio[E1, V, L, *], E1]
+  def applicativeAsk:ApplicativeAsk[Caio[E1, V, L, *], E1] = ???
 
-  def monadState:MonadState[Caio[E1, V, L, *], E1]
+  def monadState:MonadState[Caio[E1, V, L, *], E1] = ???
 }
 
 class CaioProvides[V, L:Monoid, E] extends Provides[Caio[Unit, V, L, *], E] {

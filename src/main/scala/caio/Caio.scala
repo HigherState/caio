@@ -91,7 +91,7 @@ private[caio] final case class CaioError[C, V, L, A](e:ErrorOrFailure[V], store:
     }.getOrElse(this)
 
   def handleFailures[B](f: NonEmptyList[V] => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    e.right.toOption.map{v =>
+    e.toOption.map{v =>
       CaioOps.tryCatch(store)(f(v).combine(store))
     }.getOrElse(this)
 
@@ -255,7 +255,7 @@ private[caio] final case class ErrorResult[C, V, L, A](e:ErrorOrFailure[V], stor
 
 
   def handleFailures[B](c: C)(f: NonEmptyList[V] => Caio[C, V, L, A]): Result[C, V, L, A] =
-    e.right.toOption.map { v =>
+    e.toOption.map { v =>
       ResultOps.tryCatch(store)(f(v).combine(store).toResult(store.getOrElse(c)))
     }.getOrElse(this)
 
