@@ -11,7 +11,7 @@ releaseProcess -= ReleaseTransformations.publishArtifacts
 
 // end sbt-release plugin settings
 
-scalaVersion := "2.12.8"
+scalaVersion := "2.13.1"
 
 // enable publishing the jar produced by `test:package`
 publishArtifact in (Test, packageBin) := true
