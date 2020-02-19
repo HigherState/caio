@@ -1,5 +1,6 @@
 package caio.mtl
 
+import cats.arrow.FunctionK
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
@@ -19,11 +20,19 @@ trait Extender[F[_], E1] {
 trait Provides[F[_], E] extends Askable[F, E] {
 
   def apply[A](e:E)(f:FE[A]):F[A]
+
+  def lift[A](f:F[A]):FE[A]
+
+  def lift[G[_], A](f:FunctionK[G, F[A]]):FunctionK[G, FE[A]]
 }
 
 trait Extends[F[_], E1, E2] extends Askable[F, (E1, E2)] {
 
   def apply[A](c:E2)(f:FE[A]):F[A]
+
+  def lift[A](f:F[A]):FE[A]
+
+  def lift[G[_], A](f:FunctionK[G, F[A]]):FunctionK[G, FE[A]]
 }
 
 
