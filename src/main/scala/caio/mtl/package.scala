@@ -14,4 +14,6 @@ package object mtl {
   type Transform[FP[_], F[_]] =
     ContextTransformers[F]{ type FE[A] = FP[A]}
 
+  type Provider[F[_]] = Extender[F, Unit]
+
 }

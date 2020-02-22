@@ -6,9 +6,9 @@ import io.typechecked.alphabetsoup.Mixer
 trait Askable[F[_], E] extends ContextTransformers[F] {
   type FE[A]
 
-  def applicativeAsk[E2](M:Mixer[E, E2]):ApplicativeAsk[FE, E2]
+  def applicativeAsk:ApplicativeAsk[FE, E]
 
-  def monadState[E2](M:Mixer[E, E2]):MonadState[FE, E2]
+  def monadState:MonadState[FE, E]
 
   def extender[E2](M:Mixer[E, E2]):Extender[FE, E]
 

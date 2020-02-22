@@ -31,7 +31,7 @@ trait ContextCombinator {
     }
 
 
-  implicit def stateCombinator[M[_], A,  B]
+  implicit def stateCombinator[M[_], A, B]
     (implicit MS:MonadState[M, A], M:Mixer[A, B]):AskCombinator[M, B] =
     AskCombinator{
       new ApplicativeAsk[M, B] {
