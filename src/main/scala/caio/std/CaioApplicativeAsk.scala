@@ -14,3 +14,4 @@ class CaioApplicativeAsk[C, V, L:Monoid] extends ApplicativeAsk[Caio[C, V, L, *]
   def reader[A](f: C => A): Caio[C, V, L, A] =
     ask.map(f)
 }
+

@@ -1,10 +1,9 @@
-package caio.mtl
+package caio.std
 
 import caio._
-import caio.std._
 import cats.effect.{IO, LiftIO}
-import cats.{Monad, MonadError}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
+import cats.{Monad, MonadError}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 
@@ -12,8 +11,6 @@ class CaioReaderWriterStateErrorTests extends AsyncFunSpec with Matchers{
   import Event._
   import Exception._
   import Failure._
-
-  import ContextProjector._
 
   type L = Vector[Event]
   type C = (String, Int)
@@ -23,6 +20,8 @@ class CaioReaderWriterStateErrorTests extends AsyncFunSpec with Matchers{
 
   def run[A](c:C, caio:CaioT[A]):(Either[EoF, A], C, EventLog) =
     caio.unsafeRun(c)
+
+  import caio.mtl.ContextProjector._
 
 
   implicit val MS_ :MonadState[CaioT, C] = new CaioMonadState[C, V, L]

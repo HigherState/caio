@@ -16,3 +16,4 @@ class MixedApplicativeAsk[F[_], E1, E2](applicativeAsk:ApplicativeAsk[F, E1], mi
   def reader[C](f: E2 => C): F[C] =
     applicativeAsk.reader[C](a => f(mixer.mix(a)))
 }
+

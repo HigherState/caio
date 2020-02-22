@@ -9,7 +9,7 @@ trait Contextual {
     E.asInstanceOf[Asked[E.FE, F, E]]
 
   //E2 is a subset of E
-  implicit def extenderFE[F[_], FE[_], E, E2](implicit P:Asked[FE, F, E], M:Mixer[E, E2]):Extender[FE, E] =
+  implicit def extenderFE[F[_], FE[_], E, E2](implicit P:Asked[FE, F, E], M:Mixer[E, E2]):Extender[FE, E2] =
     P.extender[E2](M)
 
   implicit def applicativeAskFE[F[_], FE[_], E, E2](implicit P:Asked[FE, F, E], M:Mixer[E, E2]):ApplicativeAsk[FE, E2] =
