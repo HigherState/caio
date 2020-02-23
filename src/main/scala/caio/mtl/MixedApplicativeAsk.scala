@@ -4,7 +4,7 @@ import cats.Applicative
 import cats.mtl.ApplicativeAsk
 import io.typechecked.alphabetsoup.Mixer
 
-class MixedApplicativeAsk[F[_], E1, E2](applicativeAsk:ApplicativeAsk[F, E1], mixer:Mixer[E1, E2])
+class MixedApplicativeAsk[F[_], E1, E2](applicativeAsk:ApplicativeAsk[F, E1])(implicit mixer:Mixer[E1, E2])
   extends ApplicativeAsk[F, E2]{
 
   val applicative: Applicative[F] =

@@ -10,6 +10,6 @@ trait Askable[F[_], E] extends ContextTransformers[F] {
 
   def monadState:MonadState[FE, E]
 
-  def extender[E2](M:Mixer[E, E2]):Extender[FE, E2]
+  def extender[E2](implicit M:Mixer[E, E2]):Extender[FE, E2]
 
 }

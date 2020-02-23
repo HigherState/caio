@@ -4,7 +4,7 @@ import cats.Monad
 import cats.mtl.MonadState
 import io.typechecked.alphabetsoup.Mixer
 
-class MixedMonadState[F[_], E1, E2](monadState:MonadState[F, E1], mixer:Mixer[E1, E2]) extends MonadState[F, E2] {
+class MixedMonadState[F[_], E1, E2](monadState:MonadState[F, E1])(implicit mixer:Mixer[E1, E2]) extends MonadState[F, E2] {
   val monad: Monad[F] =
     monadState.monad
 
