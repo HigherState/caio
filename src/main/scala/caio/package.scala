@@ -9,4 +9,5 @@ package object caio {
     def toThrowable:Throwable =
       eof.fold[Throwable](identity, CaioFailuresAsThrowable.apply)
   }
+
 }

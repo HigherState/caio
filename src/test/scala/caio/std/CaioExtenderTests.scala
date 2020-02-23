@@ -7,11 +7,14 @@ import cats.{Functor, Monad}
 import cats.mtl.ApplicativeAsk
 import org.scalatest.{AsyncFunSpec, Matchers}
 
-class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
+class CaioExtenderTests  extends AsyncFunSpec with Matchers{
+  import cats.implicits._
   type CaioT[A] = Caio[Unit, Failure, EventLog, A]
 
-  implicit val M:Monad[CaioT] = new CaioMonad[Unit, Failure, EventLog]
+
+
+  implicit val caioMonad:Monad[CaioT] = new CaioMonad[Unit, Failure, EventLog]
 
   class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
     def run:M[Int] = ApplicativeAsk[M,Int].ask
@@ -78,8 +81,6 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
   class AddAskThreeExtended[M[_]:Monad:Extender[*[_], (String, Boolean)]] {
     import caio.mtl.Contextual._
-    import ContextProjector._
-    import cats.implicits._
 
     implicit val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
 
@@ -91,17 +92,17 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
     val service4 = new AskIntBooleanString[E.FE]
 
-    def run(i:Int): M[(Int, String, (Int, String))] =
+    def run(i:Int): M[(Int, String, (Int, String), (Int, Boolean, String))] =
       for {
         s1 <- E.apply(i)(service1.run)
         s2 <- E.apply(i)(service2.run)
         s3 <- E.apply(i)(service3.run)
-      } yield (s1, s2, s3)
+        s4 <- E.apply(i)(service4.run)
+      } yield (s1, s2, s3, s4)
   }
 
   class NestedContext[M[_]:Monad:Provider] {
     import caio.mtl.Contextual._
-    import cats.implicits._
     implicit val E = implicitly[Provider[M]].apply[(String, Boolean)]
 
     val service1 = new AskString[E.FE]
@@ -120,7 +121,57 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
     it("Should lift value") {
       val nestedContext = new NestedContext[CaioT]()
-      runSuccess(nestedContext.run("test", false, 6)) shouldBe 3
+      runSuccess(nestedContext.run("test", false, 6)) shouldBe ("test",(6,"test",(6,"test"), (6, false, "test")))
     }
   }
+
+  class DoubleNestedContext[M[_]:Monad:Provider] {
+    import caio.mtl.Contextual._
+    implicit val E = implicitly[Provider[M]].apply[(String, Boolean)]
+
+    val service1 = new AskString[E.FE]
+    val service2 = new AddAskThreeExtended[E.FE]
+
+    def run(s:String, b:Boolean, i:Int) =
+      for {
+        s1 <- E.apply(s -> b)(service1.run)
+        s2 <- E.apply(s -> b)(service2.run(i))
+      } yield (s1, s2)
+
+  }
+
+  class ExtenderStringBoolean[M[_]:Monad:Extender[*[_], (String, Boolean)]] {
+
+    val service0 = {
+      import ContextProjector._
+      new AskString[M]
+    }
+
+    import caio.mtl.Contextual._
+    implicit val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
+
+    val service1 = new ExtenderIntString[E.FE]
+    val service2 = new ExtenderIntBoolean[E.FE]
+    val service3 = new AskInt[E.FE]
+
+
+  }
+
+  class ExtenderIntString[M[_]:Monad:Extender[*[_], (Int, String, Boolean)]] {
+    import caio.mtl.Contextual._
+    implicit val E = implicitly[Extender[M, (Int, String, Boolean)]].apply[Boolean]
+
+    val service1 = new AskIntString[E.FE]
+    val service2 = new AskIntBooleanString[E.FE]
+  }
+
+  class ExtenderIntBoolean[M[_]:Monad:Extender[*[_], (Int, Boolean, String)]] {
+    import caio.mtl.Contextual._
+
+    implicit val E = implicitly[Extender[M, (Int, Boolean, String)]].apply[String]
+
+    val service1 = new AskIntString[E.FE]
+    val service2 = new AskIntBooleanString[E.FE]
+  }
+
 }

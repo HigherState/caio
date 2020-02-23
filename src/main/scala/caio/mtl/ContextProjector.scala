@@ -17,25 +17,25 @@ trait ContextProjector {
   implicit def extenderAskProjection[M[_], A, B]
     (implicit E:Extender[M, A], M:Mixer[A, B]):AskProjection[M, B] =
     AskProjection{
-      new MixedApplicativeAsk[M, A, B](E.applicativeAsk, M)
+      new MixedApplicativeAsk[M, A, B](E.applicativeAsk)
     }
 
   implicit def askAskProjection[M[_], A, B]
     (implicit AA:ApplicativeAsk[M, A], M:Mixer[A, B], EV: A =:!= B):AskProjection[M, B] =
     AskProjection{
-      new MixedApplicativeAsk[M, A, B](AA, M)
+      new MixedApplicativeAsk[M, A, B](AA)
     }
 
   implicit def stateStateProjection[M[_], A, B]
     (implicit MS:MonadState[M, A], M:Mixer[A, B]):StateProjection[M, B] =
     StateProjection{
-      new MixedMonadState[M, A, B](MS, M)
+      new MixedMonadState[M, A, B](MS)
     }
 
   implicit def extenderStateProjection[M[_], A, B]
     (implicit E:Extender[M, A], M:Mixer[A, B]):StateProjection[M, B] =
     StateProjection{
-      new MixedMonadState[M, A, B](E.monadState, M)
+      new MixedMonadState[M, A, B](E.monadState)
     }
 
 }

@@ -5,18 +5,19 @@ import io.typechecked.alphabetsoup.Mixer
 
 trait Contextual {
 
-  implicit def toAskableAux[F[_], E](implicit E:Askable[F, E]): Asked[E.FE, F, E] =
-    E.asInstanceOf[Asked[E.FE, F, E]]
 
-  //E2 is a subset of E
-  implicit def extenderFE[F[_], FE[_], E, E2](implicit P:Asked[FE, F, E], M:Mixer[E, E2]):Extender[FE, E2] =
-    P.extender[E2](M)
+  implicit def toExtendsAux[F[_], E1, E2](implicit E:Extends[F, E1, E2]): Extended[E.FE, F, E1, E2] =
+    E.asInstanceOf[Extended[E.FE, F, E1, E2]]
 
-  implicit def applicativeAskFE[F[_], FE[_], E, E2](implicit P:Asked[FE, F, E], M:Mixer[E, E2]):ApplicativeAsk[FE, E2] =
-    new MixedApplicativeAsk(P.applicativeAsk, M)
+  //E3 is a subset of (E1, E2)
+  implicit def extendedMixed[F[_], FE[_], E1, E2, E3](implicit P:Extended[FE, F, E1, E2], M:Mixer[(E1, E2), E3], I:Mixer[(E3, Unit), (E1, E2)]):Extender[FE, E3] =
+    P.extender[E3]
 
-  implicit def monadStateFE[F[_], FE[_], E, E2](implicit P:Asked[FE, F, E], M:Mixer[E, E2]):MonadState[FE, E2] =
-    new MixedMonadState(P.monadState, M)
+  implicit def applicativeAskExtended[F[_], FE[_], E1, E2, E3](implicit P:Extended[FE, F, E1, E2], M:Mixer[(E1, E2), E3]):ApplicativeAsk[FE, E3] =
+    new MixedApplicativeAsk(P.applicativeAsk)
+
+  implicit def monadStateExtended[F[_], FE[_], E1, E2, E3](implicit P:Extended[FE, F, E1, E2], M:Mixer[(E1, E2), E3]):MonadState[FE, E3] =
+    new MixedMonadState(P.monadState)
 
 }
 
