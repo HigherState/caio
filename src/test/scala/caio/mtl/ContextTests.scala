@@ -132,13 +132,17 @@ class ContextTests {
   }
 
   class MixContextNested[M[_]:Extender[*[_], String]:MonadState[*[_], String]] {
-    import Contextual._
+
 
     val string2 = new StateString[M]
-    //val string4 = new AskString[M]
+
+    val string4 = {
+      import ContextCombinator._
+      new AskString[M]
+    }
 
     implicit val e = implicitly[Extender[M, String]].apply[Int]
-
+    import Contextual._
 
     val service = new AskInt[e.FE]
 

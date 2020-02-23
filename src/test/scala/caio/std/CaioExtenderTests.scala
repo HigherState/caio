@@ -12,12 +12,17 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   import cats.implicits._
   type CaioT[A] = Caio[Unit, Failure, EventLog, A]
 
-
-
   implicit val caioMonad:Monad[CaioT] = new CaioMonad[Unit, Failure, EventLog]
 
   class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
     def run:M[Int] = ApplicativeAsk[M,Int].ask
+  }
+
+  class AskAtomic1[M[_]:ApplicativeAsk[*[_], Atomic1]] {
+    def run:M[Atomic1] = ApplicativeAsk[M, Atomic1].ask
+  }
+  class AskAtomic2[M[_]:ApplicativeAsk[*[_], Atomic2]] {
+    def run:M[Atomic2] = ApplicativeAsk[M, Atomic2].ask
   }
 
   class AskString[M[_]:ApplicativeAsk[*[_], String]] {
@@ -121,7 +126,7 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
     it("Should lift value") {
       val nestedContext = new NestedContext[CaioT]()
-      runSuccess(nestedContext.run("test", false, 6)) shouldBe ("test",(6,"test",(6,"test"), (6, false, "test")))
+      runSuccess(nestedContext.run("test", false, 6)) shouldBe (("test",(6,"test",(6,"test"), (6, false, "test"))))
     }
   }
 
@@ -130,14 +135,19 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
     implicit val E = implicitly[Provider[M]].apply[(String, Boolean)]
 
     val service1 = new AskString[E.FE]
-    val service2 = new AddAskThreeExtended[E.FE]
+    val service2 = new ExtenderStringBoolean[E.FE]
 
-    def run(s:String, b:Boolean, i:Int) =
+    def run(s:String, b:Boolean, ci:Int, a1:Atomic1, a2:Atomic2):
+      M[(String,
+        (String,
+          ((Int, String), (Int, Boolean, String), Atomic1),
+          ((Int, String), (Int, Boolean, String), Atomic2),
+          Int)
+        )] =
       for {
         s1 <- E.apply(s -> b)(service1.run)
-        s2 <- E.apply(s -> b)(service2.run(i))
+        s2 <- E.apply(s -> b)(service2.run(ci, a1, a2))
       } yield (s1, s2)
-
   }
 
   class ExtenderStringBoolean[M[_]:Monad:Extender[*[_], (String, Boolean)]] {
@@ -154,24 +164,64 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
     val service2 = new ExtenderIntBoolean[E.FE]
     val service3 = new AskInt[E.FE]
 
+    def run(i:Int, a1:Atomic1, a2:Atomic2): M[
+      (String,
+        ((Int, String), (Int, Boolean, String), Atomic1),
+        ((Int, String), (Int, Boolean, String), Atomic2),
+      Int)] =
+      for {
+        s1 <- service0.run
+        s2 <- E.apply(i)(service1.run(a1))
+        s3 <- E.apply(i)(service2.run(a2))
+        s4 <- E.apply(i)(service3.run)
+      } yield (s1, s2, s3, s4)
 
   }
 
   class ExtenderIntString[M[_]:Monad:Extender[*[_], (Int, String, Boolean)]] {
     import caio.mtl.Contextual._
-    implicit val E = implicitly[Extender[M, (Int, String, Boolean)]].apply[Boolean]
+    implicit val E = implicitly[Extender[M, (Int, String, Boolean)]].apply[Atomic1]
 
     val service1 = new AskIntString[E.FE]
     val service2 = new AskIntBooleanString[E.FE]
+    val service3 = new AskAtomic1[E.FE]
+
+    def run(a:Atomic1): M[((Int, String), (Int, Boolean, String), Atomic1)] =
+      for {
+        s1 <- E.apply(a)(service1.run)
+        s2 <- E.apply(a)(service2.run)
+        s3 <- E.apply(a)(service3.run)
+      } yield (s1, s2, s3)
   }
 
   class ExtenderIntBoolean[M[_]:Monad:Extender[*[_], (Int, Boolean, String)]] {
     import caio.mtl.Contextual._
 
-    implicit val E = implicitly[Extender[M, (Int, Boolean, String)]].apply[String]
+    implicit val E = implicitly[Extender[M, (Int, Boolean, String)]].apply[Atomic2]
 
     val service1 = new AskIntString[E.FE]
     val service2 = new AskIntBooleanString[E.FE]
+    val service3 = new AskAtomic2[E.FE]
+
+    def run(a:Atomic2): M[((Int, String), (Int, Boolean, String), Atomic2)] =
+      for {
+        s1 <- E.apply(a)(service1.run)
+        s2 <- E.apply(a)(service2.run)
+        s3 <- E.apply(a)(service3.run)
+      } yield (s1, s2, s3)
+  }
+
+  describe("Double extended nested tests") {
+    import CaioProvider._
+    //It will not replace values of the same type.
+    it("Should lift value") {
+      val doubleNestedTest = new DoubleNestedContext[CaioT]
+      val a1 = new Atomic1("a1")
+      val a2 = new Atomic2("a2")
+      runSuccess(doubleNestedTest.run("test", false, 1, a1, a2)) shouldBe (
+        ("test",("test",((1,"test"),(1,false,"test"),a1),((1,"test"),(1,false,"test"),a2),1))
+      )
+    }
   }
 
 }

@@ -31,16 +31,17 @@ case class CaioExtends[C, V, L:Monoid, E1, E2]()
   val monadState: MonadState[FE, (E1, E2)] =
     new CaioMonadState[(E1, E2), V, L]
 
-  def extender[E3](implicit M: Mixer[(E1, E2), E3], I:Mixer[(E3, Unit), (E1, E2)]): Extender[FE, E3] = {
+  def extender[E3](implicit M: Mixer[(E1, E2), E3], I:Mixer[(E3, Unit), (E1, E2)]): Extender[FE, E3] =
     CaioExtender[(E1, E2), V, L, E3](
       new MixedApplicativeAsk[FE, (E1, E2), E3](applicativeAsk),
       new MixedMonadState[FE, (E1, E2), E3](monadState)
     )
-  }
 
-
-//  def apply(e2:E2):FunctionK[Caio[(E1, E2), V, L, *], Caio[C, V, L, *]] =
-//
+  def partialExtender[E3](implicit M: Mixer[(E1, E2), E3]): PartialExtender[FE, E3] =
+    CaioPartialExtender[(E1, E2), V, L, E3](
+      new MixedApplicativeAsk[FE, (E1, E2), E3](applicativeAsk),
+      new MixedMonadState[FE, (E1, E2), E3](monadState)
+    )
 
   def apply[A](e2: E2): FunctionK[FE, Caio[C, V, L, *]] =
     new CaioFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2)
@@ -49,6 +50,47 @@ case class CaioExtends[C, V, L:Monoid, E1, E2]()
     new CaioFunctionK[C, (E1, E2), V, L](e => I.mix(e._1 -> ()))
 
 }
+
+
+case class CaioPartialExtender[C, V, L:Monoid, E1](
+                                             applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
+                                             monadState:MonadState[Caio[C, V, L, *], E1],
+                                           )(implicit M: Mixer[C, E1]) extends PartialExtender[Caio[C, V, L, *], E1] {
+
+  def apply[E2](implicit EV: E1 =:!= E2): mtl.PartialExtends[Caio[C, V, L, *], E1, E2] =
+    CaioPartialExtends[C, V, L, E1, E2]()
+
+}
+
+case class CaioPartialExtends[C, V, L:Monoid, E1, E2]()
+                                              (implicit M: Mixer[C, E1])
+  extends PartialExtends[Caio[C, V, L, *], E1, E2] {
+
+  type FE[A] = Caio[(E1, E2), V, L, A]
+
+  val applicativeAsk: ApplicativeAsk[FE, (E1, E2)] =
+    new CaioApplicativeAsk[(E1, E2), V, L]
+
+  val monadState: MonadState[FE, (E1, E2)] =
+    new CaioMonadState[(E1, E2), V, L]
+
+  def extender[E3](implicit M: Mixer[(E1, E2), E3], I:Mixer[(E3, Unit), (E1, E2)]): Extender[FE, E3] =
+    CaioExtender[(E1, E2), V, L, E3](
+      new MixedApplicativeAsk[FE, (E1, E2), E3](applicativeAsk),
+      new MixedMonadState[FE, (E1, E2), E3](monadState)
+    )
+
+  def partialExtender[E3](implicit M: Mixer[(E1, E2), E3]): PartialExtender[FE, E3] =
+    CaioPartialExtender[(E1, E2), V, L, E3](
+      new MixedApplicativeAsk[FE, (E1, E2), E3](applicativeAsk),
+      new MixedMonadState[FE, (E1, E2), E3](monadState)
+    )
+
+  def apply[A](e2: E2): FunctionK[FE, Caio[C, V, L, *]] =
+    new CaioFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2)
+
+}
+
 
 
 object CaioProvider {
