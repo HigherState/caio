@@ -1,6 +1,7 @@
 package caio.mtl
 
 import cats.arrow.FunctionK
+import cats.effect.{Concurrent, ConcurrentEffect}
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
@@ -19,6 +20,9 @@ trait Extends[F[_], E1, E2] extends ContextTransformers[F] {
   type FE[A]
 
   def apply[A](c:E2):FunctionK[FE, F]
+
+  def concurrentEffect(c:E2)(implicit CE:ConcurrentEffect[F], C:Concurrent[F]):ConcurrentEffect[FE] =
+    new ConcurrentEffectFunctionK[FE, F](CE, apply(c), unapply)(transformConcurrent(C))
 
   def unapply:FunctionK[F, FE]
 
