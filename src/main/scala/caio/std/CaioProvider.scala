@@ -4,7 +4,6 @@ import caio.{Caio, mtl}
 import caio.mtl._
 import cats.Monoid
 import cats.arrow.FunctionK
-import cats.effect.ConcurrentEffect
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
@@ -31,11 +30,6 @@ case class CaioExtends[C, V, L:Monoid, E1, E2]()
 
   val monadState: MonadState[FE, (E1, E2)] =
     new CaioMonadState[(E1, E2), V, L]
-
-  def concurrentEffect(c:E2)(implicit CE:ConcurrentEffect[CaioExtends[C, V, L:Monoid, *]):ConcurrentEffect[FE]= {
-
-  }
-
 
   def extender[E3](implicit M: Mixer[(E1, E2), E3], I:Mixer[(E3, Unit), (E1, E2)]): Extender[FE, E3] =
     CaioExtender[(E1, E2), V, L, E3](
