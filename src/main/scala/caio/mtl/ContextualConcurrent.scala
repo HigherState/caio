@@ -19,7 +19,6 @@ trait ContextualConcurrent {
   implicit def concurrentFE[F[_], FE[_]](implicit P:Transform[FE, F], C:Concurrent[F]):Concurrent[FE] =
     P.transformConcurrent(C)
 
-
   implicit def monadToMonad[F[_], FE[_]](implicit P:Transform[FE, F], M:Monad[F]):ToMonad[FE] =
     ToMonad(P.transformMonad(M))
 

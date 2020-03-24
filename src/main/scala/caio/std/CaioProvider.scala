@@ -47,7 +47,7 @@ case class CaioExtends[C, V, L:Monoid, E1, E2]()
     new CaioFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2)
 
   val unapply: FunctionK[Caio[C, V, L, *], FE] =
-    new CaioFunctionK[C, (E1, E2), V, L](e => I.mix(e._1 -> ()))
+    new CaioFunctionK[C, (E1, E2), V, L](e => I.mix(e._1 -> (())))
 
 }
 
