@@ -2,7 +2,6 @@ package caio.mtl
 
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
-import shapeless.=:!=
 
 trait Contextual {
 
