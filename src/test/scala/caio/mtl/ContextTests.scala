@@ -16,6 +16,10 @@ class ContextTests {
     def run:M[(Int, String)] = ApplicativeAsk[M,(Int, String)].ask
   }
 
+  class AskIntBoolean[M[_]:ApplicativeAsk[*[_], (Int, Boolean)]] {
+    def run:M[(Int, Boolean)] = ApplicativeAsk[M,(Int, Boolean)].ask
+  }
+
   class AskIntBooleanString[M[_]:ApplicativeAsk[*[_], (Int, Boolean, String)]] {
     def run:M[(Int, Boolean, String)] = ApplicativeAsk[M,(Int, Boolean, String)].ask
   }
@@ -155,17 +159,9 @@ class ContextTests {
 
   class AddContextMixed2[M[_]:Extender[*[_], (Int, String)]] {
 
-    val string2 = {
+    val (string2, intString, intString2) = {
       import ContextProjector._
-      new AskString[M]
-    }
-    val intString = {
-      import ContextProjector._
-      new AskIntString[M]
-    }
-    val intString2 = {
-      import ContextProjector._
-      new StateIntString[M]
+      (new AskString[M], new AskIntString[M], new StateIntString[M])
     }
 
     implicit val e = implicitly[Extender[M, (Int, String)]].apply[Boolean]
@@ -179,6 +175,30 @@ class ContextTests {
     val service4 = new StateAskIntBooleanString[e.FE]
 
     val string1 = new AskString[e.FE]
+  }
+
+
+  class DoubleExtended[M[_]:Extender[*[_], Int]] {
+    import Contextual._
+
+    //Cannot have 2 Extends implicits in scope at the same time
+    val ES: Extends[M, Int, String] = implicitly[Extender[M, Int]].apply[String]
+    val service1:AskIntString[ES.FE] = {
+      implicit val E: Extends[M, Int, String] = ES
+      new AskIntString[E.FE]
+    }
+
+    val EB = implicitly[Extender[M, Int]].apply[Boolean]
+    val service2 = {
+      implicit def e: Extends[M, Int, Boolean] = EB
+      new AskIntBoolean[EB.FE]
+    }
+
+    def run():(M[(Int, String)], M[(Int, Boolean)]) =
+      ES.apply("String")(service1.run) ->
+      EB.apply(false)(service2.run)
+
+
   }
 
 

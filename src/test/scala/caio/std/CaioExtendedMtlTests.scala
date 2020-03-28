@@ -11,7 +11,10 @@
 //  import cats.implicits._
 //
 //  class Nested1[
-//    M[_]:ApplicativeAsk[*[_], Atomic1]:FunctorListen[*[_], Event]:ApplicativeFail[*[_], Failure]:Monad]{
+//    M[_]
+//      :ApplicativeAsk[*[_], Atomic1]
+//      :FunctorListen[*[_], Event]
+//      :ApplicativeFail[*[_], Failure]:Monad]{
 //
 //    def eval():M[String] =
 //    for {
@@ -31,7 +34,9 @@
 //  }
 //
 //  class Nested2[
-//    M[_]:ApplicativeAsk[*[_], Atomic2]:LiftIO:MonadError[*[_], Throwable]]{
+//    M[_]
+//      :ApplicativeAsk[*[_], Atomic2]
+//      :LiftIO:MonadError[*[_], Throwable]]{
 //
 //    def eval():M[String] =
 //      for {
@@ -60,7 +65,11 @@
 //  }
 //
 //  class ExtendsNested[
-//    M[_]:Extender[*[_], Atomic1]:LiftIO:FunctorListen[*[_], Event]:MonadError[*[_], Throwable]:ApplicativeFail[*[_], Failure]:Sync] {
+//    M[_]:Extender[*[_], Atomic1]
+//      :LiftIO
+//      :FunctorListen[*[_], Event]
+//      :ApplicativeFail[*[_], Failure]
+//      :Sync] {
 //
 //
 //    val nested1 = {
@@ -69,42 +78,44 @@
 //    }
 //    import caio.mtl.Contextual._
 //
-//
-//    val E2 = implicitly[Extender[M, Atomic1]].apply[Atomic2]
-//    val nested2 = new Nested2[E2.FE]
-//
-//    val E3 = implicitly[Extender[M, Atomic1]].apply[Atomic3]
-//    val nested3 = new Nested3[E3.FE]
+//    val (e2, nested2) = {
+//      implicit val E2 = implicitly[Extender[M, Atomic1]].apply[Atomic2]
+//      E2 -> new Nested2[E2.FE]
+//    }
+//    val (e3, nested3) = {
+//      implicit val E3 = implicitly[Extender[M, Atomic1]].apply[Atomic3]
+//      E3 -> new Nested3[E3.FE]
+//    }
 //
 //    def eval(atomic2:Atomic2, atomic3:Atomic3):M[(String, String, String)] =
 //      for {
 //        n1 <- nested1.eval()
-//        n2 <- E2.apply(atomic2)(nested2.eval())
-//        n3 <- E3.apply(atomic3)(nested3.eval())
+//        n2 <- e2.apply(atomic2)(nested2.eval())
+//        n3 <- e3.apply(atomic3)(nested3.eval())
 //      } yield (n1, n2, n3)
 //
 //    def evalFail(atomic2:Atomic2):M[(String, String)] =
 //      for {
-//        n2 <- E2.apply(atomic2)(nested2.eval())
+//        n2 <- e2.apply(atomic2)(nested2.eval())
 //        n1 <- nested1.evalFail()
 //      } yield n1 -> n2
 //
 //    def evalError(atomic2:Atomic2, atomic3:Atomic3):M[(String, String)] =
 //      for {
-//        n3 <- E3.apply(atomic3)(nested3.eval())
-//        n2 <- E2.apply(atomic2)(nested2.evalError())
+//        n3 <- e3.apply(atomic3)(nested3.eval())
+//        n2 <- e2.apply(atomic2)(nested2.evalError())
 //      } yield n2 -> n3
 //
 //    def evalFailHandle(atomic2:Atomic2):M[(String, String)] =
 //      for {
-//        n2 <- E2.apply(atomic2)(nested2.eval())
+//        n2 <- e2.apply(atomic2)(nested2.eval())
 //        n1 <- nested1.evalHandle()
 //      } yield n1 -> n2
 //
 //    def evalErrorHandle(atomic2:Atomic2, atomic3:Atomic3):M[(String, String)] =
 //      for {
-//        n3 <- E3.apply(atomic3)(nested3.eval())
-//        n2 <- E2.apply(atomic2)(nested2.evalHandle())
+//        n3 <- e3.apply(atomic3)(nested3.eval())
+//        n2 <- e2.apply(atomic2)(nested2.evalHandle())
 //      } yield n2 -> n3
 //  }
 //
@@ -112,7 +123,7 @@
 //    M[_]:Provider:LiftIO:FunctorListen[*[_], Event]:MonadError[*[_], Throwable]:ApplicativeFail[*[_], Failure]:Sync] {
 //    import caio.mtl.Contextual._
 //
-//    val E = implicitly[Provider[M]].apply[Atomic1]
+//    implicit val E = implicitly[Provider[M]].apply[Atomic1]
 //
 //    val extendsNested = new ExtendsNested[E.FE]
 //

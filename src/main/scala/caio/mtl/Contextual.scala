@@ -2,6 +2,7 @@ package caio.mtl
 
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
+import shapeless.=:!=
 
 trait Contextual {
 
@@ -37,7 +38,6 @@ trait Contextual {
 
   implicit def partialExtenderToMonadState[F[_], FE[_], E1, E2, E3](implicit P:PartialExtended[FE, F, E1, E2], M:Mixer[(E1, E2), E3]):MonadState[FE, E3] =
     new MixedMonadState(P.monadState)
-
 }
 
 object Contextual
