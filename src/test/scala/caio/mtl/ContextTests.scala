@@ -185,12 +185,12 @@ class ContextTests {
     implicit val ES: Extends[M, Int, String] = implicitly[Extender[M, Int]].apply[String]
     val service1:AskIntString[ES.FE] = new AskIntString[ES.FE]
 
-    implicit val EB: Extends[M, Int, Boolean] = implicitly[Extender[M, Int]].apply[Boolean]
-    val service2 = new AskIntBoolean[EB.FE]
-
-    def run():(M[(Int, String)], M[(Int, Boolean)]) =
-      ES.apply("String")(service1.run) ->
-      EB.apply(false)(service2.run)
+//    implicit val EB: Extends[M, Int, Boolean] = implicitly[Extender[M, Int]].apply[Boolean]
+//    val service2 = new AskIntBoolean[EB.FE]
+//
+//    def run():(M[(Int, String)], M[(Int, Boolean)]) =
+//      ES.apply("String")(service1.run) ->
+//      EB.apply(false)(service2.run)
 
 
   }
@@ -202,12 +202,12 @@ class ContextTests {
     implicit val ES = implicitly[Extender[M, Int]].apply[Boolean]
     val service1:AskIntBoolean[ES.FE] = new AskIntBoolean[ES.FE]
 
-    implicit val EB = ES.extender.apply[String]
-    val service2 = new AskIntBooleanString[EB.FE]
-
-    def run() =
-      ES.apply(false)(service1.run) ->
-        ES.apply(false)(EB.apply("bob")(service2.run))
+//    implicit val EB = ES.extender.apply[String]
+//    val service2 = new AskIntBooleanString[EB.FE]
+//
+//    def run() =
+//      ES.apply(false)(service1.run) ->
+//        ES.apply(false)(EB.apply("bob")(service2.run))
 
 
   }
