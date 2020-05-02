@@ -5,8 +5,10 @@ import cats.Monoid
 import cats.effect.{Async, IO}
 
 class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, L, *]] {
+
   def async[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[C, V, L, A] =
-    liftIO(IO.async(k))
+    //Don't use async.liftIO as this will create an infinite loop
+    CaioKleisli(_ => ResultOps.fromIO(IO.async(k)))
 
   def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
     CaioKleisli[C, V, L, A]{ c =>

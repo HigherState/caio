@@ -16,14 +16,14 @@ class CaioTests extends AsyncFunSpec with Matchers {
   type CaioT[A] = Caio[C, Failure, EventLog, A]
 
   val emptyState:Store[C, L] =
-    Store.empty[C, L]
+    EmptyStore
   val simpleState:Store[C, L] =
-    ContentStore(Map("one" -> "one"), Vector(event1, event2))
+    ContentStore(Map("one" -> "one"), Vector(event1, event2), EventMonoid)
   val simpleState2:Store[C, L] =
-    ContentStore(Map("two" -> "two"), Vector(event3))
+    ContentStore(Map("two" -> "two"), Vector(event3), EventMonoid)
 
   val simpleState12:Store[C, L] =
-    ContentStore(Map("two" -> "two"), Vector(event1, event2, event3))
+    ContentStore(Map("two" -> "two"), Vector(event1, event2, event3), EventMonoid)
 
 
   //including context should effect tests

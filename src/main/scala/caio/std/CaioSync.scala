@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{Caio, CaioKleisli, IOResult}
+import caio._
 import cats.Monoid
 import cats.effect.{IO, Sync}
 

@@ -17,7 +17,7 @@ class CaioConcurrent[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends CaioA
           SuccessResult(Fiber(
             CaioKleisli(_ => IOResult(join)),
             liftIO(cancel)
-          ), Store.empty)
+          ), EmptyStore)
         }
       }
     }

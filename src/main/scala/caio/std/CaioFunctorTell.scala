@@ -9,10 +9,10 @@ class CaioFunctorTell[C, V, L:Monoid] extends FunctorTell[Caio[C, V, L, *], L]{
     new CaioFunctor[C, V, L] {}
 
   def tell(l: L): Caio[C, V, L, Unit] =
-    CaioState((), LogStore(l))
+    CaioState((), LogStore(l, implicitly[Monoid[L]]))
 
   def writer[A](a: A, l: L): Caio[C, V, L, A] =
-    CaioState(a, LogStore(l))
+    CaioState(a, LogStore(l, implicitly[Monoid[L]]))
 
   def tuple[A](ta: (L, A)): Caio[C, V, L, A] =
     writer(ta._2, ta._1)

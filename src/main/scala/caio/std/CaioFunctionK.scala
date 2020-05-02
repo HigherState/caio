@@ -11,9 +11,9 @@ class CaioFunctionK[C1, C2, V, L: Monoid](f: C2 => C1)
       IOResult {
         fa.eval(f(c2)).map {
           case (Left(e), _, l) =>
-            ErrorResult(e, LogStore(l))
+            ErrorResult(e, LogStore(l, implicitly[Monoid[L]]))
           case (Right(a), _, l) =>
-            SuccessResult(a, LogStore(l))
+            SuccessResult(a, LogStore(l, implicitly[Monoid[L]]))
         }
 
       }

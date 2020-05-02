@@ -9,11 +9,14 @@ import cats.Monoid
 
 class StaticImplicits[C, V, L](implicit M:Monoid[L]) {
 
-  implicit val staticCaioFunctor:Async[Caio[C,V,L, *]] =
+  implicit val staticCaioAsync:Async[Caio[C,V,L, *]] =
     new CaioAsync[C, V, L]
 
   implicit def staticCaioConcurrent(implicit CS:ContextShift[IO]):Concurrent[Caio[C,V,L, *]] =
     new CaioConcurrent[C, V, L]
+
+  implicit def staticCaioContextShift(implicit CS:ContextShift[IO]):ContextShift[Caio[C,V,L, *]] =
+    new CaioContextShift[C, V, L]
 
   implicit val staticCaioApplicativeFail:ApplicativeFail[Caio[C, V, L, *], V] =
     new CaioApplicativeFail[C, V, L]
