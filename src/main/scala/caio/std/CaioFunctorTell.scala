@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{Caio, CaioState, LogStore}
+import caio.{Caio, MapCaio, TellCaio}
 import cats.{Functor, Monoid}
 import cats.mtl.FunctorTell
 
@@ -9,10 +9,10 @@ class CaioFunctorTell[C, V, L:Monoid] extends FunctorTell[Caio[C, V, L, *], L]{
     new CaioFunctor[C, V, L] {}
 
   def tell(l: L): Caio[C, V, L, Unit] =
-    CaioState((), LogStore(l, implicitly[Monoid[L]]))
+    TellCaio(l)
 
   def writer[A](a: A, l: L): Caio[C, V, L, A] =
-    CaioState(a, LogStore(l, implicitly[Monoid[L]]))
+    MapCaio(TellCaio(l), _ => a)
 
   def tuple[A](ta: (L, A)): Caio[C, V, L, A] =
     writer(ta._2, ta._1)

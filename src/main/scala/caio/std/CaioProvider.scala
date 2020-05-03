@@ -2,7 +2,7 @@ package caio.std
 
 import caio.{Caio, mtl}
 import caio.mtl._
-import cats.Monoid
+import cats.{Eq, Monoid}
 import cats.arrow.FunctionK
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
@@ -19,7 +19,7 @@ case class CaioExtender[C, V, L:Monoid, E1](
 
 }
 
-case class CaioExtends[C, V, L:Monoid, E1, E2]()
+case class CaioExtends[C, V, L:Monoid:Eq, E1, E2]()
                                               (implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C])
   extends Extends[Caio[C, V, L, *], E1, E2] {
 
@@ -44,15 +44,15 @@ case class CaioExtends[C, V, L:Monoid, E1, E2]()
     )
 
   def apply[A](e2: E2): FunctionK[FE, Caio[C, V, L, *]] =
-    new CaioFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2)
+    new CaioFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2, p => I.mix(p._1 -> ()))
 
   val unapply: FunctionK[Caio[C, V, L, *], FE] =
-    new CaioFunctionK[C, (E1, E2), V, L](e => I.mix(e._1 -> (())))
+    new CaioFunctionK[C, (E1, E2), V, L](e => I.mix(e._1 -> (())), p => M.mix(p))
 
 }
 
 
-case class CaioPartialExtender[C, V, L:Monoid, E1](
+case class CaioPartialExtender[C, V, L:Monoid:Eq, E1](
                                              applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
                                              monadState:MonadState[Caio[C, V, L, *], E1],
                                            )(implicit M: Mixer[C, E1]) extends PartialExtender[Caio[C, V, L, *], E1] {
