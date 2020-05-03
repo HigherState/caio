@@ -31,6 +31,11 @@ class CaioConcurrentEffectTests  extends AsyncFunSpec with Matchers{
       b.unsafeRunSync()._1 shouldBe Right(())
 
     }
+    it("Blah") {
+
+      val bob = IO.pure("a").flatMap(a => throw new Exception("a"))
+      bob.attempt.unsafeRunSync()
+    }
   }
 
 }
