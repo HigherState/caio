@@ -3,11 +3,17 @@ package caio.implicits
 import caio.Caio
 import caio.mtl.ApplicativeFail
 import caio.std._
-import cats.effect.{Async, Concurrent, ContextShift, IO}
+import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
-import cats.Monoid
+import cats.{Monad, Monoid}
 
 class StaticImplicits[C, V, L](implicit M:Monoid[L]) {
+
+  implicit val staticCaioMonad:Monad[Caio[C,V,L, *]] =
+    new CaioMonad[C, V, L]
+
+  implicit val staticCaioSync:Sync[Caio[C,V,L, *]] =
+    new CaioSync[C, V, L]
 
   implicit val staticCaioAsync:Async[Caio[C,V,L, *]] =
     new CaioAsync[C, V, L]
