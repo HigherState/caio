@@ -17,6 +17,6 @@ class CaioBracket[C, V, L: Monoid] extends CaioMonadError[C, V, L] with Bracket[
           failures => BindCaio(
             release(a, ExitCase.error(CaioFailuresAsThrowable(failures))),
             _ => FailureCaio(failures.head, failures.tail)))
-      BindCaio(orHandleWithFailure, b => MapCaio(release(a, ExitCase.Completed), _ => b)
+      BindCaio(orHandleWithFailure, b => MapCaio(release(a, ExitCase.Completed), _ => b))
     })
 }
