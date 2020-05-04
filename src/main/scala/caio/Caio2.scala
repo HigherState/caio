@@ -148,7 +148,7 @@ object Caio {
       case FailureCaio(head, tail) =>
         FoldCaioFailure(c, l, head, tail)
       case KleisliCaio(f) =>
-        foldCaio(f(c), c, l) //eval try catch
+        f(c)
       case b:BindCaio[C, V, L, Any@unchecked, A] =>
         foldCaio(b.source, c, l).flatMap(a => foldCaio(b.f(a), c, l))
       case m:MapCaio[C, V, L, Any@unchecked, A] =>
