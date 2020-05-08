@@ -9,7 +9,7 @@ import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
 
-case class CaioExtender[C, V, L:Monoid, E1](
+case class CaioExtender[C, V, L:Monoid:Eq, E1](
   applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
   monadState:MonadState[Caio[C, V, L, *], E1],
   )(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C]) extends Extender[Caio[C, V, L, *], E1] {

@@ -1,10 +1,10 @@
 package caio.std
 
 import caio.Caio
-import cats.{Monoid, ~>}
+import cats.{Eq, Monoid, ~>}
 import io.typechecked.alphabetsoup.Mixer
 
-class CaioTranslation[E1, E2, V, L: Monoid, C](
+class CaioTranslation[E1, E2, V, L: Monoid:Eq, C](
    implicit M: Mixer[(E1, C), E2],
    I: Mixer[(E2, Unit), E1],
  ) {

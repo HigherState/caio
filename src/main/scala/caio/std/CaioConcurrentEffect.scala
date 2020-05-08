@@ -1,15 +1,15 @@
 package caio.std
 
 import caio._
-import cats.Monoid
+import cats.{Eq, Monoid}
 import cats.data.NonEmptyList
 import cats.effect._
 
-class CaioConcurrentEffect[C, V, L:Monoid]
+class CaioConcurrentEffect[C, V, L:Monoid:Eq]
   (c:C)
   (onSuccess:(C, L) => IO[Unit])
-  (onError:((Throwable, C, L) => IO[Unit]))
-  (onFailure:((NonEmptyList[V], C, L) => IO[Unit]))
+  (onError:(Throwable, C, L) => IO[Unit])
+  (onFailure:(NonEmptyList[V], C, L) => IO[Unit])
   (implicit CS:ContextShift[IO]) extends CaioConcurrent[C, V, L] with ConcurrentEffect[Caio[C, V, L, *]] {
 
 
@@ -54,5 +54,5 @@ class CaioConcurrentEffect[C, V, L:Monoid]
   def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
     Caio
       .foldIO(fa, c).flatMap(eval)
-      .runAsync(e => handle(e, _ => IO.unit))
+      .runAsync(e => handle[Unit](e, _ => IO.unit))
 }

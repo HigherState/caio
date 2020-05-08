@@ -10,13 +10,13 @@ class CaioBracket[C, V, L: Monoid] extends CaioMonadError[C, V, L] with Bracket[
     BindCaio[C, V, L, A, B](acquire, a => {
       val useAcquired = use(a)
       val orHandleWithError =
-        HandleErrorCaio(useAcquired,
-          throwable => BindCaio(release(a, ExitCase.error(throwable)), _ => ErrorCaio(throwable)))
+        HandleErrorCaio[C, V, L, B](useAcquired,
+          throwable => BindCaio[C, V, L, Unit, B](release(a, ExitCase.error(throwable)), _ => ErrorCaio(throwable)))
       val orHandleWithFailure =
-        HandleFailureCaio(orHandleWithError,
-          failures => BindCaio(
+        HandleFailureCaio[C, V, L, B](orHandleWithError,
+          failures => BindCaio[C, V, L, Unit, B](
             release(a, ExitCase.error(CaioFailuresAsThrowable(failures))),
             _ => FailureCaio(failures.head, failures.tail)))
-      BindCaio(orHandleWithFailure, b => MapCaio(release(a, ExitCase.Completed), _ => b))
+      BindCaio[C, V, L, B, B](orHandleWithFailure, b => MapCaio[C, V, L, Unit, B](release(a, ExitCase.Completed), _ => b))
     })
 }

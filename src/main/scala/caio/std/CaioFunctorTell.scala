@@ -12,7 +12,7 @@ class CaioFunctorTell[C, V, L:Monoid] extends FunctorTell[Caio[C, V, L, *], L]{
     TellCaio(l)
 
   def writer[A](a: A, l: L): Caio[C, V, L, A] =
-    MapCaio(TellCaio(l), _ => a)
+    MapCaio[C, V, L, Unit, A](TellCaio(l), _ => a)
 
   def tuple[A](ta: (L, A)): Caio[C, V, L, A] =
     writer(ta._2, ta._1)
