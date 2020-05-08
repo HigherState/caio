@@ -44,11 +44,11 @@ case class CaioExtends[C, V, L:Monoid:Eq, E1, E2]()
     )
 
   def apply[A](e2: E2): FunctionK[FE, Caio[C, V, L, *]] =
-    new CaioFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2, p => I.mix(p._1 -> ()))
+    new CaioContextFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2, p => I.mix(p._1 -> ()))
 
-  val unapply: FunctionK[Caio[C, V, L, *], FE] =
-    new CaioFunctionK[C, (E1, E2), V, L](e => I.mix(e._1 -> (())), p => M.mix(p))
-
+//  val unapply: FunctionK[Caio[C, V, L, *], FE] =
+//    new CaioContextFunctionK[C, (E1, E2), V, L](e => I.mix(e._1 -> (())), p => M.mix(p))
+  def unapply: FunctionK[Caio[C, V, L, *], FE] = ???
 }
 
 
@@ -62,7 +62,7 @@ case class CaioPartialExtender[C, V, L:Monoid:Eq, E1](
 
 }
 
-case class CaioPartialExtends[C, V, L:Monoid, E1, E2]()
+case class CaioPartialExtends[C, V, L:Monoid:Eq, E1, E2]()
                                               (implicit M: Mixer[C, E1])
   extends PartialExtends[Caio[C, V, L, *], E1, E2] {
 
@@ -85,9 +85,10 @@ case class CaioPartialExtends[C, V, L:Monoid, E1, E2]()
       new MixedApplicativeAsk[FE, (E1, E2), E3](applicativeAsk),
       new MixedMonadState[FE, (E1, E2), E3](monadState)
     )
+  def apply[A](e2: E2): FunctionK[FE, Caio[C, V, L, *]] = ???
 
-  def apply[A](e2: E2): FunctionK[FE, Caio[C, V, L, *]] =
-    new CaioFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2)
+//  def apply[A](e2: E2): FunctionK[FE, Caio[C, V, L, *]] =
+//    new CaioContextFunctionK[(E1, E2), C, V, L](c => M.mix(c) -> e2)
 
 }
 
@@ -99,7 +100,7 @@ object CaioProvider {
 
     override def inject(b: Unit, a: Unit): Unit = ()
   }
-  implicit def unit[V, L:Monoid]:Provider[Caio[Unit, V, L, *]] =
+  implicit def unit[V, L:Monoid:Eq]:Provider[Caio[Unit, V, L, *]] =
     CaioExtender[Unit, V, L, Unit](
       new CaioApplicativeAsk[Unit, V, L],
       new CaioMonadState[Unit, V, L]

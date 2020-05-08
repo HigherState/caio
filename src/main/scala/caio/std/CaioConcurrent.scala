@@ -31,19 +31,19 @@ class CaioConcurrent[C, V, L:Monoid:Eq](implicit CS:ContextShift[IO]) extends Ca
       FoldCaioIO {
         IO.racePair(sa, sb).flatMap {
 
-          case Left((e: FoldCaioError[C, V, L, A], fiberB)) =>
+          case Left((e: FoldCaioError[C, V, L, _], fiberB)) =>
             fiberB.cancel.map(_ => e)
 
-          case Left((f: FoldCaioFailure[C, V, L, A], fiberB)) =>
+          case Left((f: FoldCaioFailure[C, V, L, _], fiberB)) =>
             fiberB.cancel.map(_ => f)
 
           case Left((s: FoldCaioSuccess[C, V, L, A], fiberB)) =>
             IO(s.map(a => Left(a -> fiber2Caio(fiberB))))
 
-          case Right((fiberA, e: FoldCaioError[C, V, L, A])) =>
+          case Right((fiberA, e: FoldCaioError[C, V, L, _])) =>
             fiberA.cancel.map(_ => e)
 
-          case Right((fiberA, f: FoldCaioFailure[C, V, L, A])) =>
+          case Right((fiberA, f: FoldCaioFailure[C, V, L, _])) =>
             fiberA.cancel.map(_ => f)
 
           case Right((fiberA, s: FoldCaioSuccess[C, V, L, B])) =>
