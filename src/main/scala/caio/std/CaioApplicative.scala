@@ -1,9 +1,9 @@
 package caio.std
 
 import caio.{BindCaio, Caio, MapCaio, PureCaio}
-import cats.{Applicative, Monoid}
+import cats.Applicative
 
-class CaioApplicative[C, V, L:Monoid] extends Applicative[Caio[C, V, L, *]]{
+class CaioApplicative[C, V, L] extends Applicative[Caio[C, V, L, *]]{
   def pure[A](x: A): Caio[C, V, L, A] =
     PureCaio(x)
 

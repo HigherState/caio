@@ -1,9 +1,9 @@
 package caio.std
 
 import caio.{Caio, ErrorCaio, HandleErrorCaio}
-import cats.{ApplicativeError, Monoid}
+import cats.ApplicativeError
 
-class CaioApplicativeError[C, V, L:Monoid] extends CaioApplicative[C, V, L] with ApplicativeError[Caio[C, V, L, *], Throwable] {
+class CaioApplicativeError[C, V, L] extends CaioApplicative[C, V, L] with ApplicativeError[Caio[C, V, L, *], Throwable] {
   def raiseError[A](e: Throwable): Caio[C, V, L, A] =
     ErrorCaio[C, V, L](e)
 

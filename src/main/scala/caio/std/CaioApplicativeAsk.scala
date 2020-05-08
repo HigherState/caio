@@ -1,10 +1,10 @@
 package caio.std
 
 import caio._
-import cats.{Applicative, Monoid}
+import cats.Applicative
 import cats.mtl.ApplicativeAsk
 
-class CaioApplicativeAsk[C, V, L:Monoid] extends ApplicativeAsk[Caio[C, V, L, *], C] {
+class CaioApplicativeAsk[C, V, L] extends ApplicativeAsk[Caio[C, V, L, *], C] {
   val applicative: Applicative[Caio[C, V, L, *]] =
     new CaioApplicative[C, V, L]
 

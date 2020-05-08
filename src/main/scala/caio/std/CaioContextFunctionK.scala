@@ -1,7 +1,7 @@
 package caio.std
 
 import caio.{Caio, FoldCaioIO, KleisliCaio}
-import cats.{Eq, Monoid}
+import cats.Monoid
 import cats.arrow.FunctionK
 
 /**
@@ -10,13 +10,12 @@ import cats.arrow.FunctionK
  * @param invF Return from context to original context,
  *             context may have been altered so we dont want to lose that change.
  * @param monoid$L$0
- * @param eq$L$1
  * @tparam C1
  * @tparam C2
  * @tparam V
  * @tparam L
  */
-class CaioContextFunctionK[C1, C2, V, L: Monoid:Eq](f: C2 => C1, invF: C1 => C2)
+class CaioContextFunctionK[C1, C2, V, L: Monoid](f: C2 => C1, invF: C1 => C2)
   extends FunctionK[Caio[C1, V, L, *], Caio[C2, V, L, *]] {
   def apply[A](fa: Caio[C1, V, L, A]): Caio[C2, V, L, A] =
     KleisliCaio[C2, V, L, A] { c2 =>

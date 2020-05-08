@@ -9,7 +9,7 @@ import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
 
-case class CaioExtender[C, V, L:Monoid:Eq, E1](
+case class CaioExtender[C, V, L:Monoid, E1](
   applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
   monadState:MonadState[Caio[C, V, L, *], E1],
   )(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C]) extends Extender[Caio[C, V, L, *], E1] {
@@ -19,7 +19,7 @@ case class CaioExtender[C, V, L:Monoid:Eq, E1](
 
 }
 
-case class CaioExtends[C, V, L:Monoid:Eq, E1, E2]()
+case class CaioExtends[C, V, L:Monoid, E1, E2]()
                                               (implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C])
   extends Extends[Caio[C, V, L, *], E1, E2] {
 
@@ -52,7 +52,7 @@ case class CaioExtends[C, V, L:Monoid:Eq, E1, E2]()
 }
 
 
-case class CaioPartialExtender[C, V, L:Monoid:Eq, E1](
+case class CaioPartialExtender[C, V, L:Monoid, E1](
                                              applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
                                              monadState:MonadState[Caio[C, V, L, *], E1],
                                            )(implicit M: Mixer[C, E1]) extends PartialExtender[Caio[C, V, L, *], E1] {
@@ -62,7 +62,7 @@ case class CaioPartialExtender[C, V, L:Monoid:Eq, E1](
 
 }
 
-case class CaioPartialExtends[C, V, L:Monoid:Eq, E1, E2]()
+case class CaioPartialExtends[C, V, L:Monoid, E1, E2]()
                                               (implicit M: Mixer[C, E1])
   extends PartialExtends[Caio[C, V, L, *], E1, E2] {
 

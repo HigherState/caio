@@ -2,9 +2,9 @@ package caio.std
 
 import caio.{Caio, HandleErrorCaio, IOCaio}
 import cats.effect.IO
-import cats.{MonadError, Monoid}
+import cats.MonadError
 
-class CaioMonadError[C, V, L:Monoid]
+class CaioMonadError[C, V, L]
   extends CaioMonad[C, V, L] with MonadError[Caio[C, V, L, *], Throwable] {
 
   def raiseError[A](e: Throwable): Caio[C, V, L, A] =

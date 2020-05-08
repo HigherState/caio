@@ -1,10 +1,10 @@
 package caio.std
 
 import caio.{Caio, FoldCaioIO, FoldCaioSuccess, IOCaio, KleisliCaio}
-import cats.{Eq, Monoid}
+import cats.Monoid
 import cats.effect.{Async, IO}
 
-class CaioAsync[C, V, L:Monoid:Eq] extends CaioSync[C, V, L] with Async[Caio[C, V, L, *]] {
+class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, L, *]] {
 
   def async[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[C, V, L, A] =
     //Don't use async.liftIO as this will create an infinite loop

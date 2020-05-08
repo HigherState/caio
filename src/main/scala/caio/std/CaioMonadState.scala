@@ -1,10 +1,10 @@
 package caio.std
 
 import caio._
-import cats.{Monad, Monoid}
+import cats.Monad
 import cats.mtl.MonadState
 
-class CaioMonadState[C, V, L](implicit M:Monoid[L]) extends MonadState[Caio[C, V, L, *], C] {
+class CaioMonadState[C, V, L] extends MonadState[Caio[C, V, L, *], C] {
   val monad: Monad[Caio[C, V, L, *]] =
     new CaioMonad[C, V, L] {}
 

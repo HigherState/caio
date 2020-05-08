@@ -1,10 +1,9 @@
 package caio.std
 
 import caio.{Caio, ListenCaio, MapCaio}
-import cats.Monoid
 import cats.mtl.FunctorListen
 
-class CaioFunctorListen[C, V, L:Monoid] extends CaioFunctorTell[C, V, L] with FunctorListen[Caio[C, V, L, *], L]  {
+class CaioFunctorListen[C, V, L] extends CaioFunctorTell[C, V, L] with FunctorListen[Caio[C, V, L, *], L]  {
 
   def listen[A](fa: Caio[C, V, L, A]): Caio[C, V, L, (A, L)] =
     ListenCaio(fa)

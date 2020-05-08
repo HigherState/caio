@@ -1,10 +1,10 @@
 package caio.std
 
 import caio._
-import cats.{Eq, Monoid}
-import cats.effect.{CancelToken, Concurrent, ContextShift, Fiber, IO}
+import cats.Monoid
+import cats.effect._
 
-class CaioConcurrent[C, V, L:Monoid:Eq](implicit CS:ContextShift[IO]) extends CaioAsync[C, V, L] with Concurrent[Caio[C, V, L, *]] {
+class CaioConcurrent[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends CaioAsync[C, V, L] with Concurrent[Caio[C, V, L, *]] {
 
   def start[A](fa: Caio[C, V, L, A]): Caio[C, V, L, Fiber[Caio[C, V, L, *], A]] =
     KleisliCaio { c =>
