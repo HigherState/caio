@@ -191,16 +191,4 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
       run("Testing" -> 321, result) shouldBe (("value" -> 321, Vector(event1, event2), Left(Left(exception1))))
     }
   }
-
-  describe("It should handle a large stack") {
-    val stackSize = 1000
-
-    def stack[A](parent:CaioT[A], count:Int):CaioT[String] =
-      if (count == stackSize) parent.flatMap(_ => Applicative[CaioT].pure("value"))
-      else parent.flatMap(_ => stack(Applicative[CaioT].pure(()), count + 1))
-    def caio =
-      stack(Applicative[CaioT].pure("start"), 0)
-
-    run("Testing" -> 321, caio) shouldBe ("Testing" -> 321, Vector.empty, Right("value"))
-  }
 }

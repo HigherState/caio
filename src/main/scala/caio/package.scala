@@ -3,6 +3,8 @@ import cats.data.NonEmptyList
 
 package object caio {
 
+  type <~>[F[_], G[_]] = NaturalIsomorphism[F, G]
+
   type ErrorOrFailure[V] = Throwable Either NonEmptyList[V]
 
   implicit class ErrorOps[V](val eof:ErrorOrFailure[V]) extends AnyVal {

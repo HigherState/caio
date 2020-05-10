@@ -77,7 +77,6 @@
 //      new Nested1[M]
 //    }
 //    import caio.mtl.Contextual._
-//
 //    val (e2, nested2) = {
 //      implicit val E2 = implicitly[Extender[M, Atomic1]].apply[Atomic2]
 //      E2 -> new Nested2[E2.FE]

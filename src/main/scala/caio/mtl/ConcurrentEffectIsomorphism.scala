@@ -1,17 +1,17 @@
 package caio.mtl
 
-import cats.arrow.FunctionK
-import cats.effect.{CancelToken, Concurrent, ConcurrentEffect, ExitCase, Fiber, IO, SyncIO}
+import caio.<~>
+import cats.effect._
 
-class ConcurrentEffectFunctionK[F[_], G[_]](
+class ConcurrentEffectIsomorphism[F[_], G[_]](
   concurrentEffect:ConcurrentEffect[G],
-  backwards:FunctionK[F, G],
-  forwards:FunctionK[G, F])(implicit C:Concurrent[F]) extends ConcurrentEffect[F]{
+  isomorphism: F <~> G)(implicit C:Concurrent[F]) extends ConcurrentEffect[F]{
   def runCancelable[A](fa: F[A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[F]] =
-    concurrentEffect.runCancelable(backwards(fa))(cb).map{forwards.apply}
+    concurrentEffect.runCancelable(isomorphism(fa))(cb)
+      .map(isomorphism.unapply)
 
   def runAsync[A](fa: F[A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
-    concurrentEffect.runAsync(backwards(fa))(cb)
+    concurrentEffect.runAsync(isomorphism(fa))(cb)
 
   def start[A](fa: F[A]): F[Fiber[F, A]] =
     C.start(fa)

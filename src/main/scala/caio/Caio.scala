@@ -3,7 +3,6 @@ package caio
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.effect.IO
-
 import scala.util.control.NonFatal
 
 sealed trait Caio[C, V, L, +A] {
