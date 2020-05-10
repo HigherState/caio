@@ -5,9 +5,9 @@ import caio.mtl.ApplicativeFail
 import caio.std._
 import cats.effect.{Async, Concurrent, ContextShift, IO}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
-import cats.{Eq, Monoid}
+import cats.Monoid
 
-class StaticImplicits[C, V, L:Monoid:Eq]{
+class StaticImplicits[C, V, L:Monoid]{
 
   implicit val staticCaioAsync:Async[Caio[C,V,L, *]] =
     new CaioAsync[C, V, L]
