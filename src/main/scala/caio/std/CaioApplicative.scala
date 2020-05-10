@@ -1,12 +1,12 @@
 package caio.std
 
-import caio.{Caio, CaioState, EmptyStore}
-import cats.{Applicative, Monoid}
+import caio.{BindCaio, Caio, MapCaio, PureCaio}
+import cats.Applicative
 
-class CaioApplicative[C, V, L:Monoid] extends Applicative[Caio[C, V, L, *]]{
+class CaioApplicative[C, V, L] extends Applicative[Caio[C, V, L, *]]{
   def pure[A](x: A): Caio[C, V, L, A] =
-    CaioState[C, V, L, A](x, EmptyStore)
+    PureCaio(x)
 
-  override def ap[A, B](ff: Caio[C, V, L, A => B])(fa: Caio[C, V, L, A]): Caio[C, V, L, B] =
-    fa.flatMap(a => ff.map(_(a)))
+  def ap[A, B](ff: Caio[C, V, L, A => B])(fa: Caio[C, V, L, A]): Caio[C, V, L, B] =
+    BindCaio[C, V, L, A, B](fa, a => MapCaio[C, V, L, A => B, B](ff, f => f(a)))
 }

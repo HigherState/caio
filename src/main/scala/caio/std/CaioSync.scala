@@ -6,8 +6,10 @@ import cats.effect.{IO, Sync}
 
 class CaioSync[C, V, L:Monoid] extends CaioBracket[C, V, L] with Sync[Caio[C, V, L, *]] {
   def suspend[A](thunk: => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    CaioKleisli{ c =>
-      IOResult(IO.suspend(thunk.toIOResult(c).io))
+    KleisliCaio{ c =>
+      FoldCaioIO(IO.suspend(Caio.foldIO(thunk, c)))
     }
 
+  override def delay[A](thunk: => A): Caio[C, V, L, A] =
+    IOCaio(IO.delay(thunk))
 }

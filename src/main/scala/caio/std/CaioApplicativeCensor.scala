@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.Caio
+import caio.{Caio, CensorCaio}
 import cats.mtl.ApplicativeCensor
 import cats.{Applicative, Monoid}
 
@@ -13,9 +13,7 @@ class CaioApplicativeCensor[C, V, L:Monoid] extends CaioFunctorListen[C, V, L] w
     implicitly[Monoid[L]]
 
   def censor[A](fa: Caio[C, V, L, A])(f: L => L): Caio[C, V, L, A] =
-    fa.mapStore{s =>
-      s.map(f)
-    }
+    CensorCaio(fa, f)
 
   def clear[A](fa: Caio[C, V, L, A]): Caio[C, V, L, A] =
     censor(fa)(_ => implicitly[Monoid[L]].empty)

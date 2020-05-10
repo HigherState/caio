@@ -1,6 +1,6 @@
 package caio
 
-import cats.Monoid
+import cats.{Eq, Monoid}
 
 trait Event
 
@@ -17,6 +17,9 @@ object Event {
       def combine(x: EventLog, y: EventLog): EventLog =
         x ++ y
     }
+
+  implicit val EventEq:Eq[EventLog] =
+    (x: EventLog, y: EventLog) => x.equals(y)
 
   val event1 = TestEvent(1)
   val event2 = TestEvent(2)

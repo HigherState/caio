@@ -17,6 +17,8 @@ class CaioConcurrentEffectTests  extends AsyncFunSpec with Matchers{
   val C = new StaticImplicits[Unit, Failure, EventLog]()
   import C._
 
+  val effect = new CaioConcurrentEffect[Unit, Failure, EventLog](())((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) => IO.unit)
+
   describe("Async shouldnt loop") {
 
     it("Works with timer async case") {
@@ -27,8 +29,8 @@ class CaioConcurrentEffectTests  extends AsyncFunSpec with Matchers{
         def sleep(duration: FiniteDuration): CaioT[Unit] =
           staticCaioConcurrent.liftIO(T.sleep(duration))
       }
-      val b = t.sleep(1.millis).eval(())
-      b.unsafeRunSync()._1 shouldBe Right(())
+      val b = effect.toIO(t.sleep(1.millis))
+      b.unsafeRunSync() shouldBe ()
 
     }
   }

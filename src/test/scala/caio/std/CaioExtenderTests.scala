@@ -3,6 +3,7 @@ package caio.std
 import caio.{Caio, Failure}
 import caio.Event.EventLog
 import caio.mtl.{ContextProjector, Extender, Provider}
+import cats.effect.Effect
 import cats.{Functor, Monad}
 import cats.mtl.ApplicativeAsk
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -13,6 +14,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   type CaioT[A] = Caio[Unit, Failure, EventLog, A]
 
   implicit val caioMonad:Monad[CaioT] = new CaioMonad[Unit, Failure, EventLog]
+
+  val effect:Effect[CaioT] = new CaioEffect[Unit, Failure, EventLog](())()()()
 
   class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
     def run:M[Int] = ApplicativeAsk[M,Int].ask
@@ -69,7 +72,7 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   }
 
   def runSuccess[A](caio:CaioT[A]):A =
-    caio.eval(()).unsafeRunSync()._1.getOrElse(???)
+    effect.toIO(caio).unsafeRunSync()
 
   describe("Provider tests") {
     import CaioProvider._
@@ -218,7 +221,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
       val doubleNestedTest = new DoubleNestedContext[CaioT]
       val a1 = new Atomic1("a1")
       val a2 = new Atomic2("a2")
-      runSuccess(doubleNestedTest.run("test", false, 1, a1, a2)) shouldBe (
+      val toEval = doubleNestedTest.run("test", false, 1, a1, a2)
+      runSuccess(toEval) shouldBe (
         ("test",("test",((1,"test"),(1,false,"test"),a1),((1,"test"),(1,false,"test"),a2),1))
       )
     }

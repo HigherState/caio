@@ -1,19 +1,18 @@
 package caio.std
 
 import caio._
-import cats.Monoid
 import cats.data.NonEmptyList
 import cats.effect._
+import cats.Monoid
 
-class CaioConcurrentEffect[C, V, L:Monoid]
+class CaioEffect[C, V, L:Monoid]
   (c:C)
   (onSuccess:(C, L) => IO[Unit] = (_:C, _:L) => IO.unit)
   (onError:(Throwable, C, L) => IO[Unit] = (_:Throwable, _:C, _:L) => IO.unit)
   (onFailure:(NonEmptyList[V], C, L) => IO[Unit] = (_:NonEmptyList[V], _:C, _:L) => IO.unit)
-  (implicit CS:ContextShift[IO]) extends CaioConcurrent[C, V, L] with ConcurrentEffect[Caio[C, V, L, *]] {
+  extends CaioAsync[C, V, L] with Effect[Caio[C, V, L, *]] {
 
-  import cats.instances.vector._
-  import cats.syntax.parallel._
+
 
   private def eval[A](value:FoldCaioPure[C, V, L, A]): IO[Unit] =
     value match {
@@ -28,39 +27,35 @@ class CaioConcurrentEffect[C, V, L:Monoid]
   private def handle[A](either:Either[Throwable, FoldCaioPure[C, V, L, A]], cb: Either[Throwable, A] => IO[Unit]):IO[Unit] =
     either match {
       case Left(ex) =>
-        Vector(cb(Left(ex)), onError(ex, c, Monoid[L].empty))
-          .parSequence
-          .map(_ => ())
+        onError(ex, c, Monoid[L].empty)
+          .flatMap(_ => cb(Left(ex)))
       case Right(FoldCaioSuccess(c2, l, a)) =>
-        Vector(cb(Right(a)), onSuccess(c2, l))
-          .parSequence
-          .map(_ => ())
+        onSuccess(c2, l)
+          .flatMap(_ => cb(Right(a)))
       case Right(FoldCaioFailure(c2, l, head, tail)) =>
         val nel = NonEmptyList(head, tail)
-        Vector(cb(Left(CaioFailuresAsThrowable(nel))), onFailure(nel, c2, l))
-          .parSequence
-          .map(_ => ())
-      case Right(FoldCaioError(c2, l, ex@CaioFailuresAsThrowable(failures:NonEmptyList[V@unchecked]))) =>
-        Vector(cb(Left(ex)), onFailure(failures, c2, l))
-          .parSequence
-          .map(_ => ())
-      case Right(FoldCaioError(c2, l, ex)) =>
-        Vector(cb(Left(ex)), onError(ex, c2, l))
-          .parSequence
-          .map(_ => ())
-    }
+        onFailure(nel, c2, l)
+            .flatMap(_ => cb(Left(CaioFailuresAsThrowable(nel))))
 
+      case Right(FoldCaioError(c2, l, ex@CaioFailuresAsThrowable(failures:NonEmptyList[V@unchecked]))) =>
+        onFailure(failures, c2, l)
+          .flatMap(_ => cb(Left(ex)))
+      case Right(FoldCaioError(c2, l, ex)) =>
+        onError(ex, c2, l)
+          .flatMap(_ => cb(Left(ex)))
+    }
+  /**
+   * AsyncF application will discard any failure, Log or context change information.
+   *
+   * @param k
+   * @tparam A
+   * @return
+   */
   override def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
     KleisliCaio[C, V, L, A]{ c =>
       val k2 = k.andThen(c0 => Caio.foldIO(c0, c).flatMap(eval))
       FoldCaioIO(IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a)))
     }
-
-  def runCancelable[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[Caio[C, V, L, *]]] =
-    Caio
-      .foldIO(fa, c)
-      .runCancelable(handle(_, cb))
-      .map(IOCaio(_))
 
   def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
     Caio
