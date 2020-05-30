@@ -3,6 +3,7 @@ package caio
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.effect.IO
+import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
 sealed trait Caio[C, V, L, +A] {
@@ -100,6 +101,8 @@ sealed trait FoldCaio[C, V, L, +A] {
 
   def toIO:IO[FoldCaioPure[C, V, L, A]]
 
+  def map[B](f: A => B): FoldCaio[C, V, L, B]
+
   /**
    * Required for transforming EventLog, cant use FlatMap
    * Can transform Error and Failed cases as well
@@ -185,6 +188,9 @@ final private[caio] case class FoldCaioIO[C, V, L, +A](io:IO[FoldCaioPure[C, V, 
     FoldCaioIO(ioflatmap)
   }
 
+  def map[B](f: A => B): FoldCaio[C, V, L, B] =
+    FoldCaioIO(io.map(_.map(f)))
+
   def mapL[B](f: L => L): FoldCaio[C, V, L, A] =
     FoldCaioIO(io.map(_.mapL(f)))
 
@@ -195,6 +201,9 @@ final private[caio] case class FoldCaioIO[C, V, L, +A](io:IO[FoldCaioPure[C, V, 
 object Caio {
 
   private[caio] def foldIO[C, V, L, A](caio: Caio[C, V, L, A], c: C)(implicit M:Monoid[L]): IO[FoldCaioPure[C, V, L, A]] = {
+    def tryOrError(value: => Caio[C, V, L, Any]): Caio[C, V, L, Any] =
+      try value
+      catch { case NonFatal(ex) => ErrorCaio(ex) }
 
     /**
      * Recursive fold of Caio GADT.
@@ -206,105 +215,137 @@ object Caio {
      * @tparam B
      * @return
      */
-    def foldCaio[B](caio: Caio[C, V, L, B], c: C, l: L): FoldCaio[C, V, L, B] =
-      caio match {
-        case PureCaio(a) =>
-          FoldCaioSuccess(c, l, a)
+    def safeFold(caio: Caio[C, V, L, Any], c: C, l: L, fs: List[Any => Caio[C, V, L, Any]]): FoldCaio[C, V, L, Any] = {
+      @tailrec def foldCaio(caio: Caio[C, V, L, Any], c: C, l: L, fs: List[Any => Caio[C, V, L, Any]]): FoldCaio[C, V, L, Any] =
+        (caio, fs) match {
+          case (PureCaio(a), f :: fs) =>
+            foldCaio(tryOrError(f(a)), c,  l, fs)
 
-        case IOCaio(io) =>
-          FoldCaioIO(io.redeem(FoldCaioError(c, l, _), FoldCaioSuccess(c, l, _)))
+          case (PureCaio(a), Nil) =>
+            FoldCaioSuccess(c, l, a)
 
-        case KleisliCaio(f) =>
-          try f(c)
-          catch { case NonFatal(ex) => FoldCaioError(c, l, ex) }
+          case (IOCaio(io), f :: fs) =>
+            FoldCaioIO(io.redeemWith(
+              e => IO.pure(FoldCaioError(c, l, e)),
+              a => safeFold(tryOrError(f(a)), c, l, fs).toIO
+            ))
 
-        case MapCaio(source, f) =>
-          foldCaio(source, c, l)
-            .flatMap{ (c2, l2, a) =>
-              try FoldCaioSuccess(c2, l2, f(a))
-              catch { case NonFatal(ex) => FoldCaioError(c2, l2, ex) }
+          case (IOCaio(io), Nil) =>
+            FoldCaioIO(io.redeem(FoldCaioError(c, l, _), FoldCaioSuccess(c, l, _)))
+
+          case (KleisliCaio(f), ff :: fs) =>
+            f(c).flatMap { case (c, l, a) =>
+              safeFold(ff(a), c,  l, fs)
             }
 
-        case BindCaio(source, f) =>
-          foldCaio(source, c, l)
-            .flatMap{ (c2, l2, a) =>
-              try foldCaio(f(a), c2, l2)
-              catch { case NonFatal(ex) => FoldCaioError(c2, l2, ex) }
+          case (KleisliCaio(f), Nil) =>
+            try f(c)
+            catch { case NonFatal(ex) => FoldCaioError(c, l, ex) }
+
+          case (MapCaio(source, f), list) =>
+            foldCaio(source, c,  l, f.andThen(PureCaio[C, V, L, Any](_)) :: list)
+
+          case (BindCaio(source, f), list) =>
+            foldCaio(source, c, l, f :: list)
+
+          case (ErrorCaio(e), _) =>
+            FoldCaioError(c, l, e)
+
+          case (HandleErrorCaio(source, f), list) =>
+            safeFold(source, c, l, Nil) match {
+              case FoldCaioError(c2, l2, e) =>
+                foldCaio(tryOrError(f(e)), c2, l2, list)
+              case p: FoldCaioPure[C, V, L, _] if list.isEmpty =>
+                p
+              case p: FoldCaioPure[C, V, L, _] =>
+                p.flatMap { case (c, l, a) =>
+                  val f :: fs = list 
+                  safeFold(f(a), c,  l, fs)
+                }
+              case FoldCaioIO(io) =>
+                FoldCaioIO {
+                  io.flatMap {
+                    case FoldCaioError(c2, l2, e) =>
+                      safeFold(tryOrError(f(e)), c2, l2, list) match {
+                        case FoldCaioIO(io2) =>
+                          io2
+                        case p: FoldCaioPure[C, V, L, _] =>
+                          IO.pure(p)
+                      }
+                    case p: FoldCaioPure[C, V, L, _] if list.isEmpty =>
+                      IO.pure(p)
+                    case p: FoldCaioPure[C, V, L, _] =>
+                      p.flatMap { case (c, l, a) =>
+                        val f :: fs = list 
+                        safeFold(f(a), c,  l, fs)
+                      }.toIO
+                  }
+                }
             }
 
-        case ErrorCaio(e) =>
-          FoldCaioError(c, l, e)
+          case (FailureCaio(head, tail), _) =>
+            FoldCaioFailure(c, l, head, tail)
 
-        case HandleErrorCaio(source, f) =>
-          foldCaio(source, c, l) match {
-            case FoldCaioError(c2, l2, e) =>
-              try foldCaio(f(e), c2, l2)
-              catch { case NonFatal(ex) => FoldCaioError(c2, l2, ex) }
-            case p: FoldCaioPure[C, V, L, _] =>
-              p
-            case FoldCaioIO(io) =>
-              val newIO = io.flatMap {
-                case FoldCaioError(c2, l2, e) =>
-                  val handled:FoldCaio[C, V, L, B] =
-                    try foldCaio(f(e), c2, l2)
-                    catch { case NonFatal(ex) => FoldCaioError(c2, l2, ex) }
-                  handled match {
-                    case FoldCaioIO(io2) =>
-                      io2
-                    case p: FoldCaioPure[C, V, L, B] =>
+          case (HandleFailureCaio(source, f), list) =>
+            safeFold(source, c, l, Nil) match {
+              case FoldCaioFailure(c2, l2, head, tail) =>
+                foldCaio(tryOrError(f(NonEmptyList(head, tail))), c2, l2, list)
+              case p: FoldCaioPure[C, V, L, _] if list.isEmpty =>
+                p
+              case p: FoldCaioPure[C, V, L, _] =>
+                p.flatMap { case (c, l, a) =>
+                  val f :: fs = list 
+                  safeFold(f(a), c,  l, fs)
+                }
+              case FoldCaioIO(io) =>
+                FoldCaioIO {
+                  io.flatMap {
+                    case FoldCaioFailure(c2, l2, head, tail) =>
+                      safeFold(tryOrError(f(NonEmptyList(head, tail))), c2, l2, list) match {
+                        case FoldCaioIO(io2) =>
+                          io2
+                        case p: FoldCaioPure[C, V, L, _] =>
+                          IO.pure(p)
+                      }
+                    case p: FoldCaioPure[C, V, L, _] if list.isEmpty =>
                       IO.pure(p)
+                    case p: FoldCaioPure[C, V, L, _] =>
+                      p.flatMap { case (c, l, a) =>
+                        val f :: fs = list 
+                        safeFold(f(a), c,  l, fs)
+                      }.toIO
                   }
-                case p: FoldCaioPure[C, V, L, B] =>
-                  IO.pure(p)
-              }
-              FoldCaioIO(newIO)
-          }
+                }
+            }
 
-        case FailureCaio(head, tail) =>
-          FoldCaioFailure(c, l, head, tail)
+          case (TellCaio(l2), f :: fs) =>
+            foldCaio(f(()), c, M.combine(l, l2), fs)
 
-        case HandleFailureCaio(source, f) =>
-          foldCaio(source, c, l) match {
-            case FoldCaioFailure(c2, l2, head, tail) =>
-              try foldCaio(f(NonEmptyList(head, tail)), c2, l2)
-              catch { case NonFatal(ex) => FoldCaioError(c2, l2, ex) }
-            case p: FoldCaioPure[C, V, L, B] =>
-              p
-            case FoldCaioIO(io) =>
-              val newIO = io.flatMap {
-                case FoldCaioFailure(c2, l2, head, tail) =>
-                  val handler:FoldCaio[C, V, L, B] =
-                    try foldCaio(f(NonEmptyList(head, tail)), c2, l2)
-                    catch { case NonFatal(ex) => FoldCaioError(c2, l2, ex) }
-                  handler match {
-                    case FoldCaioIO(io2) =>
-                      io2
-                    case p: FoldCaioPure[C, V, L, B] =>
-                      IO.pure(p)
-                  }
-                case p: FoldCaioPure[C, V, L, B] =>
-                  IO.pure(p)
-              }
-              FoldCaioIO(newIO)
-          }
+          case (TellCaio(l2), Nil) =>
+            FoldCaioSuccess(c, M.combine(l, l2), ())
 
-        case TellCaio(l2) =>
-          FoldCaioSuccess(c, M.combine(l, l2), ())
+          case (ListenCaio(source), list) =>
+            foldCaio(source, c,  l, ((a: Any) => PureCaio[C, V, L, Any](a ->  l)) :: list)
 
-        case ListenCaio(source) =>
-          foldCaio(source, c, l)
-            .flatMap((c2, l2, a) => FoldCaioSuccess(c2, l2, a -> l2))
+          case (CensorCaio(source, f), list) =>
+            safeFold(source, c, l, list).mapL(f)
 
-        case CensorCaio(source, f) =>
-          foldCaio(source, c, l).mapL(f)
+          case (GetContextCaio(), f :: fs) =>
+            foldCaio(f(c), c, l, fs)
 
-        case GetContextCaio() =>
-          FoldCaioSuccess[C, V, L, B](c, l, c.asInstanceOf[B]) //cant seem to remove that one
+          case (GetContextCaio(), Nil) =>
+            FoldCaioSuccess(c, l, c)
 
-        case SetContextCaio(replaceC) =>
-          FoldCaioSuccess[C, V, L, Unit](replaceC, l, ())
-      }
+          case (SetContextCaio(replaceC), f :: fs) =>
+            foldCaio(f(()), replaceC, l, fs)
 
-    foldCaio(caio, c, Monoid.empty[L]).toIO
+          case (SetContextCaio(replaceC), Nil) =>
+            FoldCaioSuccess[C, V, L, Unit](replaceC, l, ())
+        }
+
+      foldCaio(caio, c, l, fs)
+    }
+
+    safeFold(caio, c, Monoid.empty[L], Nil).map(_.asInstanceOf[A]).toIO
   }
 }
