@@ -13,3 +13,9 @@ trait ApplicativeFail[F[_], V] {
 
   def handleFailuresWith[A](fa: F[A])(f: NonEmptyList[V] => F[A]): F[A]
 }
+
+object ApplicativeFail {
+  def apply[F[_], V](implicit AF:ApplicativeFail[F, V]):ApplicativeFail[F, V] =
+    AF
+}
+
