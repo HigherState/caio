@@ -1,6 +1,8 @@
 package caio
 
 import caio.implicits.StaticImplicits
+import caio.mtl.ApplicativeFail
+import cats.effect.{IO, LiftIO}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import cats.Monad.ops._
@@ -35,16 +37,43 @@ class CaioTests extends AsyncFunSpec with Matchers {
     ContentStore(Map("two" -> "two"), Vector(event1, event2, event3), EventMonoid)*/
 
   describe("Caio") {
-    it("should be stack-safe") {
-      def summation(n: Int): CaioT[Int] =
-        Applicative[CaioT].pure(n).flatMap { n =>
-          if (n > 0) 
-            summation(n - 1).map(_ + n)
-          else 
-            Applicative[CaioT].pure(n)
-        }
+    it("should be stack-safe under flatMap") {
+      def summation(n: Long): CaioT[Long] =
+        if (n > 0) {
+          for {
+            a <- Applicative[CaioT].pure(n)
+            c <- summation(n - 1)
+          } yield a + c
+        } else
+          Applicative[CaioT].pure(n)
+      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
+    }
 
-      summation(10000).unsafeRun(Map.empty) shouldBe 50005000
+    it("should be stack-safe under flatmap with IO") {
+      def summation(n: Long): CaioT[Long] =
+        if (n > 0) {
+          for {
+            a <- Applicative[CaioT].pure(n)
+            b <- LiftIO[CaioT].liftIO[Long](IO.delay(a + 5))
+            c <- summation(n - 1)
+          } yield b + c
+        } else
+          Applicative[CaioT].pure(n)
+      summation(1000000).unsafeRun(Map.empty) shouldBe 500005500000L
+    }
+
+    it("should be stack-safe under flatmap with handle Failures") {
+      def summation(n: Long): CaioT[Long] =
+        if (n > 0) {
+
+          val cr = for {
+            a <- Applicative[CaioT].pure(n)
+            c <- summation(n - 1)
+          } yield a + c
+          ApplicativeFail[CaioT, V].handleFailuresWith(cr)(_ => Applicative[CaioT].pure(0L))
+        } else
+          Applicative[CaioT].pure(n)
+      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
     }
   }
 
