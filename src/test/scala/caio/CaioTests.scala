@@ -1,8 +1,9 @@
 package caio
 
+import caio.Failure.Failures
 import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
-import cats.effect.{IO, LiftIO}
+import cats.effect.{IO, LiftIO, Sync}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import cats.Monad.ops._
@@ -60,6 +61,19 @@ class CaioTests extends AsyncFunSpec with Matchers {
         } else
           Applicative[CaioT].pure(n)
       summation(1000000).unsafeRun(Map.empty) shouldBe 500005500000L
+    }
+    it("should be stack-safe under flatmap with Kleisli") {
+      def summation(n: Long): CaioT[Long] =
+        if (n > 0) {
+         for {
+            a <- Applicative[CaioT].pure(n)
+            c <- summation(n - 1)
+            k:CaioT[Long] = KleisliCaio[C, V, L, Long]{ ctx => FoldCaioSuccess(ctx, EventMonoid.empty, a + c)}
+            l <- k
+          } yield l
+        } else
+          Applicative[CaioT].pure(n)
+      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
     }
 
     it("should be stack-safe under flatmap with handle Failures") {
