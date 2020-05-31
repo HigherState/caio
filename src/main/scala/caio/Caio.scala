@@ -234,8 +234,17 @@ object Caio {
             FoldCaioIO(io.redeem(FoldCaioError(c, l, _), FoldCaioSuccess(c, l, _)))
 
           case (KleisliCaio(f), ff :: fs) =>
-            f(c).flatMap { case (c, l, a) =>
-              safeFold(ff(a), c,  l, fs)
+            f(c) match {
+              case FoldCaioSuccess(c, l, a) =>
+                foldCaio(ff(a), c, l , fs)
+              case failure: FoldCaioFailure[_, _, _, _] =>
+                failure
+              case error: FoldCaioError[_, _, _, _] =>
+                error
+              case fold: FoldCaioIO[_, _, _, _] =>
+                fold.flatMap { case (c, l, a) =>
+                  safeFold(ff(a), c,  l, fs)
+                }
             }
 
           case (KleisliCaio(f), Nil) =>
