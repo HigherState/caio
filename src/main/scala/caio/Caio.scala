@@ -68,12 +68,13 @@ final private[caio] case class FailureCaio[C, V, L](head:V, tail:List[V]) extend
 
 final private[caio] case class HandleFailureCaio[C, V, L, +A](source: Caio[C, V, L, A], f: NonEmptyList[V] => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
+final private[caio] case class SetCaio[C, V, L](l: L) extends Caio[C, V, L, Unit]
 
-final private[caio] case class TellCaio[C, V, L](l:L) extends Caio[C, V, L, Unit]
+final private[caio] case class TellCaio[C, V, L](l: L) extends Caio[C, V, L, Unit]
 
 final private[caio] case class ListenCaio[C, V, L, +A](source: Caio[C, V, L, A]) extends Caio[C, V, L, (A, L)]
 
-final private[caio] case class CensorCaio[C, V, L, +A](source: Caio[C, V, L, A], f:L => L) extends Caio[C, V, L, A]
+final private[caio] case class CensorCaio[C, V, L, +A](source: Caio[C, V, L, A], f: L => L) extends Caio[C, V, L, A]
 
 
 final private[caio] case class GetContextCaio[C, V, L]() extends Caio[C, V, L, C]
@@ -215,11 +216,11 @@ object Caio {
      * @tparam B
      * @return
      */
-    def safeFold(caio: Caio[C, V, L, Any], c: C, l: L, fs: List[Any => Caio[C, V, L, Any]]): FoldCaio[C, V, L, Any] = {
-      @tailrec def foldCaio(caio: Caio[C, V, L, Any], c: C, l: L, fs: List[Any => Caio[C, V, L, Any]]): FoldCaio[C, V, L, Any] =
+    def safeFold(caio: Caio[C, V, L, Any], c: C, l: L, fs: List[(C, L, Any) => Caio[C, V, L, Any]]): FoldCaio[C, V, L, Any] = {
+      @tailrec def foldCaio(caio: Caio[C, V, L, Any], c: C, l: L, fs: List[(C, L, Any) => Caio[C, V, L, Any]]): FoldCaio[C, V, L, Any] =
         (caio, fs) match {
           case (PureCaio(a), f :: fs) =>
-            foldCaio(tryOrError(f(a)), c,  l, fs)
+            foldCaio(tryOrError(f(c, l, a)), c,  l, fs)
 
           case (PureCaio(a), Nil) =>
             FoldCaioSuccess(c, l, a)
@@ -227,7 +228,7 @@ object Caio {
           case (IOCaio(io), f :: fs) =>
             FoldCaioIO(io.redeemWith(
               e => IO.pure(FoldCaioError(c, l, e)),
-              a => safeFold(tryOrError(f(a)), c, l, fs).toIO
+              a => safeFold(tryOrError(f(c, l, a)), c, l, fs).toIO
             ))
 
           case (IOCaio(io), Nil) =>
@@ -236,14 +237,14 @@ object Caio {
           case (KleisliCaio(f), ff :: fs) =>
             f(c) match {
               case FoldCaioSuccess(c, l, a) =>
-                foldCaio(ff(a), c, l , fs)
+                foldCaio(ff(c, l, a), c, l, fs)
               case failure: FoldCaioFailure[_, _, _, _] =>
                 failure
               case error: FoldCaioError[_, _, _, _] =>
                 error
               case fold: FoldCaioIO[_, _, _, _] =>
                 fold.flatMap { case (c, l, a) =>
-                  safeFold(ff(a), c,  l, fs)
+                  safeFold(ff(c, l, a), c,  l, fs)
                 }
             }
 
@@ -252,10 +253,10 @@ object Caio {
             catch { case NonFatal(ex) => FoldCaioError(c, l, ex) }
 
           case (MapCaio(source, f), list) =>
-            foldCaio(source, c,  l, f.andThen(PureCaio[C, V, L, Any](_)) :: list)
+            foldCaio(source, c,  l, ((_: C, _: L, a: Any) => PureCaio[C, V, L, Any](f(a))) :: list)
 
           case (BindCaio(source, f), list) =>
-            foldCaio(source, c, l, f :: list)
+            foldCaio(source, c, l, ((_: C, _: L, a: Any) => f(a)) :: list)
 
           case (ErrorCaio(e), _) =>
             FoldCaioError(c, l, e)
@@ -269,7 +270,7 @@ object Caio {
               case p: FoldCaioPure[C, V, L, _] =>
                 p.flatMap { case (c, l, a) =>
                   val f :: fs = list 
-                  safeFold(f(a), c,  l, fs)
+                  safeFold(f(c, l, a), c,  l, fs)
                 }
               case FoldCaioIO(io) =>
                 FoldCaioIO {
@@ -286,7 +287,7 @@ object Caio {
                     case p: FoldCaioPure[C, V, L, _] =>
                       p.flatMap { case (c, l, a) =>
                         val f :: fs = list 
-                        safeFold(f(a), c,  l, fs)
+                        safeFold(f(c, l, a), c,  l, fs)
                       }.toIO
                   }
                 }
@@ -304,7 +305,7 @@ object Caio {
               case p: FoldCaioPure[C, V, L, _] =>
                 p.flatMap { case (c, l, a) =>
                   val f :: fs = list 
-                  safeFold(f(a), c,  l, fs)
+                  safeFold(f(c, l, a), c,  l, fs)
                 }
               case FoldCaioIO(io) =>
                 FoldCaioIO {
@@ -321,32 +322,38 @@ object Caio {
                     case p: FoldCaioPure[C, V, L, _] =>
                       p.flatMap { case (c, l, a) =>
                         val f :: fs = list 
-                        safeFold(f(a), c,  l, fs)
+                        safeFold(f(c, l, a), c,  l, fs)
                       }.toIO
                   }
                 }
             }
 
+          case (SetCaio(l2), f :: fs) =>
+            foldCaio(f(c, l2, ()), c, l2, fs)
+
+          case (SetCaio(l2), Nil) =>
+            FoldCaioSuccess(c, l2, ())
+
           case (TellCaio(l2), f :: fs) =>
-            foldCaio(f(()), c, M.combine(l, l2), fs)
+            foldCaio(f(c, l2, ()), c, M.combine(l, l2), fs)
 
           case (TellCaio(l2), Nil) =>
             FoldCaioSuccess(c, M.combine(l, l2), ())
 
           case (ListenCaio(source), list) =>
-            foldCaio(source, c,  l, ((a: Any) => PureCaio[C, V, L, Any](a ->  l)) :: list)
+            foldCaio(source, c,  l, ((_: C, l: L, a: Any) => PureCaio[C, V, L, Any](a ->  l)) :: list)
 
           case (CensorCaio(source, f), list) =>
-            safeFold(source, c, l, list).mapL(f)
+            foldCaio(source, c, l, ((_: C, l: L, a: Any) => SetCaio[C, V, L](f(l))) :: list)
 
           case (GetContextCaio(), f :: fs) =>
-            foldCaio(f(c), c, l, fs)
+            foldCaio(f(c, l, c), c, l, fs)
 
           case (GetContextCaio(), Nil) =>
             FoldCaioSuccess(c, l, c)
 
           case (SetContextCaio(replaceC), f :: fs) =>
-            foldCaio(f(()), replaceC, l, fs)
+            foldCaio(f(c, l, ()), replaceC, l, fs)
 
           case (SetContextCaio(replaceC), Nil) =>
             FoldCaioSuccess[C, V, L, Unit](replaceC, l, ())
