@@ -7,7 +7,6 @@ import cats.effect.{IO, LiftIO, Sync}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import cats.Monad.ops._
-//import cats.effect.IO
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 class CaioTests extends AsyncFunSpec with Matchers {
@@ -47,7 +46,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield a + c
         } else
           Applicative[CaioT].pure(n)
-      summation(100000).unsafeRun(Map.empty) shouldBe 5000050000L
+      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
     }
 
     it("should be stack-safe under flatmap with IO") {
