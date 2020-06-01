@@ -50,7 +50,7 @@ final private[caio] case class PureCaio[C, V, L, +A](a: A) extends Caio[C, V, L,
 
 final private[caio] case class IOCaio[C, V, L, +A](a: IO[A]) extends Caio[C, V, L, A]
 
-final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => FoldCaio[C, V, L, A]) extends Caio[C, V, L, A]
+final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => FoldCaioIO[C, V, L, A]) extends Caio[C, V, L, A]
 
 
 final private[caio] case class MapCaio[C, V, L, E, +A](source: Caio[C, V, L, E], f: E => A) extends Caio[C, V, L, A]
@@ -243,7 +243,7 @@ object Caio {
             catch { case NonFatal(ex) => FoldCaioError(c, l, ex) }
 
           case (MapCaio(source, f), list) =>
-            foldCaio(source, c,  l, f.andThen(PureCaio[C, V, L, Any](_)) :: list)
+            foldCaio(source, c,  l, f.andThen(PureCaio.apply[C, V, L, Any]) :: list)
 
           case (BindCaio(source, f), list) =>
             foldCaio(source, c, l, f :: list)
