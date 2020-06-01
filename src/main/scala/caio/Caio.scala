@@ -263,6 +263,7 @@ object Caio {
                 FoldCaioSuccess(c, l, a)
             }
           case IOCaio(io) =>
+            //The IO monad will bring this back into stack safety
             FoldCaioIO(io.redeemWith(
               e => safeFold(ErrorCaio(e), c, l, handlers).toIO,
               a => safeFold(PureCaio(a), c, l, handlers).toIO
@@ -272,6 +273,7 @@ object Caio {
             Try(f(c)) match {
               case scala.util.Success(foldIO) =>
                 foldIO.flatMap { case (c, l, a) =>
+                  //The IO monad will bring this back into stack safety
                   safeFold(PureCaio(a), c,  l, handlers)
                 }
               case scala.util.Failure(ex) =>
