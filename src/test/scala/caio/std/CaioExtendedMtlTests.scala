@@ -75,7 +75,7 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers{
       import ContextProjector._
       new Nested1[M]
     }
-    import caio.mtl.Contextual._
+
     val E2 = implicitly[Extender[M, Atomic1]].apply[Atomic2]
     val nested2: Nested2[E2.FE] =  {
       import E2._
@@ -122,7 +122,6 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers{
 
   class ExtendsProvided[
     M[_]:Provider:LiftIO:FunctorListen[*[_], Event]:MonadError[*[_], Throwable]:ApplicativeFail[*[_], Failure]:Sync] {
-    import caio.mtl.Contextual._
 
     val E = implicitly[Provider[M]].apply[Atomic1]
     import E._

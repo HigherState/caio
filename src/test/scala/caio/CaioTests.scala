@@ -1,9 +1,8 @@
 package caio
 
-import caio.Failure.Failures
 import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
-import cats.effect.{IO, LiftIO, Sync}
+import cats.effect.{IO, LiftIO}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import cats.Monad.ops._

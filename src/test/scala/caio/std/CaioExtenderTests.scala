@@ -52,7 +52,6 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   }
 
   class AddAskThreeContext[M[_]:Monad](implicit C:Provider[M]) {
-    import caio.mtl.Contextual._
     import cats.implicits._
 
     val E = C.apply[(String,Int)]
@@ -89,7 +88,6 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   }
 
   class AddAskThreeExtended[M[_]:Monad:Extender[*[_], (String, Boolean)]] {
-    import caio.mtl.Contextual._
 
     val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
     import E._
@@ -112,7 +110,6 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   }
 
   class NestedContext[M[_]:Monad:Provider] {
-    import caio.mtl.Contextual._
     val E = implicitly[Provider[M]].apply[(String, Boolean)]
     import E._
 
@@ -137,7 +134,7 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   }
 
   class DoubleNestedContext[M[_]:Monad:Provider] {
-    import caio.mtl.Contextual._
+
     val E = implicitly[Provider[M]].apply[(String, Boolean)]
     import E._
 
@@ -164,7 +161,6 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
       new AskString[M]
     }
 
-    import caio.mtl.Contextual._
     val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
     import E._
 
@@ -187,7 +183,7 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   }
 
   class ExtenderIntString[M[_]:Monad:Extender[*[_], (Int, String, Boolean)]] {
-    import caio.mtl.Contextual._
+
     val E = implicitly[Extender[M, (Int, String, Boolean)]].apply[Atomic1]
     import E._
 
@@ -204,7 +200,6 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   }
 
   class ExtenderIntBoolean[M[_]:Monad:Extender[*[_], (Int, Boolean, String)]] {
-    import caio.mtl.Contextual._
 
     val E = implicitly[Extender[M, (Int, Boolean, String)]].apply[Atomic2]
     import E._
