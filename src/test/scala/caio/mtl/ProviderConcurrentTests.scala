@@ -52,8 +52,9 @@ class ProviderConcurrentTests {
   class FunctorCheck[M[_]:Provider:Monad] {
     val functor = implicitly[Functor[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateFunctor = new StateFunctor[E.FE]
   }
@@ -61,8 +62,8 @@ class ProviderConcurrentTests {
   class FunctorCheck2[M[_]:Provider:Sync] {
     val functor = implicitly[Functor[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateFunctor = new StateFunctor[E.FE]
   }
@@ -70,8 +71,8 @@ class ProviderConcurrentTests {
   class FunctorCheck3[M[_]:Provider:Concurrent] {
     val functor = implicitly[Functor[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateFunctor = new StateFunctor[E.FE]
   }
@@ -85,8 +86,8 @@ class ProviderConcurrentTests {
 
     val monad = implicitly[Monad[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateApplicative = new StateApplicative[E.FE]
 
@@ -105,8 +106,8 @@ class ProviderConcurrentTests {
 
     val monadError = implicitly[MonadError[M, Throwable]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateApplicative = new StateApplicative[E.FE]
 
@@ -129,8 +130,8 @@ class ProviderConcurrentTests {
 
     val bracket = implicitly[Bracket[M, Throwable]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateApplicative = new StateApplicative[E.FE]
 
@@ -157,8 +158,8 @@ class ProviderConcurrentTests {
 
     val sync = implicitly[Sync[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateApplicative = new StateApplicative[E.FE]
 
@@ -177,8 +178,8 @@ class ProviderConcurrentTests {
 
     val liftIO = implicitly[LiftIO[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val askLiftIO = new AskLiftIO[E.FE]
   }
@@ -199,8 +200,8 @@ class ProviderConcurrentTests {
 
     val async = implicitly[Async[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateApplicative = new StateApplicative[E.FE]
 
@@ -238,8 +239,8 @@ class ProviderConcurrentTests {
 
     val concurrent = implicitly[Concurrent[M]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateApplicative = new StateApplicative[E.FE]
 
@@ -289,8 +290,8 @@ class ProviderConcurrentTests {
 
     val censor = implicitly[ApplicativeCensor[M, L]]
 
-    import Contextual._
-    implicit val E = Provider[M].apply[Int]
+    val E = Provider[M].apply[Int]
+    import E._
 
     val stateApplicative = new StateApplicative[E.FE]
 

@@ -42,9 +42,9 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
 
   class AddAskContext[M[_]](implicit C:Provider[M]) {
-    import caio.mtl.Contextual._
 
-    implicit val E = C.apply[Int]
+    val E = C.apply[Int]
+    import E._
 
     val service = new AskInt[E.FE]
 
@@ -55,7 +55,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
     import caio.mtl.Contextual._
     import cats.implicits._
 
-    implicit val E = C.apply[(String,Int)]
+    val E = C.apply[(String,Int)]
+    import E._
 
     val service1 = new AskInt[E.FE]
 
@@ -90,7 +91,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   class AddAskThreeExtended[M[_]:Monad:Extender[*[_], (String, Boolean)]] {
     import caio.mtl.Contextual._
 
-    implicit val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
+    val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
+    import E._
 
     val service1 = new AskInt[E.FE]
 
@@ -111,12 +113,13 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
   class NestedContext[M[_]:Monad:Provider] {
     import caio.mtl.Contextual._
-    implicit val E = implicitly[Provider[M]].apply[(String, Boolean)]
+    val E = implicitly[Provider[M]].apply[(String, Boolean)]
+    import E._
 
     val service1 = new AskString[E.FE]
     val service2 = new AddAskThreeExtended[E.FE]
 
-    def run(s:String, b:Boolean, i:Int) =
+    def run(s:String, b:Boolean, i:Int): M[(String, (Int, String, (Int, String), (Int, Boolean, String)))] =
       for {
         s1 <- E.apply(s -> b)(service1.run)
         s2 <- E.apply(s -> b)(service2.run(i))
@@ -135,7 +138,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
   class DoubleNestedContext[M[_]:Monad:Provider] {
     import caio.mtl.Contextual._
-    implicit val E = implicitly[Provider[M]].apply[(String, Boolean)]
+    val E = implicitly[Provider[M]].apply[(String, Boolean)]
+    import E._
 
     val service1 = new AskString[E.FE]
     val service2 = new ExtenderStringBoolean[E.FE]
@@ -161,7 +165,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
     }
 
     import caio.mtl.Contextual._
-    implicit val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
+    val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
+    import E._
 
     val service1 = new ExtenderIntString[E.FE]
     val service2 = new ExtenderIntBoolean[E.FE]
@@ -183,7 +188,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
 
   class ExtenderIntString[M[_]:Monad:Extender[*[_], (Int, String, Boolean)]] {
     import caio.mtl.Contextual._
-    implicit val E = implicitly[Extender[M, (Int, String, Boolean)]].apply[Atomic1]
+    val E = implicitly[Extender[M, (Int, String, Boolean)]].apply[Atomic1]
+    import E._
 
     val service1 = new AskIntString[E.FE]
     val service2 = new AskIntBooleanString[E.FE]
@@ -200,7 +206,8 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
   class ExtenderIntBoolean[M[_]:Monad:Extender[*[_], (Int, Boolean, String)]] {
     import caio.mtl.Contextual._
 
-    implicit val E = implicitly[Extender[M, (Int, Boolean, String)]].apply[Atomic2]
+    val E = implicitly[Extender[M, (Int, Boolean, String)]].apply[Atomic2]
+    import E._
 
     val service1 = new AskIntString[E.FE]
     val service2 = new AskIntBooleanString[E.FE]
