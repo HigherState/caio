@@ -12,6 +12,17 @@ trait ApplicativeFail[F[_], V] {
   def failMany[A](failures:NonEmptyList[V]):F[A]
 
   def handleFailuresWith[A](fa: F[A])(f: NonEmptyList[V] => F[A]): F[A]
+
+  def inspect[A](fa: F[A]): F[Either[NonEmptyList[V], A]] =
+    handleFailuresWith(
+      applicative.map(fa)(Right(_): Either[NonEmptyList[V], A])
+    )(e => applicative.pure(Left(e)))
+
+  def resolve[A](fa: F[A])(pf: PartialFunction[NonEmptyList[V], A]): F[A] =
+    handleFailuresWith(fa)(e => (pf.andThen(x => applicative.pure(x)).applyOrElse(e, failMany[A])))
+
+  def resolveWith[A](fa: F[A])(pf: PartialFunction[NonEmptyList[V], F[A]]): F[A] =
+    handleFailuresWith(fa)(e => pf.applyOrElse(e, failMany[A]))
 }
 
 object ApplicativeFail {

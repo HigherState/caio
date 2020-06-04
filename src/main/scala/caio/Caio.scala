@@ -3,7 +3,6 @@ package caio
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.effect.IO
-
 import scala.annotation.tailrec
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -17,17 +16,18 @@ sealed trait Caio[C, V, L, +A] {
    * @param M
    * @return
    */
-  def unsafeRun(c:C)(implicit M:Monoid[L]):A =
-    Caio.foldIO(this, c).unsafeRunSync() match {
-      case FoldCaioSuccess(_, _, a) =>
-        a
-      case FoldCaioFailure(_, _, head, tail) =>
-        throw CaioUnhandledFailuresException(NonEmptyList(head, tail))
-      case FoldCaioError(_, _, ex) =>
-        throw ex
-    }
+  def run(c:C)(implicit M:Monoid[L]):IO[A] =
+    Caio.foldIO(this, c)
+      .map{
+        case FoldCaioSuccess(_, _, a) =>
+          a
+        case FoldCaioFailure(_, _, head, tail) =>
+          throw CaioUnhandledFailuresException(NonEmptyList(head, tail))
+        case FoldCaioError(_, _, ex) =>
+          throw ex
+      }
 
-  def unsafeRunFail(c:C)(implicit M:Monoid[L]):Either[NonEmptyList[V], A] =
+  def runFail(c:C)(implicit M:Monoid[L]):Either[NonEmptyList[V], A] =
     Caio.foldIO(this, c).unsafeRunSync() match {
       case FoldCaioSuccess(_, _, a) =>
         Right(a)
@@ -37,8 +37,8 @@ sealed trait Caio[C, V, L, +A] {
         throw ex
     }
 
-  def unsafeRunContext(c:C)(implicit M:Monoid[L]):(C, L, Either[ErrorOrFailure[V], A]) =
-    Caio.foldIO(this, c).unsafeRunSync() match {
+  def runContext(c:C)(implicit M:Monoid[L]):IO[(C, L, Either[ErrorOrFailure[V], A])] =
+    Caio.foldIO(this, c).map {
       case FoldCaioSuccess(cOut, l, a) =>
         (cOut, l, Right(a))
       case FoldCaioFailure(cOut, l, head, tail) =>
