@@ -20,7 +20,7 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
   type CaioT[A] = Caio[C, V, L, A]
 
   def run[A](c:C, caio:CaioT[A]): (C, L, Either[EoF, A]) = {
-    caio.unsafeRunContext(c)
+    caio.runContext(c).unsafeRunSync()
   }
 
   import caio.mtl.ContextProjector._

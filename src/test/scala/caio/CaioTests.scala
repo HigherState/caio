@@ -45,7 +45,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield a + c
         } else
           Applicative[CaioT].pure(n)
-      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
+      summation(1000000).run(Map.empty).unsafeRunSync() shouldBe 500000500000L
     }
 
     it("should be stack-safe under flatmap with IO") {
@@ -62,7 +62,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield b + c
         } else
           Applicative[CaioT].pure(n)
-      summation(100000).unsafeRun(Map.empty) shouldBe 5000550000L
+      summation(100000).run(Map.empty).unsafeRunSync()shouldBe 5000550000L
     }
     it("should be stack-safe under flatmap with Kleisli") {
       def summation(n: Long): CaioT[Long] =
@@ -75,7 +75,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield l
         } else
           Applicative[CaioT].pure(n)
-      summation(100000).unsafeRun(Map.empty) shouldBe 5000050000L
+      summation(100000).run(Map.empty).unsafeRunSync()  shouldBe 5000050000L
     }
 
     it("should be stack-safe under flatmap with handle Failures") {
@@ -89,7 +89,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           ApplicativeFail[CaioT, V].handleFailuresWith(cr)(_ => Applicative[CaioT].pure(0L))
         } else
           Applicative[CaioT].pure(n)
-      summation(100000).unsafeRun(Map.empty) shouldBe 5000050000L
+      summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000050000L
     }
   }
 
