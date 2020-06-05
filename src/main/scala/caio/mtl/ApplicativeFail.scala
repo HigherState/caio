@@ -1,6 +1,6 @@
 package caio.mtl
 
-import cats.Applicative
+import cats.{Applicative, ApplicativeError, Monad, MonadError}
 import cats.data.NonEmptyList
 
 trait ApplicativeFail[F[_], V] {
@@ -28,5 +28,39 @@ trait ApplicativeFail[F[_], V] {
 object ApplicativeFail {
   def apply[F[_], V](implicit AF:ApplicativeFail[F, V]):ApplicativeFail[F, V] =
     AF
+
+  implicit def applicativeError[F[_], V](implicit AF:ApplicativeFail[F, V]):ApplicativeError[F, NonEmptyList[V]] =
+    new ApplicativeError[F, NonEmptyList[V]]{
+      def raiseError[A](e: NonEmptyList[V]): F[A] =
+        AF.failMany(e)
+
+      def handleErrorWith[A](fa: F[A])(f: NonEmptyList[V] => F[A]): F[A] =
+        AF.resolveWith(fa){case nel => f(nel)}
+
+      def pure[A](x: A): F[A] =
+        AF.applicative.pure(x)
+
+      def ap[A, B](ff: F[A => B])(fa: F[A]): F[B] =
+        AF.applicative.ap(ff)(fa)
+    }
+
+  implicit def monadError[F[_], V](implicit AF:ApplicativeFail[F, V], M:Monad[F]):MonadError[F, NonEmptyList[V]] =
+    new MonadError[F, NonEmptyList[V]] {
+
+      def raiseError[A](e: NonEmptyList[V]): F[A] =
+        AF.failMany(e)
+
+      def handleErrorWith[A](fa: F[A])(f: NonEmptyList[V] => F[A]): F[A] =
+        AF.resolveWith(fa){case nel => f(nel)}
+
+      def pure[A](x: A): F[A] =
+        AF.applicative.pure(x)
+
+      def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B] =
+        M.flatMap(fa)(f)
+
+      def tailRecM[A, B](a: A)(f: A => F[Either[A, B]]): F[B] =
+        M.tailRecM(a)(f)
+    }
 }
 
