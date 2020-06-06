@@ -3,7 +3,7 @@ package caio.std
 import caio._
 import caio.implicits.StaticImplicits
 import cats.effect.{IO, LiftIO, Sync}
-import cats.{Applicative, MonadError}
+import cats.{Applicative, MonadError, Monoid}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorTell, MonadState}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
@@ -24,7 +24,9 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
   }
 
   import caio.mtl.ContextProjector._
-  val implicits = new StaticImplicits[C, V, L]()
+  val implicits = new StaticImplicits[C, V, L]{
+    protected implicit def ML: Monoid[L] = EventMonoid
+  }
   import implicits._
   import cats.Monad.ops._
 

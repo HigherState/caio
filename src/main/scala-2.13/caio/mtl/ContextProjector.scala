@@ -2,7 +2,7 @@ package caio.mtl
 
 import cats.mtl.{ApplicativeAsk, MonadState}
 import io.typechecked.alphabetsoup.Mixer
-import shapeless.=:!=
+import shapeless.{=:!=, LowPriority}
 
 trait ContextProjector {
 
@@ -30,6 +30,12 @@ trait ContextProjector {
     (implicit MS:MonadState[M, A], M:Mixer[A, B]):StateProjection[M, B] =
     StateProjection{
       new MixedMonadState[M, A, B](MS)
+    }
+
+  implicit def stateAskProjection[M[_], A, B]
+    (implicit MS:MonadState[M, A], M:Mixer[A, B], ev: LowPriority):AskProjection[M, B] =
+    AskProjection[M, B]{
+      new MixedState2ApplicativeAsk(MS)
     }
 
   implicit def extenderStateProjection[M[_], A, B]

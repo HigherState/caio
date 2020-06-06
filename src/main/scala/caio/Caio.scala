@@ -9,6 +9,11 @@ import scala.util.control.NonFatal
 
 sealed trait Caio[C, V, L, +A] {
 
+  def map[B](f:A => B):Caio[C, V, L, B] =
+    MapCaio(this, f)
+
+  def flatMap[B](f:A => Caio[C, V, L, B]):Caio[C, V, L, B] =
+    BindCaio(this, f)
   /**
    * Exceptions in stack will get thrown,
    * Failures will get thrown as CaioUnhandledFailuresException
@@ -206,6 +211,18 @@ object Caio {
   private def pureUnit = PureCaio[Unit, Unit, Unit, Unit](())
   def unit[C, V, L]:Caio[C, V, L, Unit] =
     pureUnit.asInstanceOf[Caio[C, V, L, Unit]]
+
+  def pure[C, V, L, A](a:A):Caio[C, V, L, A] =
+    PureCaio(a)
+
+  def raiseError[C, V, L](ex:Throwable):Caio[C, V, L, Unit] =
+    ErrorCaio(ex)
+
+  def fail[C, V, L](failure:V, failures:V*):Caio[C, V, L,  Unit] =
+    FailureCaio(failure, failures.toList)
+
+  def failMany[C, V, L](failures:NonEmptyList[V]):Caio[C, V, L,  Unit] =
+    FailureCaio(failures.head, failures.tail)
 
   private[caio] def foldIO[C, V, L, A](caio: Caio[C, V, L, A], c: C)(implicit M:Monoid[L]): IO[FoldCaioPure[C, V, L, A]] = {
     type Continuation = (C, L, Any) => Caio[C, V, L, Any]

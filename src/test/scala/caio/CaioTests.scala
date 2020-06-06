@@ -2,6 +2,7 @@ package caio
 
 import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
+import cats.Monoid
 import cats.effect.{IO, LiftIO}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
@@ -21,7 +22,9 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
   type CaioT[A] = Caio[C, Failure, EventLog, A]
 
-  val implicits = new StaticImplicits[C, V, L]()
+  val implicits = new StaticImplicits[C, V, L] {
+    protected implicit def ML: Monoid[L] = EventMonoid
+  }
   import implicits._
   
 

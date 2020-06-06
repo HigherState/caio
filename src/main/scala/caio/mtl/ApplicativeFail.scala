@@ -29,6 +29,17 @@ object ApplicativeFail {
   def apply[F[_], V](implicit AF:ApplicativeFail[F, V]):ApplicativeFail[F, V] =
     AF
 
+  implicit def fromApplicativeError[F[_], V](implicit AE: ApplicativeError[F, NonEmptyList[V]]): ApplicativeFail[F, V] =
+    new ApplicativeFail[F, V] {
+      val applicative: Applicative[F] = AE
+
+      def failMany[A](failures: NonEmptyList[V]): F[A] =
+        AE.raiseError(failures)
+
+      def handleFailuresWith[A](fa: F[A])(f: NonEmptyList[V] => F[A]): F[A] =
+        AE.handleErrorWith(fa)(f)
+    }
+
   implicit def applicativeError[F[_], V](implicit AF:ApplicativeFail[F, V]):ApplicativeError[F, NonEmptyList[V]] =
     new ApplicativeError[F, NonEmptyList[V]]{
       def raiseError[A](e: NonEmptyList[V]): F[A] =

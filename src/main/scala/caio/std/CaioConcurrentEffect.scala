@@ -60,7 +60,7 @@ class CaioConcurrentEffect[C, V, L:Monoid]
     Caio
       .foldIO(fa, c)
       .runCancelable(handle(_, cb))
-      .map(IOCaio(_))
+      .map(IOCaio(_)) //dont use liftIO here
 
   def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
     Caio
