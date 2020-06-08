@@ -183,7 +183,7 @@ final private[caio] case class FoldCaioError[C, V, L, +A](c:C, l:L, e:Throwable)
 }
 final private[caio] case class FoldCaioIO[C, V, L, +A](io:IO[FoldCaioPure[C, V, L, A]]) extends FoldCaio[C, V, L, A] {
 
-  def contextMap[C2](f: C => C2): FoldCaio[C2, V, L, A] =
+  def contextMap[C2](f: C => C2): FoldCaioIO[C2, V, L, A] =
     FoldCaioIO[C2, V, L, A](io.map(_.contextMap(f)))
 
   def flatMap[B](f: (C, L, A) => FoldCaio[C, V, L, B]): FoldCaio[C, V, L, B] = {
@@ -288,10 +288,18 @@ object Caio {
 
           case KleisliCaio(f) =>
             Try(f(c)) match {
+                //Doesnt support Error or Failure handling
               case scala.util.Success(foldIO) =>
-                foldIO.flatMap { case (c, l, a) =>
-                  //The IO monad will bring this back into stack safety
-                  safeFold(PureCaio(a), c,  l, handlers)
+                FoldCaioIO {
+                  foldIO.io.flatMap {
+                    case FoldCaioSuccess(c, l, a) =>
+                      //The IO monad will bring this back into stack safety
+                      safeFold(PureCaio(a), c, l, handlers).toIO
+                    case FoldCaioFailure(c, l, head, tail) =>
+                      safeFold(FailureCaio(head, tail), c, l, handlers).toIO
+                    case FoldCaioError(c, l, ex) =>
+                      safeFold(ErrorCaio(ex), c, l, handlers).toIO
+                  }
                 }
               case scala.util.Failure(ex) =>
                 foldCaio(ErrorCaio(ex), c, l, handlers)
@@ -335,7 +343,7 @@ object Caio {
             foldCaio(source, c,  l, OnSuccess((_, l, a) => PureCaio(a -> l)) :: handlers)
 
           case CensorCaio(source, f) =>
-            foldCaio(source, c, l, OnSuccess((_, l, _) => SetCaio(f(l))) :: handlers)
+            foldCaio(source, c, l, OnSuccess((_, l, a) => BindCaio(SetCaio(f(l)), (_:Unit) => PureCaio(a))) :: handlers)
 
           case GetContextCaio() =>
             foldCaio(PureCaio(c), c, l, handlers)

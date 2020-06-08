@@ -1,15 +1,16 @@
 package caio.std
 
-import caio.{Caio, Failure}
+import caio.{Caio, Event, Failure}
 import caio.Event.EventLog
-import caio.mtl.{ContextProjector, Extender, Provider}
-import cats.effect.Effect
-import cats.{Functor, Monad}
+import caio.implicits.StaticImplicits
+import caio.mtl.{ContextProjector, Extender, ExtendsOn, Provider}
+import cats.effect.{Effect, Sync}
+import cats.{Functor, Monad, Monoid}
 import cats.mtl.ApplicativeAsk
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 
-class CaioExtenderTests  extends AsyncFunSpec with Matchers{
+class CaioExtenderTests extends AsyncFunSpec with Matchers{
   import cats.implicits._
   type CaioT[A] = Caio[Unit, Failure, EventLog, A]
 
@@ -228,6 +229,44 @@ class CaioExtenderTests  extends AsyncFunSpec with Matchers{
         ("test",("test",((1,"test"),(1,false,"test"),a1),((1,"test"),(1,false,"test"),a2),1))
       )
     }
+  }
+
+  class ApplyDown[
+    F[_]:Sync:Extender[*[_], Int],
+    FC[_]:ExtendsOn[*[_], F, String]
+  ](f:AskInt[F], fc:AskIntString[FC]) {
+
+    val E = implicitly[Extender[F, Int]].apply[Atomic1]
+    import E._
+
+    val service1 = new AskAtomic1[E.FE]
+
+    def eval(s:String):F[(Int, String)] = {
+      for {
+        i <- f.run
+        p <- implicitly[ExtendsOn[FC, F, String]].bijectionK(s).unapply(fc.run)
+      } yield (p._1 + i) -> p._2
+    }
+  }
+
+  describe("Extends On") {
+    type CI[A] = Caio[Int, Failure, EventLog, A]
+    type CIC[A] = Caio[(Int, String), Failure, EventLog, A]
+    val a = new StaticImplicits[Int, Failure, EventLog] {
+      protected def ML: Monoid[EventLog] = Event.EventMonoid
+    }
+    //import a._
+    //import ContextProjector._
+    //import CaioProvider._
+
+//    val ai = new AskInt[CI]
+//    val ais = new AskIntString[CIC]
+//    val ad = new ApplyDown(ai, ais)
+//
+//    it("Should evaluate the value") {
+//      ad.eval("test").run(3).unsafeRunSync() shouldBe (6 -> "Test")
+//    }
+
   }
 
 }

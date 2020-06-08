@@ -3,7 +3,7 @@ import cats.data.NonEmptyList
 
 package object caio {
 
-  type <~>[F[_], G[_]] = NaturalIsomorphism[F, G]
+  type <~>[F[_], G[_]] = BijectionK[F, G]
 
   type ErrorOrFailure[V] = Throwable Either NonEmptyList[V]
 

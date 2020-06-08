@@ -3,7 +3,8 @@ package caio
 import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
 import cats.Monoid
-import cats.effect.{IO, LiftIO}
+import cats.effect.IO.Async
+import cats.effect.{IO, LiftIO, Sync}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import cats.Monad.ops._
@@ -38,7 +39,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
   val simpleState12:Store[C, L] =
     ContentStore(Map("two" -> "two"), Vector(event1, event2, event3), EventMonoid)*/
 
-  describe("Caio") {
+  describe("Stack safety") {
     it("should be stack-safe under flatMap") {
       def summation(n: Long): CaioT[Long] =
         if (n > 0) {
@@ -93,6 +94,53 @@ class CaioTests extends AsyncFunSpec with Matchers {
         } else
           Applicative[CaioT].pure(n)
       summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000050000L
+    }
+  }
+
+  describe("Failure Handling") {
+    it("Should handle failure event") {
+      val program = {
+        for {
+          a <- Applicative[CaioT].pure(3)
+          _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(a.toString))
+        } yield a
+      }
+      val handled =
+        ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
+
+      handled.run(Map.empty).unsafeRunSync() shouldBe 4
+
+    }
+    it("Should handle failure event after IO") {
+      val program = {
+        for {
+          a <- Applicative[CaioT].pure(3)
+          b <- LiftIO[CaioT].liftIO(IO.delay(6))
+          _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(b.toString))
+          c <- LiftIO[CaioT].liftIO(IO.delay(6))
+        } yield a + b + c
+      }
+      val handled =
+        ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
+
+      handled.run(Map.empty).unsafeRunSync() shouldBe 4
+
+    }
+
+    it("Should handle failure event after Kleisli") {
+      val program = {
+        for {
+          a <- Applicative[CaioT].pure(3)
+          b <- Sync[CaioT].suspend(Applicative[CaioT].pure(7))
+          _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(b.toString))
+          c <- LiftIO[CaioT].liftIO(IO.delay(6))
+        } yield a + b + c
+      }
+      val handled =
+        ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
+
+      handled.run(Map.empty).unsafeRunSync() shouldBe 4
+
     }
   }
 

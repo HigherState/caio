@@ -4,7 +4,6 @@ import caio.Event._
 import caio.implicits.StaticImplicits
 import caio.{Caio, Failure}
 import cats.Monoid
-import cats.effect.concurrent.Ref
 import cats.effect.{Clock, ContextShift, IO, Timer}
 import org.scalatest.{AsyncFunSpec, Matchers}
 

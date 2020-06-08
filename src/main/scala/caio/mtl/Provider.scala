@@ -1,18 +1,27 @@
 package caio.mtl
 
 import caio.<~>
-import cats.{Applicative, Functor, Monad, MonadError}
+import cats.{Applicative, Functor, Monad, MonadError, ~>}
 import cats.effect.{Async, Bracket, Concurrent, ConcurrentEffect, LiftIO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorListen, FunctorTell, MonadState}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
 trait Extender[F[_], E1] {
+
   def apply[E2](implicit EV: E1 =:!= E2):Extends[F, E1, E2]
 
   def applicativeAsk:ApplicativeAsk[F, E1]
 
   def monadState:MonadState[F, E1]
+
+}
+
+trait ExtendsOn[F[_], Source[_], Context] extends Extender[F, Context] {
+
+  def functionK: Source ~> F
+
+  def bijectionK(e2: Context): Source <~> F
 }
 
 
@@ -30,6 +39,8 @@ trait Extends[F[_], E1, E2] {
   // E3 has to be purely a recombination of E1, and E2 otherwise we cannot perform an unapply
   // Inverse includes Unit so we can map back when E1 may be Unit
   def extender[E3](implicit M: Mixer[(E1, E2), E3], I: Mixer[(E3, Unit), (E1, E2)]):Extender[FE, E3]
+
+  def functionK: F ~> FE
 
   def apply(e2: E2): FE <~> F
 
