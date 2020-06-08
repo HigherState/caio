@@ -7,9 +7,7 @@ import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
 import cats.{Monad, Monoid}
 
-trait StaticImplicits[C, V, L]{
-
-  protected def ML:Monoid[L]
+abstract class StaticImplicits[C, V, L](implicit val ML:Monoid[L]){
 
   implicit val staticCaioMonad:Monad[Caio[C,V,L, *]] =
     new CaioMonad[C, V, L]

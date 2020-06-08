@@ -7,13 +7,10 @@ import cats.{Monad, Monoid}
 import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
 
-trait DynamicContextImplicits[V, L] { parent =>
+abstract class DynamicContextImplicits[V, L](implicit val ML:Monoid[L]) { parent =>
 
-  protected def ML: Monoid[L]
-
-  private val static: StaticImplicits[Unit, V, L] = new StaticImplicits[Unit, V, L] {
-    protected def ML: Monoid[L] = parent.ML
-  }
+  private val static: StaticImplicits[Unit, V, L] =
+    new StaticImplicits[Unit, V, L]()(ML) {}
 
   implicit def dynamicCaioMonad[C]: Monad[Caio[C, V, L, *]] =
     static.staticCaioMonad.asInstanceOf[Monad[Caio[C, V, L, *]]]
