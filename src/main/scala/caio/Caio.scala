@@ -32,8 +32,8 @@ sealed trait Caio[C, V, L, +A] {
           throw ex
       }
 
-  def runFail(c:C)(implicit M:Monoid[L]):Either[NonEmptyList[V], A] =
-    Caio.foldIO(this, c).unsafeRunSync() match {
+  def runFail(c:C)(implicit M:Monoid[L]):IO[Either[NonEmptyList[V], A]] =
+    Caio.foldIO(this, c).map{
       case FoldCaioSuccess(_, _, a) =>
         Right(a)
       case FoldCaioFailure(_, _, head, tail) =>
