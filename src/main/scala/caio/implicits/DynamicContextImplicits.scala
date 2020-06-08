@@ -7,7 +7,7 @@ import cats.{Monad, Monoid}
 import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
 
-abstract class DynamicContextImplicits[V, L](implicit val ML:Monoid[L]) { parent =>
+class DynamicContextImplicits[V, L](implicit ML:Monoid[L]) { parent =>
 
   private val static: StaticImplicits[Unit, V, L] =
     new StaticImplicits[Unit, V, L]()(ML) {}

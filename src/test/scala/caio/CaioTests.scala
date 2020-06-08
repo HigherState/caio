@@ -23,9 +23,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
   type CaioT[A] = Caio[C, Failure, EventLog, A]
 
-  val implicits = new StaticImplicits[C, V, L] {
-    protected implicit def ML: Monoid[L] = EventMonoid
-  }
+  val implicits = new StaticImplicits[C, V, L]
   import implicits._
   
 
