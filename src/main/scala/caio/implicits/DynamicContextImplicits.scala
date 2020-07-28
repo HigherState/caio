@@ -1,10 +1,10 @@
 package caio.implicits
 
 import caio.Caio
-import caio.mtl.ApplicativeFail
-import caio.std.{CaioApplicativeAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioMonadState, CaioSync}
+import caio.mtl.{ApplicativeFail, Effectful}
+import caio.std.{CaioApplicativeAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioEffectful, CaioMonadState, CaioSync}
 import cats.{Monad, Monoid}
-import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
+import cats.effect.{Async, Concurrent, ConcurrentEffect, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
 
 class DynamicContextImplicits[V, L](implicit ML:Monoid[L]) { parent =>
@@ -38,5 +38,8 @@ class DynamicContextImplicits[V, L](implicit ML:Monoid[L]) { parent =>
 
   implicit def dynamicCaioMonadState[C]: MonadState[Caio[C, V, L, *], C] =
     new CaioMonadState[C, V, L]
+
+  implicit def dynamicCaioEffectful[C](implicit CE:ConcurrentEffect[Caio[Unit, V, L, *]]): Effectful[Caio[C, V, L, *]] =
+    new CaioEffectful[C, V, L](dynamicCaioApplicativeAsk[C], CE)
 
 }

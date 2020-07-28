@@ -6,6 +6,7 @@ import cats.effect._
 class ConcurrentEffectIsomorphism[F[_], G[_]](
   concurrentEffect:ConcurrentEffect[G],
   isomorphism: F <~> G)(implicit C:Concurrent[F]) extends ConcurrentEffect[F]{
+
   def runCancelable[A](fa: F[A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[F]] =
     concurrentEffect.runCancelable(isomorphism(fa))(cb)
       .map(isomorphism.unapply)

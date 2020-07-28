@@ -109,7 +109,10 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
       run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
     it("Should capture exception if map") {
-      pending
+      val f =
+        Applicative[CaioT].pure("a")
+          .map{a => throw Exception.exception1}
+      run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
   }
 
