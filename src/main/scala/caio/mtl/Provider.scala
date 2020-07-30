@@ -29,8 +29,8 @@ trait Extends[F[_], E1, E2] {
 
   type FE[A]
 
-  def concurrentEffect(c:E2)(implicit CE:ConcurrentEffect[F], C:Concurrent[F]):ConcurrentEffect[FE] =
-    new ConcurrentEffectIsomorphism[FE, F](CE, apply(c))(transformConcurrent(C))
+  def concurrentEffect(c:E2)(implicit CE:ConcurrentEffect[F]):ConcurrentEffect[FE] =
+    new ConcurrentEffectIsomorphism[FE, F](CE, apply(c))
 
   def applicativeAsk:ApplicativeAsk[FE, (E1, E2)]
 
