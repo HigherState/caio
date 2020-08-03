@@ -215,13 +215,13 @@ object Caio {
   def pure[C, V, L, A](a:A):Caio[C, V, L, A] =
     PureCaio(a)
 
-  def raiseError[C, V, L](ex:Throwable):Caio[C, V, L, Unit] =
+  def raiseError[C, V, L](ex:Throwable):Caio[C, V, L, Nothing] =
     ErrorCaio(ex)
 
-  def fail[C, V, L](failure:V, failures:V*):Caio[C, V, L,  Unit] =
+  def fail[C, V, L](failure:V, failures:V*):Caio[C, V, L,  Nothing] =
     FailureCaio(failure, failures.toList)
 
-  def failMany[C, V, L](failures:NonEmptyList[V]):Caio[C, V, L,  Unit] =
+  def failMany[C, V, L](failures:NonEmptyList[V]):Caio[C, V, L,  Nothing] =
     FailureCaio(failures.head, failures.tail)
 
   private[caio] def foldIO[C, V, L, A](caio: Caio[C, V, L, A], c: C)(implicit M:Monoid[L]): IO[FoldCaioPure[C, V, L, A]] = {
