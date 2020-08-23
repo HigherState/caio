@@ -7,6 +7,11 @@ import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorListen, FunctorTell, 
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
+/**
+ * There are 2 cases of extending a monad context.
+ * @tparam F
+ * @tparam E1
+ */
 trait Extender[F[_], E1] {
 
   def apply[E2](implicit EV: E1 =:!= E2):Extends[F, E1, E2]
