@@ -6,7 +6,7 @@ trait Expander[M[_], A] {
 }
 
 
-trait Expands[M2[_], M[_], A] {
+trait Expands[M2[_], M[_], A] extends TransformMtl[M2, M] {
 
   def apply[T](a: A, m:M2[T]):M[T]
 
@@ -14,38 +14,14 @@ trait Expands[M2[_], M[_], A] {
 
 }
 
-//class Expanded[M[_], A, B](implicit sourceApplicativeAsk: ApplicativeAsk[M, A]) {
-//  type M2[_]
-//
-//  implicit def applicativeAsk:ApplicativeAsk[M2, (A, B)]
-//}
-
-
-
 trait Expanded[M[_], A, B] {
   type M2[_]
-
-  //implicit def monadState:MonadState[M2, (A, B)]
 
   implicit def expands:Expands[M2, M, B] with Expander[M2, (A, B)]
 
   def apply[T](b:B)(m:M2[T]):M[T]
 }
 
-//class BlahTemp {
-//
-//
-//  def function[
-//    M[_]:Monad:LiftIO,
-//    M2[_]:Expands[M2, ?[_], String]]:Int = {
-//
-//  }
-//
-//  def grow[M[_]:Monad:LiftIO:Expander[?[_], Unit] = {
-//
-//    val expander = expands[M, Unit, String]
-//  }
-//}
 
 object Expander {
 

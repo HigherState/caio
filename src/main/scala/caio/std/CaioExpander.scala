@@ -37,6 +37,53 @@ class CaioExpanded[A, B, V, L:Monoid] extends Expanded[Caio[A, V, L, *], A, B] {
 
       def expand[B2]: Expanded[Caio[(A,B), V, L, *], (A, B), B2] =
         new CaioExpanded[(A, B), B2, V, L]
+
+      def transformApplicative(A:Applicative[Caio[A, V, L, *]]):Applicative[M2] =
+        A.asInstanceOf[Applicative[M2]]
+
+      def transformFunctor(F:Functor[Caio[A, V, L, *]]):Functor[M2] =
+        F.asInstanceOf[Functor[M2]]
+
+      def transformMonad(M:Monad[Caio[A, V, L, *]]):Monad[M2] =
+        M.asInstanceOf[Monad[M2]]
+
+      def transformMonadError[E](M:MonadError[Caio[A, V, L, *], E]):MonadError[M2, E] =
+        M.asInstanceOf[MonadError[M2, E]]
+
+      def transformBracket[E](M:Bracket[Caio[A, V, L, *], E]):Bracket[M2, E] =
+        M.asInstanceOf[Bracket[M2, E]]
+
+      def transformSync(S:Sync[Caio[A, V, L, *]]):Sync[M2] =
+        S.asInstanceOf[Sync[M2]]
+
+      def transformAsync(A:Async[Caio[A, V, L, *]]):Async[M2] =
+        A.asInstanceOf[Async[M2]]
+
+      def transformLiftIO(L:LiftIO[Caio[A, V, L, *]]):LiftIO[M2] =
+        L.asInstanceOf[LiftIO[M2]]
+
+      def transformConcurrent(C:Concurrent[Caio[A, V, L, *]]):Concurrent[M2] =
+        C.asInstanceOf[Concurrent[M2]]
+
+      def transformApplicativeFail[V2](A:ApplicativeFail[Caio[A, V, L, *], V2]):ApplicativeFail[M2, V2] =
+        A.asInstanceOf[ApplicativeFail[M2, V2]]
+
+      def transformFunctorTell[L2](F:FunctorTell[Caio[A, V, L, *], L2]):FunctorTell[M2, L2] =
+        F.asInstanceOf[FunctorTell[M2, L2]]
+
+      def transformFunctorListen[L2](F:FunctorListen[Caio[A, V, L, *], L2]):FunctorListen[M2, L2] =
+        F.asInstanceOf[FunctorListen[M2, L2]]
+
+      def transformApplicativeCensor[L2](F:ApplicativeCensor[Caio[A, V, L, *], L2]):ApplicativeCensor[M2, L2] =
+        F.asInstanceOf[ApplicativeCensor[M2, L2]]
+
+      def transformClock(C: Clock[Caio[A, V, L, *]]): Clock[M2] =
+        C.asInstanceOf[Clock[M2]]
+
+      def transformTimer(T: Timer[Caio[A, V, L, *]]): Timer[M2] =
+        T.asInstanceOf[Timer[M2]]
+
+      def transformEffectful(E: Effectful[Caio[A, V, L, *]]): Effectful[Caio[(A, B), V, L, *]] = ???
     }
 
   def apply[T](b: B)(m: Caio[(A, B), V, L, T]): Caio[A, V, L, T] =

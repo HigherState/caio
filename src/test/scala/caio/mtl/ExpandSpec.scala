@@ -141,71 +141,76 @@ class ExpandSpec {
     val string3 = new AskString[e.M2]
   }
 
-//  class AddContextMixed2[M[_]:Extender[*[_], (Int, String)]] {
-//
-//    val (string2, intString, intString2) = {
-//      (new AskString[M], new AskIntString[M], new StateIntString[M])
-//    }
-//
-//    val e = implicitly[Extender[M, (Int, String)]].apply[Boolean]
-//    import e._
-//
-//    val service = new AskInt[e.FE]
-//
-//    val service2 = new AskIntString[e.FE]
-//
-//    val service3 = new StateIntString[e.FE]
-//
-//    val service4 = new StateAskIntBooleanString[e.FE]
-//
-//    val string1 = new AskString[e.FE]
-//  }
-//
-//
-//  class DoubleExtended[M[_]:Extender[*[_], Int]] {
-//
-//    //Cannot have 2 Extends implicits in scope at the same time
-//    val ES: Extends[M, Int, String] = implicitly[Extender[M, Int]].apply[String]
-//    val service1:AskIntString[ES.FE] = {
-//      import ES._
-//      new AskIntString[ES.FE]
-//    }
-//
-//    val EB: Extends[M, Int, Boolean] = implicitly[Extender[M, Int]].apply[Boolean]
-//    val service2 = {
-//      import EB._
-//      new AskIntBoolean[EB.FE]
-//    }
-//
-//    def run():(M[(Int, String)], M[(Int, Boolean)]) =
-//      ES.apply("String")(service1.run) ->
-//      EB.apply(false)(service2.run)
-//
-//
-//  }
-//
-//  class DoubleExtendedHierarchical[M[_]:Extender[*[_], Int]] {
-//
-//    //Cannot have 2 Extends implicits in scope at the same time
-//    val ES = implicitly[Extender[M, Int]].apply[Boolean]
-//    val service1:AskIntBoolean[ES.FE] = {
-//      import ES._
-//      new AskIntBoolean[ES.FE]
-//    }
-//
-//   val EB = ES.extender.apply[String]
-//    val service2 = {
-//      import EB._
-//      new AskIntBooleanString[EB.FE]
-//    }
-//
-//    def run() =
-//      ES.apply(false)(service1.run) ->
-//        ES.apply(false)(EB.apply("bob")(service2.run))
-//
-//
-//  }
-//
+  class AddContextMixed2[M[_]:Expander[*[_], (Int, String)]] {
+    import ContextProjector._
+
+    val (string2, intString, intString2) = {
+      (new AskString[M], new AskIntString[M], new StateIntString[M])
+    }
+
+    val e = Expander.expand[M, (Int, String), Boolean]
+    import e._
+
+    val service = new AskInt[e.M2]
+
+    val service2 = new AskIntString[e.M2]
+
+    val service3 = new StateIntString[e.M2]
+
+    val service4 = new StateAskIntBooleanString[e.M2]
+
+    val string1 = new AskString[e.M2]
+  }
+
+
+  class DoubleExpanded[M[_]:Expander[*[_], Int]] {
+    import ContextProjector._
+    //Cannot have 2 Extends implicits in scope at the same time
+    val ES = Expander.expand[M, Int, String]
+    val service1:AskIntString[ES.M2] = {
+      import ES._
+      new AskIntString[ES.M2]
+    }
+
+    val EB = Expander.expand[M, Int, Boolean]
+    val service2 = {
+      import EB._
+      new AskIntBoolean[EB.M2]
+    }
+
+    def run():(M[(Int, String)], M[(Int, Boolean)]) =
+      ES.apply("String")(service1.run) ->
+      EB.apply(false)(service2.run)
+
+
+  }
+
+  class DoubleExtendedHierarchical[M[_]:Expander[*[_], Int]] {
+    import ContextProjector._
+
+    //Cannot have 2 Extends implicits in scope at the same time
+    val ES = Expander.expand[M, Int, Boolean]
+
+    val service1:AskIntBoolean[ES.M2] = {
+      import ES._
+      new AskIntBoolean[ES.M2]
+    }
+
+    val EB: Expanded[ES.M2, (Int, Boolean), String] = ES.expands.expand[String]
+    val service2 = {
+      import EB._
+//TODO: Why wont this resolve
+      val c = ContextProjector.expanderAskProjection[EB.M2, ((Int, Boolean), String), (Int, Boolean, String)]
+      new AskIntBooleanString[EB.M2]()(c.A)
+    }
+
+    def run() =
+      ES.apply(false)(service1.run) ->
+        ES.apply(false)(EB.apply("bob")(service2.run))
+
+
+  }
+
 
 
   class ExpandsDependency[M[_], MC[_]:Expands[*[_], M, Int]]
@@ -239,17 +244,8 @@ class ExpandSpec {
     M2[_]:Expands[*[_], M, Int]
   ]{
     import ContextProjector._
-
-    val a = new AskIntString[M2]
-  }
-
-  class ExpandsState2Ask[
-    M[_]:MonadState[*[_], String],
-    M2[_]:Expands[*[_], M, Int]
-  ]{
-    import ContextProjector._
-
-    val a = new AskIntString[M2]
+    val AP = ContextProjector.expandsApplicativeAskAskProjection[M, M2, String, Int, (Int, String)]
+    val a = new AskIntString[M2]()(AP.A)
   }
 
   class ExpandsExpander2Ask[
@@ -279,5 +275,13 @@ class ExpandSpec {
     val a = new StateIntString[M2]
   }
 
+  class ExpandsState2Ask[
+    M[_]:MonadState[*[_], Int],
+    M2[_]:Expands[*[_], M, String]
+  ]{
+    import ContextProjector._
+
+    val a = new AskIntString[M2]
+  }
 
 }
