@@ -53,9 +53,9 @@ trait ContextProjector {
   (implicit E:Expands[M2, M, B], E2:Expander[M, A], M:Mixer[(A, B), C]):AskProjection[M2, C] =
     ???
 
-  implicit def expandsExpanderStateProjection[M[_], M2[_], A, B, C]
-  (implicit E:Expands[M2, M, B], E2:Expander[M, A], M:Mixer[(A, B), C]):StateProjection[M2, C] =
-    ???
+//  implicit def expandsExpanderStateProjection[M[_], M2[_], A, B, C]
+//  (implicit E:Expands[M2, M, B], E2:Expander[M, A], M:Mixer[(A, B), C]):StateProjection[M2, C] =
+//    ???
 
   implicit def expandsApplicativeMonadStateStateProjection[M[_], M2[_], A, B, C]
   (implicit E:Expands[M2, M, B], A:MonadState[M, A], M:Mixer[(A, B), C]):StateProjection[M2, C] =
