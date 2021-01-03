@@ -1,13 +1,13 @@
 package caio
 
-import caio.Failure.Failures
 import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
+import cats.Monoid
+import cats.effect.IO.Async
 import cats.effect.{IO, LiftIO, Sync}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import cats.Monad.ops._
-//import cats.effect.IO
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 class CaioTests extends AsyncFunSpec with Matchers {
@@ -23,7 +23,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
   type CaioT[A] = Caio[C, Failure, EventLog, A]
 
-  val implicits = new StaticImplicits[C, V, L]()
+  val implicits = new StaticImplicits[C, V, L]
   import implicits._
   
 
@@ -37,7 +37,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
   val simpleState12:Store[C, L] =
     ContentStore(Map("two" -> "two"), Vector(event1, event2, event3), EventMonoid)*/
 
-  describe("Caio") {
+  describe("Stack safety") {
     it("should be stack-safe under flatMap") {
       def summation(n: Long): CaioT[Long] =
         if (n > 0) {
@@ -47,10 +47,14 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield a + c
         } else
           Applicative[CaioT].pure(n)
-      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
+      summation(1000000).run(Map.empty).unsafeRunSync() shouldBe 500000500000L
     }
 
     it("should be stack-safe under flatmap with IO") {
+      /* It appears we get stack safety on any call involving IO.
+        Im assuming as that is because IO is stack safe though An outer call stack with
+        inner stack safe calls, cant quite visualise why that would be the case.
+       */
       def summation(n: Long): CaioT[Long] =
         if (n > 0) {
           for {
@@ -60,7 +64,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield b + c
         } else
           Applicative[CaioT].pure(n)
-      summation(1000000).unsafeRun(Map.empty) shouldBe 500005500000L
+      summation(100000).run(Map.empty).unsafeRunSync()shouldBe 5000550000L
     }
     it("should be stack-safe under flatmap with Kleisli") {
       def summation(n: Long): CaioT[Long] =
@@ -68,12 +72,12 @@ class CaioTests extends AsyncFunSpec with Matchers {
          for {
             a <- Applicative[CaioT].pure(n)
             c <- summation(n - 1)
-            k:CaioT[Long] = KleisliCaio[C, V, L, Long]{ ctx => FoldCaioSuccess(ctx, EventMonoid.empty, a + c)}
+            k:CaioT[Long] = KleisliCaio[C, V, L, Long]{ ctx => FoldCaioIO(IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c)))}
             l <- k
           } yield l
         } else
           Applicative[CaioT].pure(n)
-      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
+      summation(100000).run(Map.empty).unsafeRunSync()  shouldBe 5000050000L
     }
 
     it("should be stack-safe under flatmap with handle Failures") {
@@ -87,7 +91,54 @@ class CaioTests extends AsyncFunSpec with Matchers {
           ApplicativeFail[CaioT, V].handleFailuresWith(cr)(_ => Applicative[CaioT].pure(0L))
         } else
           Applicative[CaioT].pure(n)
-      summation(1000000).unsafeRun(Map.empty) shouldBe 500000500000L
+      summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000050000L
+    }
+  }
+
+  describe("Failure Handling") {
+    it("Should handle failure event") {
+      val program = {
+        for {
+          a <- Applicative[CaioT].pure(3)
+          _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(a.toString))
+        } yield a
+      }
+      val handled =
+        ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
+
+      handled.run(Map.empty).unsafeRunSync() shouldBe 4
+
+    }
+    it("Should handle failure event after IO") {
+      val program = {
+        for {
+          a <- Applicative[CaioT].pure(3)
+          b <- LiftIO[CaioT].liftIO(IO.delay(6))
+          _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(b.toString))
+          c <- LiftIO[CaioT].liftIO(IO.delay(6))
+        } yield a + b + c
+      }
+      val handled =
+        ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
+
+      handled.run(Map.empty).unsafeRunSync() shouldBe 4
+
+    }
+
+    it("Should handle failure event after Kleisli") {
+      val program = {
+        for {
+          a <- Applicative[CaioT].pure(3)
+          b <- Sync[CaioT].suspend(Applicative[CaioT].pure(7))
+          _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(b.toString))
+          c <- LiftIO[CaioT].liftIO(IO.delay(6))
+        } yield a + b + c
+      }
+      val handled =
+        ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
+
+      handled.run(Map.empty).unsafeRunSync() shouldBe 4
+
     }
   }
 

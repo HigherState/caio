@@ -4,6 +4,8 @@ import caio.{<~>, Caio, FoldCaioIO, KleisliCaio}
 import cats.{Monoid, ~>}
 import cats.arrow.FunctionK
 
+
+//TODO review under necessary change to FunctionK as not all peices adding up here
 /**
  * FunctionK for Caio to transform the Context
  * @param f Map from context to nested context
@@ -15,7 +17,7 @@ import cats.arrow.FunctionK
  * @tparam V
  * @tparam L
  */
-class CaioNaturalIsomorphism[C1, C2, V, L: Monoid](f: C2 => C1, invF: C1 => C2)
+class CaioBijectionK[C1, C2, V, L: Monoid](f: C2 => C1, invF: C1 => C2)
   extends (Caio[C1, V, L, *] <~> Caio[C2, V, L, *]) {
   def apply[A](fa: Caio[C1, V, L, A]): Caio[C2, V, L, A] =
     KleisliCaio[C2, V, L, A] { c2 =>

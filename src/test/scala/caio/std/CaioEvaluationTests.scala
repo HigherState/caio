@@ -3,7 +3,7 @@ package caio.std
 import caio._
 import caio.implicits.StaticImplicits
 import cats.effect.{IO, LiftIO, Sync}
-import cats.{Applicative, MonadError}
+import cats.{Applicative, MonadError, Monoid}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorTell, MonadState}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
@@ -20,11 +20,13 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
   type CaioT[A] = Caio[C, V, L, A]
 
   def run[A](c:C, caio:CaioT[A]): (C, L, Either[EoF, A]) = {
-    caio.unsafeRunContext(c)
+    caio.runContext(c).unsafeRunSync()
   }
 
   import caio.mtl.ContextProjector._
-  val implicits = new StaticImplicits[C, V, L]()
+  val implicits = new StaticImplicits[C, V, L]{
+    protected implicit def ML: Monoid[L] = EventMonoid
+  }
   import implicits._
   import cats.Monad.ops._
 
@@ -107,7 +109,10 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
       run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
     it("Should capture exception if map") {
-      pending
+      val f =
+        Applicative[CaioT].pure("a")
+          .map{a => throw Exception.exception1}
+      run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
   }
 

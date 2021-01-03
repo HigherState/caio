@@ -24,9 +24,9 @@ class ProviderWriterTests {
 
     val censor = implicitly[ApplicativeCensor[M, L]]
 
-    import Contextual._
 
-    implicit val E = implicitly[Provider[M]].apply[Int]
+    val E = implicitly[Provider[M]].apply[Int]
+    import E._
 
     val askTell = new AskTell[E.FE, L]
 
@@ -36,9 +36,9 @@ class ProviderWriterTests {
   }
 
   class ListenerWriter[M[_]:Provider:FunctorListen[*[_], L], L] {
-    import Contextual._
 
-    implicit val E = implicitly[Provider[M]].apply[Int]
+    val E = implicitly[Provider[M]].apply[Int]
+    import E._
 
     val askTell = new AskTell[E.FE, L]
 
@@ -47,9 +47,9 @@ class ProviderWriterTests {
   }
 
   class TellWriter[M[_]:Provider:FunctorTell[*[_], L], L] {
-    import Contextual._
 
-    implicit val E = implicitly[Provider[M]].apply[Int]
+    val E = implicitly[Provider[M]].apply[Int]
+    import E._
 
     val askTell = new AskTell[E.FE, L]
 

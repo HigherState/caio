@@ -13,7 +13,4 @@ package object mtl {
 
   type Extended[FP[_], F[_], E1, E2] =
     Extends[F, E1, E2]{ type FE[A] = FP[A]}
-
-  type Transform[FP[_], F[_]] =
-    ContextTransformers[F]{ type FE[A] = FP[A]}
 }

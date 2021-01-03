@@ -7,7 +7,6 @@ import cats.effect.{Async, IO}
 class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, L, *]] {
 
   def async[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[C, V, L, A] =
-    //Don't use async.liftIO as this will create an infinite loop
     IOCaio(IO.async(k))
 
   /**
@@ -22,4 +21,13 @@ class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, 
       FoldCaioIO(IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a)))
     }
   }
+
+  /**
+   * Important override otherwise can get caught in an infinite loop
+   * @param ioa
+   * @tparam A
+   * @return
+   */
+  override def liftIO[A](ioa: IO[A]): Caio[C, V, L, A] =
+    IOCaio(ioa)
 }
