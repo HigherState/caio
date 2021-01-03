@@ -1,7 +1,9 @@
-import caio.std.CaioFailuresAsThrowable
+import caio.std.{CaioFailuresAsThrowable,Par}
 import cats.data.NonEmptyList
 
 package object caio {
+
+  type ParCaio[C, V, L, +A] = Par.Type[C, V, L, A]
 
   type <~>[F[_], G[_]] = BijectionK[F, G]
 

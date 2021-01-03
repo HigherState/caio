@@ -69,8 +69,8 @@ scalacOptions ++= Seq(
 javacOptions ++= Seq("-target", "1.8", "-source", "1.8", "-Xlint:deprecation")
 
 libraryDependencies ++= Seq(
-  "org.typelevel" %% "cats-mtl-core" % "0.7.0",
-  "org.typelevel" %% "cats-effect" % "2.1.0",
+  "org.typelevel" %% "cats-mtl-core" % "0.7.1",
+  "org.typelevel" %% "cats-effect" % "2.3.1",
   "io.typechecked" %% "alphabet-soup" % "0.3.0",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 ) ++ {
