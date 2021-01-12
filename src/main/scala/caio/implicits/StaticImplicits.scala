@@ -5,7 +5,7 @@ import caio.mtl.ApplicativeFail
 import caio.std._
 import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
-import cats.{Monad, Monoid}
+import cats.{Monad, Monoid, Parallel}
 
 class StaticImplicits[C, V, L](implicit ML:Monoid[L]){
 
@@ -23,6 +23,9 @@ class StaticImplicits[C, V, L](implicit ML:Monoid[L]){
 
   implicit def staticCaioContextShift(implicit CS:ContextShift[IO]):ContextShift[Caio[C,V,L, *]] =
     new CaioContextShift[C, V, L]()(ML, CS)
+
+  implicit def staticCaioParallel(implicit CS:ContextShift[IO]): Parallel[Caio[C,V,L, *]] =
+    new CaioParallel[C, V, L]()(ML, CS)
 
   implicit val staticCaioApplicativeFail:ApplicativeFail[Caio[C, V, L, *], V] =
     new CaioApplicativeFail[C, V, L]

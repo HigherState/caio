@@ -2,12 +2,9 @@ package caio
 
 import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
-import cats.Monoid
-import cats.effect.IO.Async
 import cats.effect.{IO, LiftIO, Sync}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
-import cats.Monad.ops._
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 class CaioTests extends AsyncFunSpec with Matchers {
@@ -25,7 +22,6 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
   val implicits = new StaticImplicits[C, V, L]
   import implicits._
-  
 
   /*val emptyState:Store[C, L] =
     EmptyStore

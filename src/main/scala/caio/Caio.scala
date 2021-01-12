@@ -207,10 +207,8 @@ final private[caio] case class FoldCaioIO[C, V, L, +A](io:IO[FoldCaioPure[C, V, 
 }
 
 object Caio {
-
-  private def pureUnit = PureCaio[Unit, Unit, Unit, Unit](())
   def unit[C, V, L]:Caio[C, V, L, Unit] =
-    pureUnit.asInstanceOf[Caio[C, V, L, Unit]]
+    pure(())
 
   def pure[C, V, L, A](a:A):Caio[C, V, L, A] =
     PureCaio(a)
@@ -355,6 +353,6 @@ object Caio {
       foldCaio(caio, c, l, handlers)
     }
 
-    safeFold(caio, c, Monoid.empty[L], Nil).map(_.asInstanceOf[A]).toIO
+    safeFold(caio, c, Monoid.empty[L], Nil).asInstanceOf[FoldCaio[C, V, L, A]].toIO
   }
 }

@@ -2,8 +2,8 @@ package caio.implicits
 
 import caio.Caio
 import caio.mtl.{ApplicativeFail, Effectful}
-import caio.std.{CaioApplicativeAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioEffectful, CaioMonadState, CaioSync}
-import cats.{Monad, Monoid}
+import caio.std.{CaioApplicativeAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioEffectful, CaioMonadState, CaioParallel, CaioSync}
+import cats.{Monad, Monoid, Parallel}
 import cats.effect.{Async, Concurrent, ConcurrentEffect, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
 
@@ -26,6 +26,9 @@ class DynamicContextImplicits[V, L](implicit ML:Monoid[L]) { parent =>
 
   implicit def dynamicCaioContextShift[C](implicit CS: ContextShift[IO]): ContextShift[Caio[C, V, L, *]] =
     new CaioContextShift[C, V, L]()(ML, CS)
+
+  implicit def dynamicCaioParallel[C](implicit CS:ContextShift[IO]): Parallel[Caio[C, V, L, *]] =
+    new CaioParallel[C, V, L]()(ML, CS)
 
   implicit def dynamicCaioApplicativeFail[C]: ApplicativeFail[Caio[C, V, L, *], V] =
     static.staticCaioApplicativeFail.asInstanceOf[ApplicativeFail[Caio[C, V, L, *], V]]
