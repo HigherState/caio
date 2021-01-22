@@ -73,7 +73,7 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers{
         )
 
       def program(failFirst: Boolean, failSecond: Boolean): CaioT[NonEmptyList[Int]] =
-        ApplicativeFail[CaioT, Failure].resolve(makeIOList(failFirst, failSecond).parSequence) { failures =>
+        ApplicativeFail[CaioT, Failure].resolve(makeIOList(failFirst, failSecond).parSequence) { case failures =>
           failures.map(failure => -failure.value.toInt)
         }
 
