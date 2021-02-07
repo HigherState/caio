@@ -268,7 +268,8 @@ object Caio {
      * @return
      */
     def safeFold(caio: Caio[C, V, L, Any], c: C, l: L, handlers: List[Handler]): FoldCaio[C, V, L, Any] = {
-      @tailrec def foldCaio(caio: Caio[C, V, L, Any], c: C, l: L, handlers: List[Handler]): FoldCaio[C, V, L, Any] =
+      @tailrec def foldCaio(caio: Caio[C, V, L, Any], c: C, l: L, handlers: List[Handler]): FoldCaio[C, V, L, Any] = {
+        println(caio + ": " + handlers.mkString("+"))
         caio match {
           case PureCaio(a) =>
             nextHandler(handlers) match {
@@ -349,6 +350,7 @@ object Caio {
           case SetContextCaio(replaceC) =>
             foldCaio(Caio.unit, replaceC, l, handlers)
         }
+      }
 
       foldCaio(caio, c, l, handlers)
     }
