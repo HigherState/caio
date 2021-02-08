@@ -52,18 +52,33 @@ class CaioConcurrentEffect[C, V, L:Monoid]
 
   override def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
     KleisliCaio[C, V, L, A]{ c =>
+      println("ASYNCF!")
       val k2 = k.andThen(c0 => Caio.foldIO(c0, c).flatMap(eval))
       FoldCaioIO(IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a)))
     }
 
-  def runCancelable[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[Caio[C, V, L, *]]] =
-    Caio
-      .foldIO(fa, c)
+  def runCancelable[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[Caio[C, V, L, *]]] = {
+    println("RUNCANCELABLE!")
+    IO.suspend(Caio.foldIO(fa, c))
       .runCancelable(handle(_, cb))
-      .map(IOCaio(_)) //dont use liftIO here
+      .map(IOCaio(_))
+//    Caio
+//      .foldIO(fa, c)
+//      .map{io => println("FOLDED!!!")
+//      io
+//      }
+//      .runCancelable(handle(_, cb))
+//      .map{io => println("IO RUNCANCELABLE!!!")
+//        io
+//      }
+//      .map(IOCaio(_)) //dont use liftIO here
+  }
 
-  def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
+  def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] = {
+    println("RUNASYNC")
     Caio
       .foldIO(fa, c)
       .runAsync(handle(_, cb))
+  }
+
 }

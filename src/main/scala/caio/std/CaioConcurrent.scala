@@ -6,7 +6,8 @@ import cats.effect._
 
 class CaioConcurrent[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends CaioAsync[C, V, L] with Concurrent[Caio[C, V, L, *]] {
 
-  def start[A](fa: Caio[C, V, L, A]): Caio[C, V, L, Fiber[Caio[C, V, L, *], A]] =
+  def start[A](fa: Caio[C, V, L, A]): Caio[C, V, L, Fiber[Caio[C, V, L, *], A]] = {
+    println("START")
     KleisliCaio { c =>
       FoldCaioIO {
         val fiberIO: IO[Fiber[IO, FoldCaioPure[C, V, L, A]]] =
@@ -22,8 +23,10 @@ class CaioConcurrent[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends CaioA
         }
       }
     }
+  }
 
-  def racePair[A, B](fa: Caio[C, V, L, A], fb: Caio[C, V, L, B]): Caio[C, V, L, Either[(A, Fiber[Caio[C, V, L, *], B]), (Fiber[Caio[C, V, L, *], A], B)]] =
+  def racePair[A, B](fa: Caio[C, V, L, A], fb: Caio[C, V, L, B]): Caio[C, V, L, Either[(A, Fiber[Caio[C, V, L, *], B]), (Fiber[Caio[C, V, L, *], A], B)]] = {
+    println("RACEPAIR")
     KleisliCaio { c =>
 
       val sa = IO.suspend(Caio.foldIO(fa, c))
@@ -51,6 +54,7 @@ class CaioConcurrent[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends CaioA
         }
       }
     }
+  }
 
   private def fiber2Caio[A](fiber: Fiber[IO, FoldCaioPure[C, V, L, A]]): Fiber[Caio[C, V, L, *], A] = {
     val cancel: CancelToken[IO] = fiber.cancel

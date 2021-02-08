@@ -73,7 +73,7 @@ libraryDependencies ++= Seq(
   "org.typelevel" %% "cats-effect" % "2.3.1",
   "io.typechecked" %% "alphabet-soup" % "0.3.0",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
-  "co.fs2" %% "fs2-reactive-streams" % "2.5.0-M3" % "test",
+  "co.fs2" %% "fs2-reactive-streams" % "2.4.6" % "test",
   "io.monix" %% "monix"  % "3.3.0" % "test"
 ) ++ {
   CrossVersion.partialVersion(scalaVersion.value) match {

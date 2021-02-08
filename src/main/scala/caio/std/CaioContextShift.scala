@@ -8,11 +8,15 @@ import scala.concurrent.ExecutionContext
 
 class CaioContextShift[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends ContextShift[Caio[C, V, L, *]] {
 
-  def evalOn[A](ec: ExecutionContext)(fa: Caio[C, V, L, A]): Caio[C, V, L, A] =
+  def evalOn[A](ec: ExecutionContext)(fa: Caio[C, V, L, A]): Caio[C, V, L, A] = {
+    println("EVALON")
     KleisliCaio[C, V, L, A] { c =>
       FoldCaioIO(CS.evalOn(ec)(Caio.foldIO(fa, c)))
     }
+  }
 
-  def shift: Caio[C, V, L, Unit] =
+  def shift: Caio[C, V, L, Unit] = {
+    println("SHIFT")
     IOCaio(CS.shift)
+  }
 }

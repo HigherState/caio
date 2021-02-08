@@ -57,8 +57,9 @@ class CaioEffect[C, V, L:Monoid]
       FoldCaioIO(IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a)))
     }
 
-  def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
+  def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] = {
     Caio
       .foldIO(fa, c)
       .runAsync(handle(_, cb))
+  }
 }

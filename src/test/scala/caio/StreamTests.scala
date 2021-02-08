@@ -24,10 +24,22 @@ class StreamTests extends AsyncFunSpec with Matchers {
       new CaioConcurrentEffect[Unit, V, L](())((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) =>
         IO.unit
       )
+
     Resource
       .make(IO.delay("A STRING"))(_ => IO.unit)
       .use { _ =>
-        Extraction.stream[CaioT]
+        Extraction.stream4[CaioT]
+      }
+      .unsafeRunSync() shouldBe Vector[Byte](1, 2, 3, 4, 5)
+  }
+
+  it("Should stream IO results via IO with resolution") {
+    implicit val CS: ContextShift[IO]       = IO.contextShift(scala.concurrent.ExecutionContext.global)
+    implicit val CE: ConcurrentEffect[IO] =  IO.ioConcurrentEffect
+    Resource
+      .make(IO.delay("A STRING"))(_ => IO.unit)
+      .use { _ =>
+        Extraction.stream[IO]
       }
       .unsafeRunSync() shouldBe Vector[Byte](1, 2, 3, 4, 5)
   }
@@ -58,6 +70,7 @@ object Extraction {
       }
     }
 
+
   def stream2[M[_]](implicit CE: ConcurrentEffect[M]): IO[Vector[Byte]] =
     IO.suspend {
       val r: Resource[Task, Iterator[Byte]] =
@@ -77,6 +90,50 @@ object Extraction {
           .toVector
       }
     }
+
+  def stream3[M[_]](implicit CE: ConcurrentEffect[M]): IO[Vector[Byte]] =
+    IO.suspend {
+      val resource: Resource[M, Iterator[Byte]] = {
+        Resource
+          .make[M, Iterator[Byte]](CE.delay(Iterator(1, 2, 3, 4, 5))) { _ =>
+            CE.delay(())
+          }
+      }
+      val allocated = resource.allocated
+      val acquire = CE.map(allocated)(_._1)
+      val release = CE.flatMap(allocated)(_._2)
+      CE.toIO {
+        Observable
+          .resourceF(acquire)(_ => release)
+          .flatMapIterable[Byte](_.toVector)
+          .map(Array(_))
+          .map(Chunk.bytes)
+          .toReactivePublisher[Chunk[Byte]](Scheduler.global)
+          .toStream
+          .flatMap(fs2.Stream.chunk)
+          .compile
+          .toVector
+      }
+    }
+
+  def stream4[M[_]](implicit CE: ConcurrentEffect[M]): IO[Vector[Byte]] =
+    IO.suspend {
+      val r = Resource
+        .liftF(CE.delay(Iterator[Byte](1, 2, 3, 4, 5)))
+        .mapK(implicitly[TaskLike[M]])
+      CE.toIO {
+        Observable
+          .fromIterator(r)
+          .map(Array(_))
+          .map(Chunk.bytes)
+          .toReactivePublisher[Chunk[Byte]](Scheduler.global)
+          .toStream
+          .flatMap(fs2.Stream.chunk)
+          .compile
+          .toVector
+      }
+    }
+
 
   //  def stream2[M[_]]() = {
   //    val r = Resource
