@@ -28,7 +28,7 @@ class StreamTests extends AsyncFunSpec with Matchers {
     Resource
       .make(IO.delay("A STRING"))(_ => IO.unit)
       .use { _ =>
-        Extraction.stream4[CaioT]
+        Extraction.stream3point5[CaioT]
       }
       .unsafeRunSync() shouldBe Vector[Byte](1, 2, 3, 4, 5)
   }
@@ -105,6 +105,30 @@ object Extraction {
       CE.toIO {
         Observable
           .resourceF(acquire)(_ => release)
+          .flatMapIterable[Byte](_.toVector)
+          .map(Array(_))
+          .map(Chunk.bytes)
+          .toReactivePublisher[Chunk[Byte]](Scheduler.global)
+          .toStream
+          .flatMap(fs2.Stream.chunk)
+          .compile
+          .toVector
+      }
+    }
+
+  def stream3point5[M[_]](implicit CE: ConcurrentEffect[M]): IO[Vector[Byte]] =
+    IO.suspend {
+      val resource: Resource[M, Iterator[Byte]] = {
+        Resource
+          .make[M, Iterator[Byte]](CE.delay(Iterator(1, 2, 3, 4, 5))) { _ =>
+            CE.delay(())
+          }
+      }
+
+      CE.toIO {
+        Observable
+          .resourceF(resource.allocated)(_._2)
+          .map(_._1)
           .flatMapIterable[Byte](_.toVector)
           .map(Array(_))
           .map(Chunk.bytes)
