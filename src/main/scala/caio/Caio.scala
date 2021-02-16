@@ -7,12 +7,12 @@ import scala.annotation.tailrec
 import scala.util.Try
 import scala.util.control.NonFatal
 
-sealed trait Caio[-C, V, L, +A] {
+sealed trait Caio[-C, V, +L, +A] {
 
   def map[B](f:A => B):Caio[C, V, L, B] =
     MapCaio(this, f)
 
-  def flatMap[C1 <: C, B](f: A => Caio[C1, V, L, B]): Caio[C1, V, L, B] =
+  def flatMap[C1 <: C, L1 >: L, B](f: A => Caio[C1, V, L1, B]): Caio[C1, V, L1, B] =
     BindCaio(this, f)
   /**
    * Exceptions in stack will get thrown,
@@ -21,8 +21,8 @@ sealed trait Caio[-C, V, L, +A] {
    * @param M
    * @return
    */
-  def run(c: C)(implicit M: Monoid[L]): IO[A] =
-    Caio.foldIO(this, c).map {
+  def run[L1 >: L](c: C)(implicit M: Monoid[L1]): IO[A] =
+    Caio.foldIO[C, V, L1, A](this, c).map {
       case FoldCaioSuccess(_, _, a) =>
         a
       case FoldCaioFailure(_, _, head, tail) =>
@@ -31,8 +31,8 @@ sealed trait Caio[-C, V, L, +A] {
         throw ex
     }
 
-  def runFail(c: C)(implicit M: Monoid[L]): IO[Either[NonEmptyList[V], A]] =
-    Caio.foldIO(this, c).map {
+  def runFail[L1 >: L](c: C)(implicit M: Monoid[L1]): IO[Either[NonEmptyList[V], A]] =
+    Caio.foldIO[C, V, L1, A](this, c).map {
       case FoldCaioSuccess(_, _, a) =>
         Right(a)
       case FoldCaioFailure(_, _, head, tail) =>
@@ -41,8 +41,8 @@ sealed trait Caio[-C, V, L, +A] {
         throw ex
     }
 
-  def runContext[C1 <: C](c: C1)(implicit M: Monoid[L]): IO[(C1, L, Either[ErrorOrFailure[V], A])] =
-    Caio.foldIO(this, c).map {
+  def runContext[C1 <: C, L1 >: L](c: C1)(implicit M: Monoid[L1]): IO[(C1, L1, Either[ErrorOrFailure[V], A])] =
+    Caio.foldIO[C1, V, L1, A](this, c).map {
       case FoldCaioSuccess(cOut, l, a) =>
         (cOut, l, Right(a))
       case FoldCaioFailure(cOut, l, head, tail) =>
@@ -52,35 +52,35 @@ sealed trait Caio[-C, V, L, +A] {
     }
 }
 
-final private[caio] case class PureCaio[V, L, +A](a: A) extends Caio[Any, V, L, A]
+final private[caio] case class PureCaio[V, +A](a: A) extends Caio[Any, V, Nothing, A]
 
-final private[caio] case class IOCaio[V, L, +A](a: IO[A]) extends Caio[Any, V, L, A]
+final private[caio] case class IOCaio[V, +A](a: IO[A]) extends Caio[Any, V, Nothing, A]
 
 final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => FoldCaioIO[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class MapCaio[-C, V, L, E, +A](source: Caio[C, V, L, E], f: E => A) extends Caio[C, V, L, A]
+final private[caio] case class MapCaio[-C, V, +L, E, +A](source: Caio[C, V, L, E], f: E => A) extends Caio[C, V, L, A]
 
-final private[caio] case class BindCaio[-C, V, L, E, +A](source: Caio[C, V, L, E], f: E => Caio[C, V, L, A]) extends Caio[C, V, L, A]
+final private[caio] case class BindCaio[-C, V, +L, E, +A](source: Caio[C, V, L, E], f: E => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class ErrorCaio[V, L](e: Throwable) extends Caio[Any, V, L, Nothing]
+final private[caio] case class ErrorCaio[V](e: Throwable) extends Caio[Any, V, Nothing, Nothing]
 
-final private[caio] case class HandleErrorCaio[-C, V, L, +A](source: Caio[C, V, L, A], f: Throwable => Caio[C, V, L, A]) extends Caio[C, V, L, A]
+final private[caio] case class HandleErrorCaio[-C, V, +L, +A](source: Caio[C, V, L, A], f: Throwable => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class FailureCaio[V, L](head: V, tail: List[V]) extends Caio[Any, V, L, Nothing]
+final private[caio] case class FailureCaio[V](head: V, tail: List[V]) extends Caio[Any, V, Nothing, Nothing]
 
 final private[caio] case class HandleFailureCaio[-C, V, L, +A](source: Caio[C, V, L, A], f: NonEmptyList[V] => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class SetCaio[V, L](l: L) extends Caio[Any, V, L, Unit]
+final private[caio] case class SetCaio[V, +L](l: L) extends Caio[Any, V, L, Unit]
 
-final private[caio] case class TellCaio[V, L](l: L) extends Caio[Any, V, L, Unit]
+final private[caio] case class TellCaio[V, +L](l: L) extends Caio[Any, V, L, Unit]
 
-final private[caio] case class ListenCaio[-C, V, L, +A](source: Caio[C, V, L, A]) extends Caio[C, V, L, (A, L)]
+final private[caio] case class ListenCaio[-C, V, +L, +A](source: Caio[C, V, L, A]) extends Caio[C, V, L, (A, L)]
 
 final private[caio] case class CensorCaio[-C, V, L, +A](source: Caio[C, V, L, A], f: L => L) extends Caio[C, V, L, A]
 
-final private[caio] case class GetContextCaio[C, V, L]() extends Caio[C, V, L, C]
+final private[caio] case class GetContextCaio[C, V]() extends Caio[C, V, Nothing, C]
 
-final private[caio] case class SetContextCaio[C, V, L](c: C) extends Caio[C, V, L, Unit]
+final private[caio] case class SetContextCaio[C, V](c: C) extends Caio[C, V, Nothing, Unit]
 
 
 case class CaioUnhandledFailuresException[V](failure: NonEmptyList[V])
@@ -97,7 +97,7 @@ sealed trait FoldCaio[C, V, L, +A] {
    * @tparam C2
    * @return
    */
-  def contextMap[C2](f: C => C2):FoldCaio[C2, V, L, A]
+  def contextMap[C2](f: C => C2): FoldCaio[C2, V, L, A]
 
   def flatMap[B](f: (C, L, A) => FoldCaio[C, V, L, B]): FoldCaio[C, V, L, B]
 
@@ -111,7 +111,7 @@ sealed trait FoldCaio[C, V, L, +A] {
    * @param f
    * @return
    */
-  def mapL[B](f:L => L):FoldCaio[C, V, L, A]
+  def mapL[B](f: L => L): FoldCaio[C, V, L, A]
 }
 
 sealed trait FoldCaioPure[C, V, L, +A] extends FoldCaio[C, V, L, A] {
@@ -122,14 +122,14 @@ sealed trait FoldCaioPure[C, V, L, +A] extends FoldCaio[C, V, L, A] {
 
   def contextMap[C2](f: C => C2): FoldCaioPure[C2, V, L, A]
 
-  def map[B](f:A => B):FoldCaioPure[C, V, L, B]
+  def map[B](f:A => B): FoldCaioPure[C, V, L, B]
 
   def flatMap[B](f: (C, L, A) => FoldCaio[C, V, L, B]): FoldCaio[C, V, L, B]
 
   def toIO: IO[FoldCaioPure[C, V, L, A]] =
     IO.pure(this)
 
-  def mapL[B](f:L => L):FoldCaioPure[C, V, L, A]
+  def mapL[B](f: L => L): FoldCaioPure[C, V, L, A]
 }
 
 final private[caio] case class FoldCaioSuccess[C, V, L, +A](c: C, l: L, a: A) extends FoldCaioPure[C, V, L, A] {
@@ -137,7 +137,7 @@ final private[caio] case class FoldCaioSuccess[C, V, L, +A](c: C, l: L, a: A) ex
   def contextMap[C2](f: C => C2): FoldCaioPure[C2, V, L, A] =
     this.copy(c = f(this.c))
 
-  def map[B](f:A => B):FoldCaioPure[C, V, L, B] =
+  def map[B](f:A => B): FoldCaioPure[C, V, L, B] =
     this.copy(a = f(a))
 
   def flatMap[B](f: (C, L, A) => FoldCaio[C, V, L, B]): FoldCaio[C, V, L, B] =
@@ -204,29 +204,29 @@ object Caio {
   def unit[C, V, L]: Caio[C, V, L, Unit] =
     pure(())
 
-  def pure[C, V, L, A](a:A): Caio[C, V, L, A] =
+  def pure[C, V, L, A](a: A): Caio[C, V, L, A] =
     PureCaio(a)
 
-  def raiseError[C, V, L](ex:Throwable): Caio[C, V, L, Nothing] =
+  def raiseError[C, V, L](ex: Throwable): Caio[C, V, L, Nothing] =
     ErrorCaio(ex)
 
-  def fail[C, V, L](failure:V, failures:V*): Caio[C, V, L,  Nothing] =
+  def fail[C, V, L](failure: V, failures: V*): Caio[C, V, L,  Nothing] =
     FailureCaio(failure, failures.toList)
 
-  def failMany[C, V, L](failures:NonEmptyList[V]): Caio[C, V, L,  Nothing] =
+  def failMany[C, V, L](failures: NonEmptyList[V]): Caio[C, V, L,  Nothing] =
     FailureCaio(failures.head, failures.tail)
 
   private[caio] def foldIO[C, V, L, A](caio: Caio[C, V, L, A], c: C)(implicit M: Monoid[L]): IO[FoldCaioPure[C, V, L, A]] = {
-    type Continuation = (Any, L, Any) => Caio[Any, V, L, Any]
-    type ErrorRecovery = (Any, L, Throwable) => Caio[Any, V, L, Any]
-    type FailureRecovery = (Any, L, NonEmptyList[V]) => Caio[Any, V, L, Any]
+    type Continuation = (Any, Any, Any) => Caio[Any, V, Any, Any]
+    type ErrorRecovery = (Any, Any, Throwable) => Caio[Any, V, Any, Any]
+    type FailureRecovery = (Any, Any, NonEmptyList[V]) => Caio[Any, V, Any, Any]
 
     sealed trait Handler
     case class OnSuccess(f: Continuation) extends Handler
     case class OnFailure(f: FailureRecovery) extends Handler
     case class OnError(f: ErrorRecovery) extends Handler
 
-    def tryOrError(value: => Caio[Any, V, L, Any]): Caio[Any, V, L, Any] =
+    def tryOrError(value: => Caio[Any, V, Any, Any]): Caio[Any, V, Any, Any] =
       try value
       catch { case NonFatal(ex) => ErrorCaio(ex) }
 
@@ -261,8 +261,8 @@ object Caio {
      * @tparam B
      * @return
      */
-    def safeFold(caio: Caio[Any, V, L, Any], c: Any, l: L, handlers: List[Handler]): FoldCaio[Any, V, L, Any] = {
-      @tailrec def foldCaio(caio: Caio[Any, V, L, Any], c: Any, l: L, handlers: List[Handler]): FoldCaio[Any, V, L, Any] =
+    def safeFold(caio: Caio[Any, V, Any, Any], c: Any, l: Any, handlers: List[Handler]): FoldCaio[Any, V, Any, Any] = {
+      @tailrec def foldCaio(caio: Caio[Any, V, Any, Any], c: Any, l: Any, handlers: List[Handler]): FoldCaio[Any, V, Any, Any] =
         caio match {
           case PureCaio(a) =>
             nextHandler(handlers) match {
@@ -286,11 +286,11 @@ object Caio {
                   foldIO.io.flatMap {
                     case FoldCaioSuccess(c, l2, a) =>
                       //The IO monad will bring this back into stack safety
-                      safeFold(PureCaio(a), c, M.combine(l, l2), handlers).toIO
+                      safeFold(PureCaio(a), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
                     case FoldCaioFailure(c, l2, head, tail) =>
-                      safeFold(FailureCaio(head, tail), c, M.combine(l, l2), handlers).toIO
+                      safeFold(FailureCaio(head, tail), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
                     case FoldCaioError(c, l2, ex) =>
-                      safeFold(ErrorCaio(ex), c, M.combine(l, l2), handlers).toIO
+                      safeFold(ErrorCaio(ex), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
                   }
                 }
               case scala.util.Failure(ex) =>
@@ -329,7 +329,7 @@ object Caio {
             foldCaio(Caio.unit, c, l2, handlers)
 
           case TellCaio(l2) =>
-            foldCaio(Caio.unit, c, M.combine(l, l2), handlers)
+            foldCaio(Caio.unit, c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers)
 
           case ListenCaio(source) =>
             foldCaio(source, c,  l, OnSuccess((_, l, a) => PureCaio(a -> l)) :: handlers)
@@ -347,6 +347,6 @@ object Caio {
       foldCaio(caio, c, l, handlers)
     }
 
-    safeFold(caio.asInstanceOf[Caio[Any, V, L, Any]], c, M.empty, Nil).asInstanceOf[FoldCaio[C, V, L, A]].toIO
+    safeFold(caio.asInstanceOf[Caio[Any, V, Any, Any]], c, M.empty, Nil).asInstanceOf[FoldCaio[C, V, L, A]].toIO
   }
 }

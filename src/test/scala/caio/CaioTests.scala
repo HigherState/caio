@@ -2,8 +2,9 @@ package caio
 
 import caio.implicits.DynamicContextImplicits
 import caio.mtl.ApplicativeFail
+import caio.std.CaioFunctorListen
 import cats.effect.{IO, LiftIO, Sync}
-import cats.mtl.ApplicativeAsk
+import cats.mtl.{ApplicativeAsk, FunctorListen, FunctorTell}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -18,9 +19,9 @@ class CaioTests extends AsyncFunSpec with Matchers {
   type C = Map[String, String]
   type V = Failure
 
-
   type CaioT[A] = Caio[C, Failure, EventLog, A]
   type CaioC[C1, A] = Caio[C1, Failure, EventLog, A]
+  type CaioL[L1, A] = Caio[C, Failure, L1, A]
 
   val implicits = new DynamicContextImplicits[V, L]
   import implicits._
@@ -167,6 +168,27 @@ class CaioTests extends AsyncFunSpec with Matchers {
       val context = new Context0 with Context1 { def x = 1; def y = 2; }
 
       program.run(context).unsafeRunSync() shouldBe 6
+    }
+  }
+
+  describe("Logging") {
+    sealed trait LogEvent
+    case object LogEvent0 extends LogEvent
+    case object LogEvent1 extends LogEvent
+
+    implicit def implicits[A] = new CaioFunctorListen[C, V, List[A]]
+
+    it("Should combine different log events") {
+      val program: CaioL[List[LogEvent], (Unit, List[LogEvent])] = {
+        FunctorListen[CaioL[List[LogEvent], *], List[LogEvent]].listen {
+          for {
+            _ <- FunctorTell[CaioL[List[LogEvent0.type], *], List[LogEvent0.type]].tell(List(LogEvent0))
+            _ <- FunctorTell[CaioL[List[LogEvent1.type], *], List[LogEvent1.type]].tell(List(LogEvent1))
+          } yield ()
+        }
+      }
+
+      program.run(Map.empty).unsafeRunSync()._2 shouldBe List(LogEvent0, LogEvent1)
     }
   }
 

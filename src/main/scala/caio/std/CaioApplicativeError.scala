@@ -5,7 +5,7 @@ import cats.ApplicativeError
 
 class CaioApplicativeError[C, V, L] extends CaioApplicative[C, V, L] with ApplicativeError[Caio[C, V, L, *], Throwable] {
   def raiseError[A](e: Throwable): Caio[C, V, L, A] =
-    ErrorCaio[V, L](e)
+    ErrorCaio[V](e)
 
   def handleErrorWith[A](fa: Caio[C, V, L, A])(f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A] =
     HandleErrorCaio(fa, f)
