@@ -7,12 +7,12 @@ import scala.annotation.tailrec
 import scala.util.Try
 import scala.util.control.NonFatal
 
-sealed trait Caio[-C, V, +L, +A] {
+sealed trait Caio[-C, +V, +L, +A] {
 
-  def map[B](f:A => B):Caio[C, V, L, B] =
+  def map[B](f:A => B): Caio[C, V, L, B] =
     MapCaio(this, f)
 
-  def flatMap[C1 <: C, L1 >: L, B](f: A => Caio[C1, V, L1, B]): Caio[C1, V, L1, B] =
+  def flatMap[C1 <: C, V1 >: V, L1 >: L, B](f: A => Caio[C1, V1, L1, B]): Caio[C1, V1, L1, B] =
     BindCaio(this, f)
   /**
    * Exceptions in stack will get thrown,
@@ -41,7 +41,7 @@ sealed trait Caio[-C, V, +L, +A] {
         throw ex
     }
 
-  def runContext[C1 <: C, L1 >: L](c: C1)(implicit M: Monoid[L1]): IO[(C1, L1, Either[ErrorOrFailure[V], A])] =
+  def runContext[C1 <: C, V1 >: V, L1 >: L](c: C1)(implicit M: Monoid[L1]): IO[(C1, L1, Either[ErrorOrFailure[V1], A])] =
     Caio.foldIO[C1, V, L1, A](this, c).map {
       case FoldCaioSuccess(cOut, l, a) =>
         (cOut, l, Right(a))
@@ -52,35 +52,35 @@ sealed trait Caio[-C, V, +L, +A] {
     }
 }
 
-final private[caio] case class PureCaio[V, +A](a: A) extends Caio[Any, V, Nothing, A]
+final private[caio] case class PureCaio[+A](a: A) extends Caio[Any, Nothing, Nothing, A]
 
-final private[caio] case class IOCaio[V, +A](a: IO[A]) extends Caio[Any, V, Nothing, A]
+final private[caio] case class IOCaio[+A](a: IO[A]) extends Caio[Any, Nothing, Nothing, A]
 
 final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => FoldCaioIO[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class MapCaio[-C, V, +L, E, +A](source: Caio[C, V, L, E], f: E => A) extends Caio[C, V, L, A]
+final private[caio] case class MapCaio[-C, +V, +L, E, +A](source: Caio[C, V, L, E], f: E => A) extends Caio[C, V, L, A]
 
-final private[caio] case class BindCaio[-C, V, +L, E, +A](source: Caio[C, V, L, E], f: E => Caio[C, V, L, A]) extends Caio[C, V, L, A]
+final private[caio] case class BindCaio[-C, +V, +L, E, +A](source: Caio[C, V, L, E], f: E => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class ErrorCaio[V](e: Throwable) extends Caio[Any, V, Nothing, Nothing]
+final private[caio] case class ErrorCaio(e: Throwable) extends Caio[Any, Nothing, Nothing, Nothing]
 
-final private[caio] case class HandleErrorCaio[-C, V, +L, +A](source: Caio[C, V, L, A], f: Throwable => Caio[C, V, L, A]) extends Caio[C, V, L, A]
+final private[caio] case class HandleErrorCaio[-C, +V, +L, +A](source: Caio[C, V, L, A], f: Throwable => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class FailureCaio[V](head: V, tail: List[V]) extends Caio[Any, V, Nothing, Nothing]
+final private[caio] case class FailureCaio[+V](head: V, tail: List[V]) extends Caio[Any, V, Nothing, Nothing]
 
-final private[caio] case class HandleFailureCaio[-C, V, L, +A](source: Caio[C, V, L, A], f: NonEmptyList[V] => Caio[C, V, L, A]) extends Caio[C, V, L, A]
+final private[caio] case class HandleFailureCaio[-C, V, +L, +A](source: Caio[C, V, L, A], f: NonEmptyList[V] => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
-final private[caio] case class SetCaio[V, +L](l: L) extends Caio[Any, V, L, Unit]
+final private[caio] case class SetCaio[+L](l: L) extends Caio[Any, Nothing, L, Unit]
 
-final private[caio] case class TellCaio[V, +L](l: L) extends Caio[Any, V, L, Unit]
+final private[caio] case class TellCaio[+L](l: L) extends Caio[Any, Nothing, L, Unit]
 
-final private[caio] case class ListenCaio[-C, V, +L, +A](source: Caio[C, V, L, A]) extends Caio[C, V, L, (A, L)]
+final private[caio] case class ListenCaio[-C, +V, +L, +A](source: Caio[C, V, L, A]) extends Caio[C, V, L, (A, L)]
 
-final private[caio] case class CensorCaio[-C, V, L, +A](source: Caio[C, V, L, A], f: L => L) extends Caio[C, V, L, A]
+final private[caio] case class CensorCaio[-C, +V, L, +A](source: Caio[C, V, L, A], f: L => L) extends Caio[C, V, L, A]
 
-final private[caio] case class GetContextCaio[C, V]() extends Caio[C, V, Nothing, C]
+final private[caio] case class GetContextCaio[C]() extends Caio[C, Nothing, Nothing, C]
 
-final private[caio] case class SetContextCaio[C, V](c: C) extends Caio[C, V, Nothing, Unit]
+final private[caio] case class SetContextCaio[C](c: C) extends Caio[C, Nothing, Nothing, Unit]
 
 
 case class CaioUnhandledFailuresException[V](failure: NonEmptyList[V])
@@ -217,16 +217,16 @@ object Caio {
     FailureCaio(failures.head, failures.tail)
 
   private[caio] def foldIO[C, V, L, A](caio: Caio[C, V, L, A], c: C)(implicit M: Monoid[L]): IO[FoldCaioPure[C, V, L, A]] = {
-    type Continuation = (Any, Any, Any) => Caio[Any, V, Any, Any]
-    type ErrorRecovery = (Any, Any, Throwable) => Caio[Any, V, Any, Any]
-    type FailureRecovery = (Any, Any, NonEmptyList[V]) => Caio[Any, V, Any, Any]
+    type Continuation = (Any, Any, Any) => Caio[Any, Any, Any, Any]
+    type ErrorRecovery = (Any, Any, Throwable) => Caio[Any, Any, Any, Any]
+    type FailureRecovery = (Any, Any, NonEmptyList[Any]) => Caio[Any, Any, Any, Any]
 
     sealed trait Handler
     case class OnSuccess(f: Continuation) extends Handler
     case class OnFailure(f: FailureRecovery) extends Handler
     case class OnError(f: ErrorRecovery) extends Handler
 
-    def tryOrError(value: => Caio[Any, V, Any, Any]): Caio[Any, V, Any, Any] =
+    def tryOrError(value: => Caio[Any, Any, Any, Any]): Caio[Any, Any, Any, Any] =
       try value
       catch { case NonFatal(ex) => ErrorCaio(ex) }
 
@@ -261,8 +261,8 @@ object Caio {
      * @tparam B
      * @return
      */
-    def safeFold(caio: Caio[Any, V, Any, Any], c: Any, l: Any, handlers: List[Handler]): FoldCaio[Any, V, Any, Any] = {
-      @tailrec def foldCaio(caio: Caio[Any, V, Any, Any], c: Any, l: Any, handlers: List[Handler]): FoldCaio[Any, V, Any, Any] =
+    def safeFold(caio: Caio[Any, Any, Any, Any], c: Any, l: Any, handlers: List[Handler]): FoldCaio[Any, Any, Any, Any] = {
+      @tailrec def foldCaio(caio: Caio[Any, Any, Any, Any], c: Any, l: Any, handlers: List[Handler]): FoldCaio[Any, Any, Any, Any] =
         caio match {
           case PureCaio(a) =>
             nextHandler(handlers) match {
@@ -347,6 +347,6 @@ object Caio {
       foldCaio(caio, c, l, handlers)
     }
 
-    safeFold(caio.asInstanceOf[Caio[Any, V, Any, Any]], c, M.empty, Nil).asInstanceOf[FoldCaio[C, V, L, A]].toIO
+    safeFold(caio.asInstanceOf[Caio[Any, Any, Any, Any]], c, M.empty, Nil).asInstanceOf[FoldCaio[C, V, L, A]].toIO
   }
 }

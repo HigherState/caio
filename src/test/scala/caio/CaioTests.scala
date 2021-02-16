@@ -1,9 +1,11 @@
 package caio
 
-import caio.implicits.DynamicContextImplicits
+import caio.implicits.{DynamicContextImplicits, StaticImplicits}
 import caio.mtl.ApplicativeFail
-import caio.std.CaioFunctorListen
+import caio.std.{CaioApplicative, CaioApplicativeFail, CaioFunctorListen}
+import cats.data.NonEmptyList
 import cats.effect.{IO, LiftIO, Sync}
+import cats.implicits.toTraverseOps
 import cats.mtl.{ApplicativeAsk, FunctorListen, FunctorTell}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
@@ -21,6 +23,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
   type CaioT[A] = Caio[C, Failure, EventLog, A]
   type CaioC[C1, A] = Caio[C1, Failure, EventLog, A]
+  type CaioV[V1, A] = Caio[C, V1, EventLog, A]
   type CaioL[L1, A] = Caio[C, Failure, L1, A]
 
   val implicits = new DynamicContextImplicits[V, L]
@@ -141,6 +144,20 @@ class CaioTests extends AsyncFunSpec with Matchers {
   }
 
   describe("Context") {
+    it("Should run passing any value when no context required") {
+      val program: CaioC[Any, Int] = {
+        for {
+          a <- Applicative[CaioC[Any, *]].pure(1)
+          b <- Applicative[CaioC[Any, *]].pure(2)
+          c <- Applicative[CaioC[Any, *]].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(()).unsafeRunSync() shouldBe 6
+      program.run(false).unsafeRunSync() shouldBe 6
+      program.run(1).unsafeRunSync() shouldBe 6
+    }
+
     it("Should combine Any with a context") {
       val program: CaioT[Int] = {
         for {
@@ -168,6 +185,57 @@ class CaioTests extends AsyncFunSpec with Matchers {
       val context = new Context0 with Context1 { def x = 1; def y = 2; }
 
       program.run(context).unsafeRunSync() shouldBe 6
+    }
+  }
+
+  describe("Failures") {
+    sealed trait Error
+    case object Error0 extends Error
+    case object Error1 extends Error
+    case object Error2 extends Error
+
+    it("Should combine an infallible computation with a fallible one") {
+      val implicits = new StaticImplicits[C, Nothing, L]
+      import implicits._
+
+      val program: CaioT[Int] = {
+        for {
+          a <- Applicative[CaioV[Nothing, *]].pure(1)
+          b <- Applicative[CaioV[Nothing, *]].pure(2)
+          c <- Applicative[CaioT].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(Map.empty).unsafeRunSync() shouldBe 6
+    }
+
+    it("Should combine different errors") {
+      implicit def implicits[V] = new CaioApplicative[C, V, L]
+
+      val program: CaioV[Error, Int] = {
+        for {
+          a <- Applicative[CaioV[Error0.type, *]].pure(1)
+          b <- Applicative[CaioV[Error1.type, *]].pure(2)
+          c <- Applicative[CaioV[Error2.type, *]].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(Map.empty).unsafeRunSync() shouldBe 6
+    }
+
+    it("Should fail with different errors") {
+      implicit def implicits0[V] = new CaioApplicativeFail[C, V, L]
+      implicit def implicits1[V] = new CaioApplicative[C, V, L]
+
+      val program: CaioV[Error, Unit] = {
+        for {
+          _ <- ApplicativeFail[CaioV[Error0.type, *], Error0.type].fail[Unit](Error0)
+          _ <- ApplicativeFail[CaioV[Error1.type, *], Error1.type].fail[Unit](Error1)
+          _ <- ApplicativeFail[CaioV[Error2.type, *], Error2.type].fail[Unit](Error2)
+        } yield ()
+      }
+
+      program.runFail(Map.empty).unsafeRunSync() shouldBe Left(NonEmptyList.of(Error0))
     }
   }
 
