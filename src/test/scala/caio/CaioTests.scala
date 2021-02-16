@@ -1,8 +1,9 @@
 package caio
 
-import caio.implicits.StaticImplicits
+import caio.implicits.DynamicContextImplicits
 import caio.mtl.ApplicativeFail
 import cats.effect.{IO, LiftIO, Sync}
+import cats.mtl.ApplicativeAsk
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -19,8 +20,9 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
 
   type CaioT[A] = Caio[C, Failure, EventLog, A]
+  type CaioC[C1, A] = Caio[C1, Failure, EventLog, A]
 
-  val implicits = new StaticImplicits[C, V, L]
+  val implicits = new DynamicContextImplicits[V, L]
   import implicits._
 
   /*val emptyState:Store[C, L] =
@@ -134,7 +136,37 @@ class CaioTests extends AsyncFunSpec with Matchers {
         ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
 
       handled.run(Map.empty).unsafeRunSync() shouldBe 4
+    }
+  }
 
+  describe("Context") {
+    it("Should combine Any with a context") {
+      val program: CaioT[Int] = {
+        for {
+          a <- Applicative[CaioT].pure(1)
+          b <- Applicative[CaioC[Any, *]].pure(2)
+          c <- Applicative[CaioT].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(Map.empty).unsafeRunSync() shouldBe 6
+    }
+
+    it("Should combine different contexts") {
+      trait Context0 { def x: Int }
+      trait Context1 { def y: Int }
+
+      val program: CaioC[Context0 with Context1, Int] = {
+        for {
+          c0 <- ApplicativeAsk[CaioC[Context0, *], Context0].ask
+          c1 <- ApplicativeAsk[CaioC[Context1, *], Context1].ask
+          c  <- Applicative[CaioC[Any, *]].pure(3)
+        } yield c0.x + c1.y + c
+      }
+
+      val context = new Context0 with Context1 { def x = 1; def y = 2; }
+
+      program.run(context).unsafeRunSync() shouldBe 6
     }
   }
 
