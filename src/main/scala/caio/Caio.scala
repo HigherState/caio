@@ -3,6 +3,7 @@ package caio
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.effect.IO
+
 import scala.annotation.tailrec
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -22,24 +23,16 @@ sealed trait Caio[-C, +V, +L, +A] {
    * @return
    */
   def run[L1 >: L](c: C)(implicit M: Monoid[L1]): IO[A] =
-    Caio.foldIO[C, V, L1, A](this, c).map {
-      case FoldCaioSuccess(_, _, a) =>
-        a
-      case FoldCaioFailure(_, _, head, tail) =>
-        throw CaioUnhandledFailuresException(NonEmptyList(head, tail))
-      case FoldCaioError(_, _, ex) =>
-        throw ex
-    }
+    Caio.run[C, V, L1, A](this, c)
+
+  def run[C1 <: C, L1 >: L](implicit M: Monoid[L1], ev: C1 =:= Any): IO[A] =
+    Caio.run[Any, V, L1, A](this.asInstanceOf[Caio[Any, V, L1, A]], ())
 
   def runFail[L1 >: L](c: C)(implicit M: Monoid[L1]): IO[Either[NonEmptyList[V], A]] =
-    Caio.foldIO[C, V, L1, A](this, c).map {
-      case FoldCaioSuccess(_, _, a) =>
-        Right(a)
-      case FoldCaioFailure(_, _, head, tail) =>
-        Left(NonEmptyList(head, tail))
-      case FoldCaioError(_, _, ex) =>
-        throw ex
-    }
+    Caio.runFail[C, V, L1, A](this, c)
+
+  def runFail[C1 <: C, L1 >: L](implicit M: Monoid[L1], ev: C1 =:= Any): IO[Either[NonEmptyList[V], A]] =
+    Caio.runFail[Any, V, L1, A](this.asInstanceOf[Caio[Any, V, L1, A]], ())
 
   def runContext[C1 <: C, V1 >: V, L1 >: L](c: C1)(implicit M: Monoid[L1]): IO[(C1, L1, Either[ErrorOrFailure[V1], A])] =
     Caio.foldIO[C1, V, L1, A](this, c).map {
@@ -223,6 +216,26 @@ object Caio {
 
   def failMany[C, V, L](failures: NonEmptyList[V]): Caio[C, V, L,  Nothing] =
     FailureCaio(failures.head, failures.tail)
+
+  private[caio] def run[C, V, L: Monoid, A](caio: Caio[C, V, L, A], c: C): IO[A] =
+    foldIO[C, V, L, A](caio, c).map {
+      case FoldCaioSuccess(_, _, a) =>
+        a
+      case FoldCaioFailure(_, _, head, tail) =>
+        throw CaioUnhandledFailuresException(NonEmptyList(head, tail))
+      case FoldCaioError(_, _, ex) =>
+        throw ex
+    }
+
+  private[caio] def runFail[C, V, L: Monoid, A](caio: Caio[C, V, L, A], c: C): IO[Either[NonEmptyList[V], A]] =
+    foldIO[C, V, L, A](caio, c).map {
+      case FoldCaioSuccess(_, _, a) =>
+        Right(a)
+      case FoldCaioFailure(_, _, head, tail) =>
+        Left(NonEmptyList(head, tail))
+      case FoldCaioError(_, _, ex) =>
+        throw ex
+    }
 
   private[caio] def foldIO[C, V, L, A](caio: Caio[C, V, L, A], c: C)(implicit M: Monoid[L]): IO[FoldCaioPure[C, V, L, A]] = {
     type Continuation = (Any, Any, Any) => Caio[Any, Any, Any, Any]

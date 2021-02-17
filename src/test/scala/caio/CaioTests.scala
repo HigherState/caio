@@ -156,6 +156,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
       program.run(()).unsafeRunSync() shouldBe 6
       program.run(false).unsafeRunSync() shouldBe 6
       program.run(1).unsafeRunSync() shouldBe 6
+      program.run.unsafeRunSync() shouldBe 6
     }
 
     it("Should combine Any with a context") {
@@ -195,7 +196,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           .provideContext((1, 2, 3))
       }
 
-      program.run(()).unsafeRunSync() shouldBe 6
+      program.run.unsafeRunSync() shouldBe 6
     }
   }
 
