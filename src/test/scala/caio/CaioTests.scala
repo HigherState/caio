@@ -186,6 +186,17 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
       program.run(context).unsafeRunSync() shouldBe 6
     }
+
+    it("Should provide context") {
+      val program: CaioC[Any, Int] = {
+        ApplicativeAsk[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
+          .ask
+          .map { case (a, b, c ) => a + b + c }
+          .provideContext((1, 2, 3))
+      }
+
+      program.run(()).unsafeRunSync() shouldBe 6
+    }
   }
 
   describe("Failures") {

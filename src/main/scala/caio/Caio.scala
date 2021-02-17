@@ -50,11 +50,19 @@ sealed trait Caio[-C, +V, +L, +A] {
       case FoldCaioError(cOut, l, ex) =>
         (cOut, l, Left(Left(ex)))
     }
+
+  def provideContext[L1 >: L](c: C)(implicit M: Monoid[L1]): Caio[Any, V, L1, A] =
+    IOCaio(run[L1](c))
 }
 
 final private[caio] case class PureCaio[+A](a: A) extends Caio[Any, Nothing, Nothing, A]
 
-final private[caio] case class IOCaio[+A](a: IO[A]) extends Caio[Any, Nothing, Nothing, A]
+final private[caio] class IOCaio[+A] private(val f: () => IO[A]) extends Caio[Any, Nothing, Nothing, A]
+
+object IOCaio {
+  def apply[A](a: => IO[A]) = new IOCaio(() => a)
+  def unapply[A](io: IOCaio[A]): Option[() => IO[A]] = Some(io.f)
+}
 
 final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => FoldCaioIO[C, V, L, A]) extends Caio[C, V, L, A]
 
@@ -273,7 +281,7 @@ object Caio {
             }
           case IOCaio(io) =>
             //The IO monad will bring this back into stack safety
-            FoldCaioIO(io.redeemWith(
+            FoldCaioIO(io().redeemWith(
               e => safeFold(ErrorCaio(e), c, l, handlers).toIO,
               a => safeFold(PureCaio(a), c, l, handlers).toIO
             ))
