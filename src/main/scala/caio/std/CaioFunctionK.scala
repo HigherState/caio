@@ -21,7 +21,7 @@ class CaioFunctionK[C1, C2, V, L: Monoid](f: C2 => C1, invF: (C1, C2) => C2)
   extends FunctionK[Caio[C1, V, L, *],Caio[C2, V, L, *]] {
   def apply[A](fa: Caio[C1, V, L, A]): Caio[C2, V, L, A] =
     KleisliCaio[C2, V, L, A] { c2 =>
-      FoldCaioIO(Caio.foldIO[C1, V, L, A](fa, f(c2)).map(_.contextMap(c1 => invF(c1, c2))))
+      Caio.foldIO[C1, V, L, A](fa, f(c2)).map(_.contextMap(c1 => invF(c1, c2)))
     }
 }
 

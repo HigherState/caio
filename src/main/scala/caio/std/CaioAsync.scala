@@ -18,7 +18,7 @@ class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, 
   def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] = {
     KleisliCaio[C, V, L, A]{ c =>
       val k2 = k.andThen { c0 => Caio.foldIO(c0, c).map(_ => ()) }
-      FoldCaioIO(IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a)))
+      IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a))
     }
   }
 

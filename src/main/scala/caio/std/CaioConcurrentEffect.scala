@@ -53,7 +53,7 @@ class CaioConcurrentEffect[C, V, L:Monoid]
   override def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
     KleisliCaio[C, V, L, A]{ c =>
       val k2 = k.andThen(c0 => Caio.foldIO(c0, c).flatMap(eval))
-      FoldCaioIO(IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a)))
+      IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a))
     }
 
   def runCancelable[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[Caio[C, V, L, *]]] =

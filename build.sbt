@@ -22,7 +22,7 @@ publishArtifact in(Test, packageSrc) := true
 
 val currentScalaVersion = "2.13.1"
 ThisBuild / scalaVersion := currentScalaVersion
-crossScalaVersions := Seq("2.12.11", currentScalaVersion)
+crossScalaVersions := Seq("2.12.12", currentScalaVersion)
 
 scalacOptions ++= Seq(
   "-deprecation", // Emit warning and location for usages of deprecated APIs.

@@ -57,13 +57,12 @@ final private[caio] case class PureCaio[C, V, L, +A](a: A) extends Caio[C, V, L,
 
 final private[caio] case class IOCaio[C, V, L, +A](a: IO[A]) extends Caio[C, V, L, A]
 
-final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => FoldCaioIO[C, V, L, A]) extends Caio[C, V, L, A]
+final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => IO[FoldCaioPure[C, V, L, A]]) extends Caio[C, V, L, A]
 
 
 final private[caio] case class MapCaio[C, V, L, E, +A](source: Caio[C, V, L, E], f: E => A) extends Caio[C, V, L, A]
 
 final private[caio] case class BindCaio[C, V, L, E, +A](source: Caio[C, V, L, E], f: E => Caio[C, V, L, A]) extends Caio[C, V, L, A]
-
 
 
 final private[caio] case class ErrorCaio[C, V, L](e:Throwable) extends Caio[C, V, L, Nothing]
@@ -219,6 +218,9 @@ object Caio {
   def fail[C, V, L](failure:V, failures:V*):Caio[C, V, L,  Nothing] =
     FailureCaio(failure, failures.toList)
 
+  def tell[C, V, L](l:L):Caio[C, V, L, Unit] =
+    TellCaio[C, V, L](l)
+
   def failMany[C, V, L](failures:NonEmptyList[V]):Caio[C, V, L,  Nothing] =
     FailureCaio(failures.head, failures.tail)
 
@@ -289,7 +291,7 @@ object Caio {
                 //Doesnt support Error or Failure handling
               case scala.util.Success(foldIO) =>
                 FoldCaioIO {
-                  foldIO.io.flatMap {
+                  foldIO.flatMap {
                     case FoldCaioSuccess(c, l2, a) =>
                       //The IO monad will bring this back into stack safety
                       safeFold(PureCaio(a), c, M.combine(l, l2), handlers).toIO
