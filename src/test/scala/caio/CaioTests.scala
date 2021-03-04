@@ -2,7 +2,12 @@ package caio
 
 import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
-import cats.effect.{IO, LiftIO, Sync}
+import caio.std.CaioApplicativeError
+import cats.ApplicativeError
+import cats.effect.concurrent.Deferred
+import cats.effect.{ContextShift, IO, LiftIO, Sync}
+
+import scala.concurrent.ExecutionContext
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -13,12 +18,13 @@ class CaioTests extends AsyncFunSpec with Matchers {
   //import Exception._
   //import Failure._
 
-  type L = Vector[Event]
+  type L = EventLog
   type C = Map[String, String]
   type V = Failure
 
+  type CaioT[A] = Caio[C, V, L, A]
 
-  type CaioT[A] = Caio[C, Failure, EventLog, A]
+  implicit val CS: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   val implicits = new StaticImplicits[C, V, L]
   import implicits._
@@ -60,7 +66,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield b + c
         } else
           Applicative[CaioT].pure(n)
-      summation(100000).run(Map.empty).unsafeRunSync()shouldBe 5000550000L
+      summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000550000L
     }
     it("should be stack-safe under flatmap with Kleisli") {
       def summation(n: Long): CaioT[Long] =
@@ -73,7 +79,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield l
         } else
           Applicative[CaioT].pure(n)
-      summation(100000).run(Map.empty).unsafeRunSync()  shouldBe 5000050000L
+      summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000050000L
     }
 
     it("should be stack-safe under flatmap with handle Failures") {
@@ -134,7 +140,24 @@ class CaioTests extends AsyncFunSpec with Matchers {
         ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
 
       handled.run(Map.empty).unsafeRunSync() shouldBe 4
+    }
+  }
 
+  describe("Error Handling") {
+    it("Should catch the error when the completion of a Deferred fails") {
+      import cats.syntax.applicativeError._
+
+      implicit val applicativeError: ApplicativeError[CaioT, Throwable] =
+        new CaioApplicativeError[C, V, L]
+
+      val program =
+        for {
+          promise <- Deferred[CaioT, Unit]
+          _       <- promise.complete(())
+          either  <- promise.complete(()).attempt
+        } yield either
+
+      program.run(Map.empty).unsafeRunSync().isLeft shouldBe true
     }
   }
 
