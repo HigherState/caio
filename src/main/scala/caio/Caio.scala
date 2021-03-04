@@ -304,15 +304,17 @@ object Caio {
                 //Doesnt support Error or Failure handling
               case scala.util.Success(foldIO) =>
                 FoldCaioIO {
-                  foldIO.io.flatMap {
-                    case FoldCaioSuccess(c, l2, a) =>
-                      //The IO monad will bring this back into stack safety
-                      safeFold(PureCaio(a), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
-                    case FoldCaioFailure(c, l2, head, tail) =>
-                      safeFold(FailureCaio(head, tail), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
-                    case FoldCaioError(c, l2, ex) =>
-                      safeFold(ErrorCaio(ex), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
-                  }
+                  foldIO.io
+                    .flatMap {
+                      case FoldCaioSuccess(c, l2, a) =>
+                        //The IO monad will bring this back into stack safety
+                        safeFold(PureCaio(a), c, M.combine(l, l2), handlers).toIO
+                      case FoldCaioFailure(c, l2, head, tail) =>
+                        safeFold(FailureCaio(head, tail), c, M.combine(l, l2), handlers).toIO
+                      case FoldCaioError(c, l2, ex) =>
+                        safeFold(ErrorCaio(ex), c, M.combine(l, l2), handlers).toIO
+                    }
+                    .handleErrorWith(ex => safeFold(ErrorCaio(ex), c, l, handlers).toIO)
                 }
               case scala.util.Failure(ex) =>
                 foldCaio(ErrorCaio(ex), c, l, handlers)
