@@ -1,13 +1,17 @@
 package caio
 
-import caio.implicits.StaticImplicits
+import caio.implicits.{DynamicContextImplicits, StaticImplicits}
 import caio.mtl.ApplicativeFail
+
 import caio.std.CaioApplicativeError
 import cats.ApplicativeError
 import cats.effect.concurrent.Deferred
 import cats.effect.{ContextShift, IO, LiftIO, Sync}
-
 import scala.concurrent.ExecutionContext
+import caio.std.{CaioApplicative, CaioApplicativeFail, CaioFunctorListen}
+import cats.data.NonEmptyList
+import cats.implicits.toTraverseOps
+import cats.mtl.{ApplicativeAsk, FunctorListen, FunctorTell}
 //import caio.std.CaioBaselineInstances
 import cats.Applicative
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -25,8 +29,12 @@ class CaioTests extends AsyncFunSpec with Matchers {
   type CaioT[A] = Caio[C, V, L, A]
 
   implicit val CS: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
+  type CaioC[C1, A] = Caio[C1, V, L, A]
+  type CaioV[V1, A] = Caio[C, V1, L, A]
+  type CaioL[L1, A] = Caio[C, V, L1, A]
 
-  val implicits = new StaticImplicits[C, V, L]
+
+  val implicits = new DynamicContextImplicits[V, L]
   import implicits._
 
   /*val emptyState:Store[C, L] =
@@ -158,6 +166,134 @@ class CaioTests extends AsyncFunSpec with Matchers {
         } yield either
 
       program.run(Map.empty).unsafeRunSync().isLeft shouldBe true
+    }
+  }
+  describe("Context") {
+    it("Should run passing any value when no context required") {
+      val program: CaioC[Any, Int] = {
+        for {
+          a <- Applicative[CaioC[Any, *]].pure(1)
+          b <- Applicative[CaioC[Any, *]].pure(2)
+          c <- Applicative[CaioC[Any, *]].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(()).unsafeRunSync() shouldBe 6
+      program.run(false).unsafeRunSync() shouldBe 6
+      program.run(1).unsafeRunSync() shouldBe 6
+      program.run.unsafeRunSync() shouldBe 6
+    }
+
+    it("Should combine Any with a context") {
+      val program: CaioT[Int] = {
+        for {
+          a <- Applicative[CaioT].pure(1)
+          b <- Applicative[CaioC[Any, *]].pure(2)
+          c <- Applicative[CaioT].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(Map.empty).unsafeRunSync() shouldBe 6
+    }
+
+    it("Should combine different contexts") {
+      trait Context0 { def x: Int }
+      trait Context1 { def y: Int }
+
+      val program: CaioC[Context0 with Context1, Int] = {
+        for {
+          c0 <- ApplicativeAsk[CaioC[Context0, *], Context0].ask
+          c1 <- ApplicativeAsk[CaioC[Context1, *], Context1].ask
+          c  <- Applicative[CaioC[Any, *]].pure(3)
+        } yield c0.x + c1.y + c
+      }
+
+      val context = new Context0 with Context1 { def x = 1; def y = 2; }
+
+      program.run(context).unsafeRunSync() shouldBe 6
+    }
+
+    it("Should provide context") {
+      val program: CaioC[Any, Int] = {
+        ApplicativeAsk[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
+          .ask
+          .map { case (a, b, c ) => a + b + c }
+          .provideContext((1, 2, 3))
+      }
+
+      program.run.unsafeRunSync() shouldBe 6
+    }
+  }
+
+  describe("Failures") {
+    sealed trait Error
+    case object Error0 extends Error
+    case object Error1 extends Error
+    case object Error2 extends Error
+
+    it("Should combine an infallible computation with a fallible one") {
+      val implicits = new StaticImplicits[C, Nothing, L]
+      import implicits._
+
+      val program: CaioT[Int] = {
+        for {
+          a <- Applicative[CaioV[Nothing, *]].pure(1)
+          b <- Applicative[CaioV[Nothing, *]].pure(2)
+          c <- Applicative[CaioT].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(Map.empty).unsafeRunSync() shouldBe 6
+    }
+
+    it("Should combine different errors") {
+      implicit def implicits[V] = new CaioApplicative[C, V, L]
+
+      val program: CaioV[Error, Int] = {
+        for {
+          a <- Applicative[CaioV[Error0.type, *]].pure(1)
+          b <- Applicative[CaioV[Error1.type, *]].pure(2)
+          c <- Applicative[CaioV[Error2.type, *]].pure(3)
+        } yield a + b + c
+      }
+
+      program.run(Map.empty).unsafeRunSync() shouldBe 6
+    }
+
+    it("Should fail with different errors") {
+      implicit def implicits0[V] = new CaioApplicativeFail[C, V, L]
+      implicit def implicits1[V] = new CaioApplicative[C, V, L]
+
+      val program: CaioV[Error, Unit] = {
+        for {
+          _ <- ApplicativeFail[CaioV[Error0.type, *], Error0.type].fail[Unit](Error0)
+          _ <- ApplicativeFail[CaioV[Error1.type, *], Error1.type].fail[Unit](Error1)
+          _ <- ApplicativeFail[CaioV[Error2.type, *], Error2.type].fail[Unit](Error2)
+        } yield ()
+      }
+
+      program.runFail(Map.empty).unsafeRunSync() shouldBe Left(NonEmptyList.of(Error0))
+    }
+  }
+
+  describe("Logging") {
+    sealed trait LogEvent
+    case object LogEvent0 extends LogEvent
+    case object LogEvent1 extends LogEvent
+
+    implicit def implicits[A] = new CaioFunctorListen[C, V, List[A]]
+
+    it("Should combine different log events") {
+      val program: CaioL[List[LogEvent], (Unit, List[LogEvent])] = {
+        FunctorListen[CaioL[List[LogEvent], *], List[LogEvent]].listen {
+          for {
+            _ <- FunctorTell[CaioL[List[LogEvent0.type], *], List[LogEvent0.type]].tell(List(LogEvent0))
+            _ <- FunctorTell[CaioL[List[LogEvent1.type], *], List[LogEvent1.type]].tell(List(LogEvent1))
+          } yield ()
+        }
+      }
+
+      program.run(Map.empty).unsafeRunSync()._2 shouldBe List(LogEvent0, LogEvent1)
     }
   }
 
