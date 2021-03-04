@@ -2,25 +2,20 @@ package caio
 
 import caio.implicits.{DynamicContextImplicits, StaticImplicits}
 import caio.mtl.ApplicativeFail
-
-import caio.std.CaioApplicativeError
-import cats.ApplicativeError
 import cats.effect.concurrent.Deferred
 import cats.effect.{ContextShift, IO, LiftIO, Sync}
+
 import scala.concurrent.ExecutionContext
 import caio.std.{CaioApplicative, CaioApplicativeFail, CaioFunctorListen}
 import cats.data.NonEmptyList
-import cats.implicits.toTraverseOps
 import cats.mtl.{ApplicativeAsk, FunctorListen, FunctorTell}
-//import caio.std.CaioBaselineInstances
 import cats.Applicative
+import cats.syntax.ApplicativeErrorOps
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 class CaioTests extends AsyncFunSpec with Matchers {
 
   import Event._
-  //import Exception._
-  //import Failure._
 
   type L = EventLog
   type C = Map[String, String]
@@ -82,7 +77,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
          for {
             a <- Applicative[CaioT].pure(n)
             c <- summation(n - 1)
-            k:CaioT[Long] = KleisliCaio[C, V, L, Long]{ ctx => FoldCaioIO(IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c)))}
+            k:CaioT[Long] = KleisliCaio[C, V, L, Long]{ ctx => IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c))}
             l <- k
           } yield l
         } else
@@ -153,21 +148,18 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
   describe("Error Handling") {
     it("Should catch the error when the completion of a Deferred fails") {
-      import cats.syntax.applicativeError._
-
-      implicit val applicativeError: ApplicativeError[CaioT, Throwable] =
-        new CaioApplicativeError[C, V, L]
 
       val program =
         for {
           promise <- Deferred[CaioT, Unit]
           _       <- promise.complete(())
-          either  <- promise.complete(()).attempt
+          either  <- new ApplicativeErrorOps(promise.complete(())).attempt
         } yield either
 
       program.run(Map.empty).unsafeRunSync().isLeft shouldBe true
     }
   }
+
   describe("Context") {
     it("Should run passing any value when no context required") {
       val program: CaioC[Any, Int] = {

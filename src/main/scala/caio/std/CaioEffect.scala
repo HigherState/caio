@@ -12,8 +12,6 @@ class CaioEffect[C, V, L:Monoid]
   (onFailure:(NonEmptyList[V], C, L) => IO[Unit] = (_:NonEmptyList[V], _:C, _:L) => IO.unit)
   extends CaioAsync[C, V, L] with Effect[Caio[C, V, L, *]] {
 
-
-
   private def eval[A](value:FoldCaioPure[C, V, L, A]): IO[Unit] =
     value match {
       case FoldCaioSuccess(c1, l, _) =>
@@ -54,7 +52,7 @@ class CaioEffect[C, V, L:Monoid]
   override def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
     KleisliCaio[C, V, L, A]{ c =>
       val k2 = k.andThen(c0 => Caio.foldIO(c0, c).flatMap(eval))
-      FoldCaioIO(IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a)))
+      IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a))
     }
 
   def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
