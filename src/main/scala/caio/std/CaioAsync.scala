@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{Caio, FoldCaioIO, FoldCaioSuccess, IOCaio, KleisliCaio}
+import caio.{Caio, FoldCaioSuccess, IOCaio, KleisliCaio}
 import cats.Monoid
 import cats.effect.{Async, IO}
 

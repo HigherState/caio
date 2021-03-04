@@ -16,7 +16,7 @@ class CaioBracket[C, V, L](implicit M:Monoid[L]) extends CaioMonadError[C, V, L]
 
   type CRef = Ref[IO,L]
   def bracketCase[A, B](acquire: Caio[C, V, L, A])(use: A => Caio[C, V, L, B])(release: (A, ExitCase[Throwable]) => Caio[C, V, L, Unit]): Caio[C, V, L, B] = {
-    KleisliCaio { c =>
+    KleisliCaio[C, V, L, B] { c =>
       Ref.of[IO, L](M.empty).flatMap { ref =>
         BT.bracketCase[FoldCaioPure[C, V, L, A], FoldCaioPure[C, V, L, B]](Caio.foldIO(acquire, c)) {
           case FoldCaioSuccess(acquireC, acquireL, a) =>
@@ -52,7 +52,7 @@ class CaioBracket[C, V, L](implicit M:Monoid[L]) extends CaioMonadError[C, V, L]
           {
             case CaptureError(useC, acquireUsel, ex) =>
               ref.get.map { releaseL => FoldCaioError(useC, M.combine(acquireUsel, releaseL), ex)}
-            case CaioUnhandledFailuresException(NonEmptyList(head:V, tail:List[V])) =>
+            case CaioUnhandledFailuresException(NonEmptyList(head:V@unchecked, tail:List[V])) =>
               ref.get.map { releaseL => FoldCaioFailure(c, releaseL, head, tail)}
             case ex =>
               ref.get.map { releaseL => FoldCaioError(c, releaseL, ex)}

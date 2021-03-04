@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{<~>, Caio, FoldCaioIO, KleisliCaio}
+import caio.{<~>, Caio, KleisliCaio}
 import cats.{Monoid, ~>}
 import cats.arrow.FunctionK
 
