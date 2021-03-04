@@ -62,7 +62,6 @@ final private[caio] case class KleisliCaio[C, V, L, +A](kleisli: C => IO[FoldCai
 
 final private[caio] case class MapCaio[-C, +V, +L, E, +A](source: Caio[C, V, L, E], f: E => A) extends Caio[C, V, L, A]
 
-
 final private[caio] case class BindCaio[-C, +V, +L, E, +A](source: Caio[C, V, L, E], f: E => Caio[C, V, L, A]) extends Caio[C, V, L, A]
 
 final private[caio] case class ErrorCaio(e: Throwable) extends Caio[Any, Nothing, Nothing, Nothing]
@@ -317,7 +316,7 @@ object Caio {
                       safeFold(FailureCaio(head, tail), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
                     case FoldCaioError(c, l2, ex) =>
                       safeFold(ErrorCaio(ex), c, M.combine(l.asInstanceOf[L], l2.asInstanceOf[L]), handlers).toIO
-                  }
+                  }.handleErrorWith(ex => safeFold(ErrorCaio(ex), c, l, handlers).toIO)
                 }
             case scala.util.Failure(ex) =>
                 foldCaio(ErrorCaio(ex), c, l, handlers)

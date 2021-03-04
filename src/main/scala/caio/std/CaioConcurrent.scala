@@ -26,7 +26,6 @@ class CaioConcurrent[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends CaioA
       val sa = IO.suspend(Caio.foldIO(fa, c))
       val sb = IO.suspend(Caio.foldIO(fb, c))
       IO.racePair(sa, sb).flatMap {
-
         case Left((e: FoldCaioError[C, V, L, _], fiberB)) =>
           fiberB.cancel.map(_ => e)
 
