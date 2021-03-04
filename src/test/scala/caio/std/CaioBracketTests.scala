@@ -1,12 +1,9 @@
 package caio.std
 
 import caio._
-import caio.implicits.StaticImplicits
 import cats.data.NonEmptyList
 import cats.effect.ExitCase.{Completed, Error}
-import cats.effect.{IO, LiftIO, Sync}
-import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorTell, MonadState}
-import cats.{Applicative, Monad, MonadError, Monoid}
+import cats.Monad
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 
@@ -57,8 +54,7 @@ class CaioBracketTests extends AsyncFunSpec with Matchers{
     it("Should handle Caio Failure") {
       val program = BC.bracketCase(Caio.pure("test")) { a =>
         Caio.fail(Failure.failure1)
-      } { case (_, Error(CaioUnhandledFailuresException(f))) =>
-        f.head shouldBe Failure.failure1
+      } { case (_, Completed) =>
         Caio.unit
       case (_, _) =>
         fail()
@@ -85,7 +81,7 @@ class CaioBracketTests extends AsyncFunSpec with Matchers{
       case (_, _) =>
         fail()
       }
-      run(program)._3 shouldBe Left(Right(NonEmptyList(Failure.failure1, Nil)))
+      run(program)._3 shouldBe Right("test2")
     }
 
 
@@ -117,7 +113,7 @@ class CaioBracketTests extends AsyncFunSpec with Matchers{
     it ("Should succeed in simple case with Logs in acquire, use and release") {
       val program = BC.bracketCase(Caio.tell[C, V, L](Vector(Event.event1)) *> Caio.pure("test")){ a =>
         Caio.tell[C, V, L](Vector(Event.event2)).flatMap(_ => Caio.pure(a + 2))
-      }{ case (a, Completed) =>
+      }{ case (_, Completed) =>
         Caio.tell[C, V, L](Vector(Event.event3))
       case (_, _) =>
         fail()
@@ -165,7 +161,7 @@ class CaioBracketTests extends AsyncFunSpec with Matchers{
     it ("Should fail in failure case with Logs in acquire, use and release") {
       val program = BC.bracketCase(Caio.tell[C, V, L](Vector(Event.event1)) *> Caio.pure("test")){ a =>
         Caio.tell[C, V, L](Vector(Event.event2)).flatMap(_ => Caio.fail(Failure.failure1))
-      }{ case (_, Error(CaioUnhandledFailuresException(_))) =>
+      }{ case (_, Completed) =>
         Caio.tell[C, V, L](Vector(Event.event3))
       case (_, _) =>
         fail()
@@ -175,21 +171,21 @@ class CaioBracketTests extends AsyncFunSpec with Matchers{
     }
 
     it ("Should fail in failure case with Logs in acquire, use and release, and release exception") {
-      val program = BC.bracketCase(Caio.tell[C, V, L](Vector(Event.event1)) *> Caio.pure("test")){ a =>
+      val program = BC.bracketCase(Caio.tell[C, V, L](Vector(Event.event1)) *> Caio.pure("test")){ _ =>
         Caio.tell[C, V, L](Vector(Event.event2)) *> Caio.fail(Failure.failure1)
-      }{ case (_, Error(CaioUnhandledFailuresException(_))) =>
+      }{ case (_, Completed) =>
         Caio.tell[C, V, L](Vector(Event.event3)) *> Caio.raiseError(Exception.exception1)
       case (_, _) =>
         fail()
       }
-      run(program)._3 shouldBe Left(Right(NonEmptyList(Failure.failure1, Nil)))
-      run(program)._2 shouldBe Vector(Event.event1, Event.event2, Event.event3)
+      run(program)._3 shouldBe Left(Left(Exception.exception1))
+      run(program)._2 shouldBe Vector(Event.event3)
     }
 
     it ("Should fail in failure case with Logs in acquire, use and release, and release failure") {
-      val program = BC.bracketCase(Caio.tell[C, V, L](Vector(Event.event1)) *> Caio.pure("test")){ a =>
+      val program = BC.bracketCase(Caio.tell[C, V, L](Vector(Event.event1)) *> Caio.pure("test")){ _ =>
         Caio.tell[C, V, L](Vector(Event.event2)) *> Caio.fail(Failure.failure1)
-      }{ case (_, Error(CaioUnhandledFailuresException(_))) =>
+      }{ case (_, Completed) =>
         Caio.tell[C, V, L](Vector(Event.event3)) *> Caio.fail(Failure.failure2)
       case (_, _) =>
         fail()
