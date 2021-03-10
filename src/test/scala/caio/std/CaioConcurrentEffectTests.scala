@@ -7,7 +7,6 @@ import caio.{Caio, Failure}
 
 import cats.{ Applicative, ApplicativeError, Monoid }
 import cats.syntax.parallel._
-import cats.syntax.apply._
 import cats.data.NonEmptyList
 import cats.mtl.{ FunctorListen, FunctorTell, MonadState }
 import cats.mtl.syntax.listen._
@@ -18,7 +17,7 @@ import org.scalatest.{AsyncFunSpec, Matchers}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers{
+class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
 
   type CaioT[A] = Caio[Int, Failure, EventLog, A]
 

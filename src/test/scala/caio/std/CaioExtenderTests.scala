@@ -249,7 +249,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     }
   }
 
-  describe("Extends On") {
+  /*describe("Extends On") {
     type CI[A] = Caio[Int, Failure, EventLog, A]
     type CIC[A] = Caio[(Int, String), Failure, EventLog, A]
     val a = new StaticImplicits[Int, Failure, EventLog] {
@@ -267,6 +267,6 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
 //      ad.eval("test").run(3).unsafeRunSync() shouldBe (6 -> "Test")
 //    }
 
-  }
+  }*/
 
 }

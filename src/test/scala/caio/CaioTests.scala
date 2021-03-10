@@ -52,6 +52,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield a + c
         } else
           Applicative[CaioT].pure(n)
+
       summation(1000000).run(Map.empty).unsafeRunSync() shouldBe 500000500000L
     }
 
@@ -69,6 +70,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
           } yield b + c
         } else
           Applicative[CaioT].pure(n)
+
       summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000550000L
     }
     it("should be stack-safe under flatmap with Kleisli") {
@@ -77,37 +79,39 @@ class CaioTests extends AsyncFunSpec with Matchers {
          for {
             a <- Applicative[CaioT].pure(n)
             c <- summation(n - 1)
-            k:CaioT[Long] = KleisliCaio[C, V, L, Long]{ ctx => IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c))}
-            l <- k
+            l <- KleisliCaio[C, V, L, Long]{ ctx => IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c))}
           } yield l
         } else
           Applicative[CaioT].pure(n)
+
       summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000050000L
     }
 
     it("should be stack-safe under flatmap with handle Failures") {
       def summation(n: Long): CaioT[Long] =
         if (n > 0) {
+          val cr =
+            for {
+              a <- Applicative[CaioT].pure(n)
+              c <- summation(n - 1)
+            } yield a + c
 
-          val cr = for {
-            a <- Applicative[CaioT].pure(n)
-            c <- summation(n - 1)
-          } yield a + c
           ApplicativeFail[CaioT, V].handleFailuresWith(cr)(_ => Applicative[CaioT].pure(0L))
         } else
           Applicative[CaioT].pure(n)
+
       summation(100000).run(Map.empty).unsafeRunSync() shouldBe 5000050000L
     }
   }
 
   describe("Failure Handling") {
     it("Should handle failure event") {
-      val program = {
+      val program =
         for {
           a <- Applicative[CaioT].pure(3)
           _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(a.toString))
         } yield a
-      }
+
       val handled =
         ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
 
@@ -115,14 +119,14 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
     }
     it("Should handle failure event after IO") {
-      val program = {
+      val program =
         for {
           a <- Applicative[CaioT].pure(3)
           b <- LiftIO[CaioT].liftIO(IO.delay(6))
           _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(b.toString))
           c <- LiftIO[CaioT].liftIO(IO.delay(6))
         } yield a + b + c
-      }
+
       val handled =
         ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
 
@@ -131,14 +135,14 @@ class CaioTests extends AsyncFunSpec with Matchers {
     }
 
     it("Should handle failure event after Kleisli") {
-      val program = {
+      val program =
         for {
           a <- Applicative[CaioT].pure(3)
           b <- Sync[CaioT].suspend(Applicative[CaioT].pure(7))
           _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(b.toString))
           c <- LiftIO[CaioT].liftIO(IO.delay(6))
         } yield a + b + c
-      }
+
       val handled =
         ApplicativeFail[CaioT, Failure].handleFailuresWith(program)(f => Applicative[CaioT].pure(4))
 
@@ -162,13 +166,12 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
   describe("Context") {
     it("Should run passing any value when no context required") {
-      val program: CaioC[Any, Int] = {
+      val program: CaioC[Any, Int] =
         for {
           a <- Applicative[CaioC[Any, *]].pure(1)
           b <- Applicative[CaioC[Any, *]].pure(2)
           c <- Applicative[CaioC[Any, *]].pure(3)
         } yield a + b + c
-      }
 
       program.run(()).unsafeRunSync() shouldBe 6
       program.run(false).unsafeRunSync() shouldBe 6
@@ -177,13 +180,12 @@ class CaioTests extends AsyncFunSpec with Matchers {
     }
 
     it("Should combine Any with a context") {
-      val program: CaioT[Int] = {
+      val program: CaioT[Int] =
         for {
           a <- Applicative[CaioT].pure(1)
           b <- Applicative[CaioC[Any, *]].pure(2)
           c <- Applicative[CaioT].pure(3)
         } yield a + b + c
-      }
 
       program.run(Map.empty).unsafeRunSync() shouldBe 6
     }
@@ -192,13 +194,12 @@ class CaioTests extends AsyncFunSpec with Matchers {
       trait Context0 { def x: Int }
       trait Context1 { def y: Int }
 
-      val program: CaioC[Context0 with Context1, Int] = {
+      val program: CaioC[Context0 with Context1, Int] =
         for {
           c0 <- ApplicativeAsk[CaioC[Context0, *], Context0].ask
           c1 <- ApplicativeAsk[CaioC[Context1, *], Context1].ask
           c  <- Applicative[CaioC[Any, *]].pure(3)
         } yield c0.x + c1.y + c
-      }
 
       val context = new Context0 with Context1 { def x = 1; def y = 2; }
 
@@ -227,42 +228,38 @@ class CaioTests extends AsyncFunSpec with Matchers {
       val implicits = new StaticImplicits[C, Nothing, L]
       import implicits._
 
-      val program: CaioT[Int] = {
+      val program: CaioT[Int] =
         for {
           a <- Applicative[CaioV[Nothing, *]].pure(1)
           b <- Applicative[CaioV[Nothing, *]].pure(2)
           c <- Applicative[CaioT].pure(3)
         } yield a + b + c
-      }
 
       program.run(Map.empty).unsafeRunSync() shouldBe 6
     }
 
     it("Should combine different errors") {
-      implicit def implicits[V] = new CaioApplicative[C, V, L]
+      implicit def implicits[V1] = new CaioApplicative[C, V1, L]
 
-      val program: CaioV[Error, Int] = {
+      val program: CaioV[Error, Int] =
         for {
           a <- Applicative[CaioV[Error0.type, *]].pure(1)
           b <- Applicative[CaioV[Error1.type, *]].pure(2)
           c <- Applicative[CaioV[Error2.type, *]].pure(3)
         } yield a + b + c
-      }
 
       program.run(Map.empty).unsafeRunSync() shouldBe 6
     }
 
     it("Should fail with different errors") {
-      implicit def implicits0[V] = new CaioApplicativeFail[C, V, L]
-      implicit def implicits1[V] = new CaioApplicative[C, V, L]
+      implicit def implicits[V1] = new CaioApplicativeFail[C, V1, L]
 
-      val program: CaioV[Error, Unit] = {
+      val program: CaioV[Error, Unit] =
         for {
           _ <- ApplicativeFail[CaioV[Error0.type, *], Error0.type].fail[Unit](Error0)
           _ <- ApplicativeFail[CaioV[Error1.type, *], Error1.type].fail[Unit](Error1)
           _ <- ApplicativeFail[CaioV[Error2.type, *], Error2.type].fail[Unit](Error2)
         } yield ()
-      }
 
       program.runFail(Map.empty).unsafeRunSync() shouldBe Left(NonEmptyList.of(Error0))
     }
@@ -276,14 +273,13 @@ class CaioTests extends AsyncFunSpec with Matchers {
     implicit def implicits[A] = new CaioFunctorListen[C, V, List[A]]
 
     it("Should combine different log events") {
-      val program: CaioL[List[LogEvent], (Unit, List[LogEvent])] = {
+      val program: CaioL[List[LogEvent], (Unit, List[LogEvent])] =
         FunctorListen[CaioL[List[LogEvent], *], List[LogEvent]].listen {
           for {
             _ <- FunctorTell[CaioL[List[LogEvent0.type], *], List[LogEvent0.type]].tell(List(LogEvent0))
             _ <- FunctorTell[CaioL[List[LogEvent1.type], *], List[LogEvent1.type]].tell(List(LogEvent1))
           } yield ()
         }
-      }
 
       program.run(Map.empty).unsafeRunSync()._2 shouldBe List(LogEvent0, LogEvent1)
     }

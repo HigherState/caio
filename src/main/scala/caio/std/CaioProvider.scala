@@ -11,7 +11,7 @@ import shapeless.=:!=
 case class CaioExtender[C, V, L:Monoid, E1](
   applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
   monadState:MonadState[Caio[C, V, L, *], E1],
-  )(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C]) extends Extender[Caio[C, V, L, *], E1] {
+)(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C]) extends Extender[Caio[C, V, L, *], E1] {
 
   def apply[E2](implicit EV: E1 =:!= E2): mtl.Extends[Caio[C, V, L, *], E1, E2] =
     CaioExtends[C, V, L, E1, E2]()
@@ -19,10 +19,10 @@ case class CaioExtender[C, V, L:Monoid, E1](
 }
 
 case class CaioExtendsOn[C, C0, V, L:Monoid, E1](
-                                              applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
-                                              monadState:MonadState[Caio[C, V, L, *], E1],
-                                              functionK:Caio[C0, V, L, *] ~> Caio[C, V, L, *]
-                                            )(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C])
+  applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
+  monadState:MonadState[Caio[C, V, L, *], E1],
+  functionK:Caio[C0, V, L, *] ~> Caio[C, V, L, *]
+)(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C])
   extends ExtendsOn[Caio[C, V, L, *], Caio[C0, V, L, *], E1] {
   def bijectionK(e2: E1): Caio[C0, V, L, *] <~> Caio[C, V, L, *] = ???
 

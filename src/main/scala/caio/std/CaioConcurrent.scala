@@ -23,8 +23,8 @@ class CaioConcurrent[C, V, L:Monoid](implicit CS:ContextShift[IO]) extends CaioA
 
   def racePair[A, B](fa: Caio[C, V, L, A], fb: Caio[C, V, L, B]): Caio[C, V, L, Either[(A, Fiber[Caio[C, V, L, *], B]), (Fiber[Caio[C, V, L, *], A], B)]] =
     KleisliCaio[C, V, L, Either[(A, Fiber[Caio[C, V, L, *], B]), (Fiber[Caio[C, V, L, *], A], B)]] { c =>
-      val sa = IO.suspend(Caio.foldIO(fa, c))
-      val sb = IO.suspend(Caio.foldIO(fb, c))
+      val sa = Caio.foldIO(fa, c)
+      val sb = Caio.foldIO(fb, c)
       IO.racePair(sa, sb).flatMap {
         case Left((e: FoldCaioError[C, V, L, _], fiberB)) =>
           fiberB.cancel.map(_ => e)

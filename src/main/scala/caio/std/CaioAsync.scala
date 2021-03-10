@@ -1,13 +1,13 @@
 package caio.std
 
-import caio.{Caio, FoldCaioSuccess, IOCaio, KleisliCaio}
+import caio.Caio
 import cats.Monoid
 import cats.effect.{Async, IO}
 
-class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, L, *]] {
+class CaioAsync[C, V, L: Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, L, *]] {
 
   def async[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[C, V, L, A] =
-    IOCaio(IO.async(k))
+    Caio.async[A](k)
 
   /**
    * AsyncF application will discard any failure, Log or context change information.
@@ -15,12 +15,8 @@ class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, 
    * @tparam A
    * @return
    */
-  def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] = {
-    KleisliCaio[C, V, L, A]{ c =>
-      val k2 = k.andThen { c0 => Caio.foldIO(c0, c).map(_ => ()) }
-      IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a))
-    }
-  }
+  def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
+    Caio.asyncF[C, V, L, A](k)
 
   /**
    * Important override otherwise can get caught in an infinite loop
@@ -28,6 +24,6 @@ class CaioAsync[C, V, L:Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, 
    * @tparam A
    * @return
    */
-  override def liftIO[A](ioa: IO[A]): Caio[C, V, L, A] =
-    IOCaio(ioa)
+  override def liftIO[A](io: IO[A]): Caio[C, V, L, A] =
+    Caio.liftIO(io)
 }

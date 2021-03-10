@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{ParCaio, PureCaio}
+import caio.{Caio, ParCaio}
 import cats.{CommutativeApplicative, Monoid}
 import cats.effect.{ContextShift, IO}
 
@@ -9,7 +9,7 @@ class CaioParApplicative[C, V, L: Monoid]
   (implicit CS: ContextShift[IO]) extends CommutativeApplicative[ParCaio[C, V, L, *]] {
 
   override def pure[A](x: A): ParCaio[C, V, L, A] =
-    Par(PureCaio(x))
+    Par(Caio.pure(x))
 
   override def map2[A, B, D](fa: ParCaio[C, V, L, A], fb: ParCaio[C, V, L, B])(f: (A, B) => D): ParCaio[C, V, L, D] =
     Par {
@@ -31,5 +31,5 @@ class CaioParApplicative[C, V, L: Monoid]
     Par(Par.unwrap(fa).map(f))
 
   override def unit: ParCaio[C, V, L, Unit] =
-    Par(PureCaio(()))
+    pure(())
 }

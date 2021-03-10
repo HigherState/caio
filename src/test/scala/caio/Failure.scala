@@ -2,7 +2,7 @@ package caio
 
 import cats.data.NonEmptyList
 
-case class Failure(value:String)
+case class Failure(value: String)
 
 object Failure {
   type EoF = ErrorOrFailure[Failure]

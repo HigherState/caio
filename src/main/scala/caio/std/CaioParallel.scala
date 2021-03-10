@@ -1,7 +1,7 @@
 package caio.std
 
 import caio.{Caio, ParCaio}
-import cats.{Applicative, Monad, Monoid, Parallel, ~>}
+import cats.{CommutativeApplicative, Monad, Monoid, Parallel, ~>}
 import cats.effect.{ContextShift, IO}
 
 trait CaioNewtype {
@@ -22,7 +22,7 @@ object Par extends CaioNewtype
 class CaioParallel[C, V, L: Monoid](implicit CS: ContextShift[IO]) extends CaioConcurrent[C, V, L] with Parallel[Caio[C, V, L, *]] {
   override type F[A] = ParCaio[C, V, L, A]
 
-  override val applicative: Applicative[ParCaio[C, V, L, *]] =
+  override val applicative: CommutativeApplicative[ParCaio[C, V, L, *]] =
     new CaioParApplicative[C, V, L](this)
 
   override val monad: Monad[Caio[C, V, L, *]] =

@@ -70,7 +70,9 @@ javacOptions ++= Seq("-target", "1.8", "-source", "1.8", "-Xlint:deprecation")
 
 libraryDependencies ++= Seq(
   "org.typelevel" %% "cats-mtl-core" % "0.7.1",
-  "org.typelevel" %% "cats-effect" % "2.3.1",
+  "org.typelevel" %% "cats-effect" % "2.3.3",
+  "org.typelevel" %% "cats-effect-laws" % "2.3.3" % "test",
+  "org.typelevel" %% "discipline-munit" % "1.0.6" % "test",
   "io.typechecked" %% "alphabet-soup" % "0.3.0",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 ) ++ {
@@ -81,6 +83,8 @@ libraryDependencies ++= Seq(
       Nil
   }
 }
+
+testFrameworks += new TestFramework("munit.Framework")
 
 addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full)
 

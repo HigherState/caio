@@ -6,10 +6,10 @@ import cats.effect._
 import cats.Monoid
 
 class CaioEffect[C, V, L:Monoid]
-  (c:C)
-  (onSuccess:(C, L) => IO[Unit] = (_:C, _:L) => IO.unit)
-  (onError:(Throwable, C, L) => IO[Unit] = (_:Throwable, _:C, _:L) => IO.unit)
-  (onFailure:(NonEmptyList[V], C, L) => IO[Unit] = (_:NonEmptyList[V], _:C, _:L) => IO.unit)
+  (c: C)
+  (onSuccess: (C, L) => IO[Unit] = (_: C, _: L) => IO.unit)
+  (onError: (Throwable, C, L) => IO[Unit] = (_: Throwable, _: C, _: L) => IO.unit)
+  (onFailure: (NonEmptyList[V], C, L) => IO[Unit] = (_: NonEmptyList[V], _: C, _: L) => IO.unit)
   extends CaioAsync[C, V, L] with Effect[Caio[C, V, L, *]] {
 
   private def eval[A](value:FoldCaioPure[C, V, L, A]): IO[Unit] =
@@ -33,9 +33,8 @@ class CaioEffect[C, V, L:Monoid]
       case Right(FoldCaioFailure(c2, l, head, tail)) =>
         val nel = NonEmptyList(head, tail)
         onFailure(nel, c2, l)
-            .flatMap(_ => cb(Left(CaioFailuresAsThrowable(nel))))
-
-      case Right(FoldCaioError(c2, l, ex@CaioFailuresAsThrowable(failures:NonEmptyList[V@unchecked]))) =>
+          .flatMap(_ => cb(Left(CaioFailuresAsThrowable(nel))))
+      case Right(FoldCaioError(c2, l, ex @ CaioFailuresAsThrowable(failures: NonEmptyList[V@unchecked]))) =>
         onFailure(failures, c2, l)
           .flatMap(_ => cb(Left(ex)))
       case Right(FoldCaioError(c2, l, ex)) =>

@@ -1,17 +1,17 @@
 package caio.std
 
-import caio._
-import cats.Applicative
+import caio.Caio
+import cats.CommutativeApplicative
 import cats.mtl.ApplicativeAsk
 
 class CaioApplicativeAsk[C, V, L] extends ApplicativeAsk[Caio[C, V, L, *], C] {
-  val applicative: Applicative[Caio[C, V, L, *]] =
+  val applicative: CommutativeApplicative[Caio[C, V, L, *]] =
     new CaioApplicative[C, V, L]
 
   def ask: Caio[C, V, L, C] =
-    GetContextCaio()
+    Caio.getContext
 
   def reader[A](f: C => A): Caio[C, V, L, A] =
-    MapCaio(GetContextCaio(), f)
+    Caio.getContext.map(f)
 }
 
