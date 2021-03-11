@@ -5,7 +5,7 @@ import cats.{Monoid, ~>}
 import cats.arrow.FunctionK
 
 
-//TODO review under necessary change to FunctionK as not all peices adding up here
+//TODO review under necessary change to FunctionK as not all pieces adding up here
 /**
  * FunctionK for Caio to transform the Context
  * @param f Map from context to nested context
@@ -31,7 +31,6 @@ class CaioBijectionK[C1, C2, V, L: Monoid](f: C2 => C1, invF: C1 => C2)
 
   def invert:Caio[C2, V, L, *] ~> Caio[C1, V, L, *] =
     new FunctionK[Caio[C2, V, L, *], Caio[C1, V, L, *]] {
-
       def apply[A](fa: Caio[C2, V, L, A]): Caio[C1, V, L, A] =
         KleisliCaio[C1, V, L, A] { c1 =>
           Caio.foldIO[C2, V, L, A](fa, invF(c1)).map(_.contextMap(f))
