@@ -31,7 +31,7 @@ class ResourceTests extends TestInstances {
 
   checkAllAsync("Resource[Caio, *]"){ params =>
     import params._
-    MonadErrorTests[Resource[CaioT, ?], Throwable].monadError[Int, Int, Int]
+    MonadErrorTests[Resource[CaioT, *], Throwable].monadError[Int, Int, Int]
   }
 
   checkAllAsync("Resource[Caio, Int]"){ params =>
@@ -41,13 +41,13 @@ class ResourceTests extends TestInstances {
 
   checkAllAsync("Resource[Caio, *]"){ params =>
     import params._
-    SemigroupKTests[Resource[CaioT, ?]].semigroupK[Int]
+    SemigroupKTests[Resource[CaioT, *]].semigroupK[Int]
   }
 
   checkAllAsync("Resource.Par[Caio, *]") { params =>
     import params._
     import implicits.dynamicCaioParallel
-    CommutativeApplicativeTests[Resource.Par[CaioT, ?]].commutativeApplicative[Int, Int, Int]
+    CommutativeApplicativeTests[Resource.Par[CaioT, *]].commutativeApplicative[Int, Int, Int]
   }
 
   checkAllAsync("Resource[Caio, *]") { params =>
@@ -268,7 +268,7 @@ class ResourceTests extends TestInstances {
       val runWithTwo = new ~>[Kleisli[CaioT, Int, *], CaioT] {
         override def apply[A](fa: Kleisli[CaioT, Int, A]): CaioT[A] = fa(2)
       }
-      Resource.liftF[Kleisli[CaioT, Int, ?], Int](fa).mapK(runWithTwo).use(Caio.pure) <-> fa(2)
+      Resource.liftF[Kleisli[CaioT, Int, *], Int](fa).mapK(runWithTwo).use(Caio.pure) <-> fa(2)
     }
   }
 
@@ -356,7 +356,7 @@ class ResourceTests extends TestInstances {
     val plusOne: Kleisli[CaioT, Int, Int] = Kleisli { (i: Int) =>
       Caio(i + 1)
     }
-    val plusOneResource = Resource.liftF[Kleisli[CaioT, Int, ?], Int](plusOne)
+    val plusOneResource = Resource.liftF[Kleisli[CaioT, Int, *], Int](plusOne)
 
     val release = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
     val resource = Resource.liftF[CaioT, Unit](Caio.unit)

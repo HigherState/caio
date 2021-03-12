@@ -44,7 +44,7 @@ class CaioCatsEffectTests extends TestInstances {
   checkAllAsync("ParCaio") { params =>
     import params._
     implicit val CA = new CaioParApplicative[C, V, L](CE)
-    CommutativeApplicativeTests[ParCaio[C, V, L, ?]].commutativeApplicative[Int, Int, Int]
+    CommutativeApplicativeTests[ParCaio[C, V, L, *]].commutativeApplicative[Int, Int, Int]
   }
 
   testGlobalAsync("defer evaluation until run") { params =>

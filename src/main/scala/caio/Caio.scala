@@ -19,7 +19,7 @@ sealed trait Caio[-C, +V, +L, +A] {
     HandleErrorCaio(MapCaio[C, V, L, A, Either[Throwable, A]](this, Right.apply), ex => PureCaio(Left(ex)))
 
   def background[C1 <: C, V1 >: V, L1 >: L]
-    (implicit M: Monoid[L1], CS: ContextShift[IO]): Resource[Caio[C1, V1, L1, ?], Caio[C1, V1, L1, A]] = {
+    (implicit M: Monoid[L1], CS: ContextShift[IO]): Resource[Caio[C1, V1, L1, *], Caio[C1, V1, L1, A]] = {
     implicit val applicative = new CaioApplicative[C1, V1, L1] {}
     Resource.make(start[C1, V1, L1, A])(_.cancel).map(_.join)
   }
@@ -78,17 +78,17 @@ sealed trait Caio[-C, +V, +L, +A] {
   def race[C1 <: C, V1 >: V, L1 >: L, B](caio: Caio[C1, V1, L1, B])(implicit M: Monoid[L1], CS: ContextShift[IO]): Caio[C1, V1, L1, Either[A, B]] =
     new CaioConcurrent[C1, V1, L1].race(this, caio)
 
-  def start[C1 <: C, V1 >: V, L1 >: L, A1 >: A](implicit M: Monoid[L1], CS: ContextShift[IO]): Caio[C1, V1, L1, Fiber[Caio[C1, V1, L1, ?], A1]] =
+  def start[C1 <: C, V1 >: V, L1 >: L, A1 >: A](implicit M: Monoid[L1], CS: ContextShift[IO]): Caio[C1, V1, L1, Fiber[Caio[C1, V1, L1, *], A1]] =
     new CaioConcurrent[C1, V1, L1].start(this)
 
   def timeoutTo[C1 <: C, V1 >: V, L1 >: L, A1 >: A]
     (duration: FiniteDuration, fallback: Caio[C1, V1, L1, A1])
-    (implicit M: Monoid[L1], timer: Timer[Caio[C1, V1, L1, ?]], CS: ContextShift[IO]): Caio[C1, V1, L1, A1] =
-    Concurrent.timeoutTo[Caio[C1, V1, L1, ?], A1](this, duration, fallback)(new CaioConcurrent[C1, V1, L1], timer)
+    (implicit M: Monoid[L1], timer: Timer[Caio[C1, V1, L1, *]], CS: ContextShift[IO]): Caio[C1, V1, L1, A1] =
+    Concurrent.timeoutTo[Caio[C1, V1, L1, *], A1](this, duration, fallback)(new CaioConcurrent[C1, V1, L1], timer)
 
   def timeout[C1 <: C, V1 >: V, L1 >: L]
     (duration: FiniteDuration)
-    (implicit M: Monoid[L1], timer: Timer[Caio[C1, V1, L1, ?]], CS: ContextShift[IO]): Caio[C1, V1, L1, A] =
+    (implicit M: Monoid[L1], timer: Timer[Caio[C1, V1, L1, *]], CS: ContextShift[IO]): Caio[C1, V1, L1, A] =
     timeoutTo[C1, V1, L1, A](duration, ErrorCaio(new TimeoutException(duration.toString)))
 
   @inline def void: Caio[C, V, L, Unit] =
@@ -344,7 +344,7 @@ object Caio {
   def race[C, V, L, A, B](fa: Caio[C, V, L, A], fb: Caio[C, V, L, B])(implicit M: Monoid[L], CS: ContextShift[IO]): Caio[C, V, L, Either[A, B]] =
     fa.race(fb)
 
-  def sleep[C, V, L](duration: FiniteDuration)(implicit timer: Timer[Caio[C, V, L, ?]]): Caio[C, V, L, Unit] =
+  def sleep[C, V, L](duration: FiniteDuration)(implicit timer: Timer[Caio[C, V, L, *]]): Caio[C, V, L, Unit] =
     timer.sleep(duration)
 
   @inline def tell[L](l: L):Caio[Any, Nothing, L, Unit] =

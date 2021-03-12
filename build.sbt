@@ -22,7 +22,7 @@ publishArtifact in(Test, packageSrc) := true
 
 val currentScalaVersion = "2.13.1"
 ThisBuild / scalaVersion := currentScalaVersion
-crossScalaVersions := Seq("2.12.12", currentScalaVersion)
+crossScalaVersions := Seq("2.12.13", currentScalaVersion)
 
 scalacOptions ++= Seq(
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
@@ -86,7 +86,7 @@ libraryDependencies ++= Seq(
 
 testFrameworks += new TestFramework("munit.Framework")
 
-addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full)
+addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full)
 
 resolvers ++= Seq(
   "Maven Central Server" at "https://repo1.maven.org/maven2",
