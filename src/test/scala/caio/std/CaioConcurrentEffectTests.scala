@@ -9,7 +9,6 @@ import cats.{ Applicative, ApplicativeError, Monoid }
 import cats.syntax.parallel._
 import cats.data.NonEmptyList
 import cats.mtl.{ FunctorListen, FunctorTell, MonadState }
-import cats.mtl.syntax.listen._
 import cats.effect.{Clock, ContextShift, IO, Timer}
 import cats.effect.concurrent.Ref
 import org.scalatest.{AsyncFunSpec, Matchers}

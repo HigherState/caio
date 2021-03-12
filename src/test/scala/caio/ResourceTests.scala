@@ -8,12 +8,17 @@ import cats.effect.concurrent.Deferred
 import cats.effect.laws.util.TestContext
 import cats.effect.{Blocker, ExitCase, IO, Resource}
 import cats.effect.Resource._
-import cats.implicits.{catsSyntaxApplicativeId, catsSyntaxApply, catsSyntaxSemigroup, catsSyntaxTuple2Parallel, toFunctorOps, toTraverseOps}
 import cats.kernel.laws.discipline.MonoidTests
 import cats.laws.IsEqArrow
 import cats.laws.discipline.{CommutativeApplicativeTests, MonadErrorTests, ParallelTests, SemigroupKTests, catsLawsIsEqToProp}
+import cats.syntax.apply._
+import cats.syntax.applicative._
 import cats.syntax.applicativeError._
+import cats.syntax.functor._
+import cats.syntax.semigroup._
 import cats.syntax.semigroupk._
+import cats.syntax.traverse._
+import cats.syntax.parallel._
 import org.scalacheck.Prop.forAll
 
 import scala.concurrent.duration.DurationInt
@@ -163,19 +168,16 @@ class ResourceTests extends TestInstances {
 
     val result = CE.toIO(caio).unsafeToFuture()
 
-    // Check that acquire ran inside the blocking context.
     EC.tick()
     assertEquals(acquired, false)
     blockingEc.tick()
     assertEquals(acquired, true)
 
-    // Check that close was called and ran inside the blocking context.
     EC.tick()
     assertEquals(closed, false)
     blockingEc.tick()
     assertEquals(closed, true)
 
-    // Check the final result.
     EC.tick()
     assertEquals(result.value, Some(Success("Hello world")))
   }
@@ -248,21 +250,6 @@ class ResourceTests extends TestInstances {
       Resource.liftF[CaioT, Int](Caio(0)).evalTap(f).use(Caio.pure) <-> f(0).as(0)
     }
   }
-
-  /*testAsync("evalTap with cancellation <-> IO.never") { params =>
-    import params._
-
-    forAll { (g: Int => CaioT[Int]) =>
-      val effect: Int => CaioT[Int] = a =>
-        for {
-          f <- (g(a) <* IO.cancelBoundary).start
-          _ <- f.cancel
-          r <- f.join
-        } yield r
-
-      Resource.liftF(IO(0)).evalTap(effect).use(IO.pure) <-> IO.never
-    }
-  }*/
 
   testAsync("(evalTap with error <-> Caio.raiseError") { params =>
     import params._
@@ -374,7 +361,6 @@ class ResourceTests extends TestInstances {
     val release = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
     val resource = Resource.liftF[CaioT, Unit](Caio.unit)
 
-    // Dotty fails to infer functor syntax if this line is in the for comprehension
     val allocated = ((release *> resource).mapK(takeAnInteger) *> plusOneResource).mapK(runWithTwo).allocated
 
     val prog = for {

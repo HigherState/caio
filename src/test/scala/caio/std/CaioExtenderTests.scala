@@ -1,14 +1,12 @@
 package caio.std
 
-import caio.{Caio, Event, Failure}
+import caio.{Caio, Failure}
 import caio.Event.EventLog
-import caio.implicits.StaticImplicits
 import caio.mtl.{ContextProjector, Extender, ExtendsOn, Provider}
 import cats.effect.{Effect, Sync}
-import cats.{Functor, Monad, Monoid}
+import cats.{Functor, Monad}
 import cats.mtl.ApplicativeAsk
 import org.scalatest.{AsyncFunSpec, Matchers}
-
 
 class CaioExtenderTests extends AsyncFunSpec with Matchers{
   import cats.implicits._
