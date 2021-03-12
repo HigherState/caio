@@ -1,6 +1,6 @@
 package caio
 
-import caio.std.{CaioApplicative, CaioBracket, CaioConcurrent, CaioFunctor}
+import caio.std.{CaioApplicative, CaioBracket, CaioConcurrent}
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.effect.{Concurrent, ConcurrentEffect, ContextShift, ExitCase, Fiber, IO, Resource, Timer}

@@ -111,14 +111,14 @@ package object arbitrary {
       }
     }*/
 
-  implicit def catsEffectLawsArbitraryForResource[F[_], A](implicit
+  /*implicit def caioArbitraryForResource[F[_], A](implicit
     F: Applicative[F],
     AFA: Arbitrary[F[A]],
     AFU: Arbitrary[F[Unit]]
   ): Arbitrary[Resource[F, A]] =
     Arbitrary(Gen.delay(genResource[F, A]))
 
-  implicit def catsEffectLawsArbitraryForResourceParallel[F[_], A](implicit A: Arbitrary[Resource[F, A]]): Arbitrary[Resource.Par[F, A]] =
+  implicit def caioArbitraryForResourceParallel[F[_], A](implicit A: Arbitrary[Resource[F, A]]): Arbitrary[Resource.Par[F, A]] =
     Arbitrary(A.arbitrary.map(Resource.Par.apply))
 
   def genResource[F[_], A](implicit
@@ -143,7 +143,7 @@ package object arbitrary {
       1 -> genBind,
       1 -> genSuspend
     )
-  }
+  }*/
 
   implicit def arbitraryForFailure: Arbitrary[Failure] =
     Arbitrary(getArbitrary[String].map(Failure(_)))

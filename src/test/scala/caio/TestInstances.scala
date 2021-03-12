@@ -4,10 +4,10 @@ import java.io.{ByteArrayOutputStream, OutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
 
 import caio.Event.EventLog
-import caio.implicits.StaticImplicits
+import caio.implicits.DynamicContextImplicits
 import caio.std.CaioConcurrentEffect
 import caio.std.Par.unwrap
-import cats.Monoid
+import cats.{Monoid, SemigroupK}
 import cats.effect.{Clock, ContextShift, IO, Timer}
 import cats.effect.laws.util.TestContext
 import cats.kernel.Eq
@@ -29,16 +29,19 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
   type V = Failure
   type CaioT[A] = Caio[C, V, L, A]
 
-  val implicits: StaticImplicits[C, V, L] = new StaticImplicits[C, V, L]
+  val implicits: DynamicContextImplicits[V, L] = new DynamicContextImplicits[V, L]
 
   implicit val C = Map.empty[String, String]
-  implicit val isomorphism = invariant[CaioT](implicits.staticCaioMonad)
+  implicit val isomorphism = invariant[CaioT](implicits.dynamicCaioMonad[C])
 
   protected class TestParams(testContext: TestContext, contextShift: ContextShift[IO]) {
     def this(testContext: TestContext) = this(testContext, testContext.ioContextShift)
     implicit val EC: TestContext = testContext
-    implicit val CS: ContextShift[IO] = contextShift //testContext.ioContextShift
+    implicit val CS: ContextShift[IO] = contextShift
     implicit val CE: CaioConcurrentEffect[C, V, L] = concurrentEffect(CS)
+    implicit val SGK: SemigroupK[CaioT] = new SemigroupK[CaioT] {
+      override def combineK[A](x: CaioT[A], y: CaioT[A]): CaioT[A] = x <* y
+    }
   }
 
   def concurrentEffect(cs: ContextShift[IO]): CaioConcurrentEffect[C, V, L] =
@@ -57,16 +60,16 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
     property(name)(silenceSystemErr(() => { f(new TestParams(context)); () }))(Location.empty)
   }
 
-  def testGlobalAsync(name: String)(f: TestParams => Unit): Unit = {
+  def testGlobalAsync(name: String)(f: TestParams => Any): Unit = {
     val context = TestContext()
     val CS = IO.contextShift(ExecutionContext.global)
-    property(name)(silenceSystemErr(() => f(new TestParams(context, CS))))(Location.empty)
+    property(name)(silenceSystemErr(() => { f(new TestParams(context, CS)); () }))(Location.empty)
   }
 
   def getTimer(ioTimer: Timer[IO])(implicit CS: ContextShift[IO], CE: CaioConcurrentEffect[C, V, L]): Timer[CaioT] =
     new Timer[CaioT] {
       val clock: Clock[CaioT]                          = Clock.create[CaioT]
-      def sleep(duration: FiniteDuration): CaioT[Unit] = implicits.staticCaioConcurrent.liftIO(ioTimer.sleep(duration))
+      def sleep(duration: FiniteDuration): CaioT[Unit] = implicits.dynamicCaioConcurrent[C].liftIO(ioTimer.sleep(duration))
     }
 
   protected def silenceSystemErr[A](thunk: () => A): A = synchronized {
