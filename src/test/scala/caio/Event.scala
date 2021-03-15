@@ -4,12 +4,12 @@ import cats.{Eq, Monoid}
 
 trait Event
 
-case class TestEvent(id:Int) extends Event
+case class TestEvent(id: Int) extends Event
 
 object Event {
   type EventLog = Vector[Event]
 
-  implicit val EventMonoid:Monoid[EventLog] =
+  implicit val EventMonoid: Monoid[EventLog] =
     new Monoid[EventLog] {
       def empty: EventLog =
         Vector.empty
@@ -18,7 +18,7 @@ object Event {
         x ++ y
     }
 
-  implicit val EventEq:Eq[EventLog] =
+  implicit val EventEq: Eq[EventLog] =
     (x: EventLog, y: EventLog) => x.equals(y)
 
   val event1 = TestEvent(1)

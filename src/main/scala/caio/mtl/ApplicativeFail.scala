@@ -6,10 +6,10 @@ import cats.data.NonEmptyList
 trait ApplicativeFail[F[_], V] {
   val applicative: Applicative[F]
 
-  def fail[A](failure:V):F[A] =
+  def fail[A](failure: V):F[A] =
     failMany(NonEmptyList(failure, Nil))
 
-  def failMany[A](failures:NonEmptyList[V]):F[A]
+  def failMany[A](failures: NonEmptyList[V]):F[A]
 
   def handleFailuresWith[A](fa: F[A])(f: NonEmptyList[V] => F[A]): F[A]
 
@@ -40,7 +40,7 @@ object ApplicativeFail {
         AE.handleErrorWith(fa)(f)
     }
 
-  implicit def applicativeError[F[_], V](implicit AF:ApplicativeFail[F, V]):ApplicativeError[F, NonEmptyList[V]] =
+  implicit def applicativeError[F[_], V](implicit AF:ApplicativeFail[F, V]): ApplicativeError[F, NonEmptyList[V]] =
     new ApplicativeError[F, NonEmptyList[V]]{
       def raiseError[A](e: NonEmptyList[V]): F[A] =
         AF.failMany(e)
@@ -55,7 +55,7 @@ object ApplicativeFail {
         AF.applicative.ap(ff)(fa)
     }
 
-  implicit def monadError[F[_], V](implicit AF:ApplicativeFail[F, V], M:Monad[F]):MonadError[F, NonEmptyList[V]] =
+  implicit def monadError[F[_], V](implicit AF:ApplicativeFail[F, V], M:Monad[F]): MonadError[F, NonEmptyList[V]] =
     new MonadError[F, NonEmptyList[V]] {
 
       def raiseError[A](e: NonEmptyList[V]): F[A] =

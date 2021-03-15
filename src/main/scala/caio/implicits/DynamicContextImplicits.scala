@@ -7,7 +7,7 @@ import cats.{Monad, Monoid, Parallel}
 import cats.effect.{Async, Concurrent, ConcurrentEffect, ContextShift, IO, Sync}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
 
-class DynamicContextImplicits[V, L](implicit ML:Monoid[L]) { parent =>
+class DynamicContextImplicits[V, L](implicit ML: Monoid[L]) {
 
   private val static: StaticImplicits[Unit, V, L] =
     new StaticImplicits[Unit, V, L]()(ML) {}
@@ -42,7 +42,7 @@ class DynamicContextImplicits[V, L](implicit ML:Monoid[L]) { parent =>
   implicit def dynamicCaioMonadState[C]: MonadState[Caio[C, V, L, *], C] =
     new CaioMonadState[C, V, L]
 
-  implicit def dynamicCaioEffectful[C](implicit CE:ConcurrentEffect[Caio[Unit, V, L, *]]): Effectful[Caio[C, V, L, *]] =
+  implicit def dynamicCaioEffectful[C](implicit CE: ConcurrentEffect[Caio[Unit, V, L, *]]): Effectful[Caio[C, V, L, *]] =
     new CaioEffectful[C, V, L](dynamicCaioApplicativeAsk[C], CE)
 
 }

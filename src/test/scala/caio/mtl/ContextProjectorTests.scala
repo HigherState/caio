@@ -5,38 +5,38 @@ import org.scalatest.{AsyncFunSpec, Matchers}
 
 class ContextProjectorTests extends AsyncFunSpec with Matchers{
 
-  class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
+  class AskInt[M[_]: ApplicativeAsk[*[_], Int]] {
     def run:M[Int] = ApplicativeAsk[M,Int].ask
   }
 
-  class AskString[M[_]:ApplicativeAsk[*[_], String]] {
+  class AskString[M[_]: ApplicativeAsk[*[_], String]] {
     def run:M[String] = ApplicativeAsk[M, String].ask
   }
 
-  class AskIntString[M[_]:ApplicativeAsk[*[_], (Int, String)]] {
-    import caio.mtl.ContextProjector._
+  class AskIntString[M[_]: ApplicativeAsk[*[_], (Int, String)]] {
+    import caio.mtl.ContextProjector.{projectApplicativeAsk, askAskProjection}
 
     val ai = new AskInt[M]
 
     val as = new AskString[M]
   }
 
-  class AskIntIgnore[M[_]:ApplicativeAsk[*[_], Int]] {
-    import caio.mtl.ContextProjector._
+  class AskIntIgnore[M[_]: ApplicativeAsk[*[_], Int]] {
+    import caio.mtl.ContextProjector.{projectApplicativeAsk, askAskProjection}
 
     val ai = new AskInt[M]
   }
 
-  class MonadInt[M[_]:MonadState[*[_], Int]] {
+  class MonadInt[M[_]: MonadState[*[_], Int]] {
     def run:M[Int] = MonadState[M,Int].get
   }
 
-  class MonadString[M[_]:MonadState[*[_], String]] {
+  class MonadString[M[_]: MonadState[*[_], String]] {
     def run:M[String] = MonadState[M, String].get
   }
 
-  class MonadIntString[M[_]:MonadState[*[_], (Int, String)]] {
-    import caio.mtl.ContextProjector._
+  class MonadIntString[M[_]: MonadState[*[_], (Int, String)]] {
+    import caio.mtl.ContextProjector.{projectMonadState, stateStateProjection}
 
     val ai = new MonadInt[M]
 
@@ -44,16 +44,16 @@ class ContextProjectorTests extends AsyncFunSpec with Matchers{
   }
 
 
-  class MonadIntAskString[M[_]:MonadState[*[_], (Int, String)]] {
-    import caio.mtl.ContextCombinator._
+  class MonadIntAskString[M[_]: MonadState[*[_], (Int, String)]] {
+    import caio.mtl.ContextCombinator.{combinatorAsk, stateCombinator}
 
     val ai = new AskInt[M]
 
     val as = new AskString[M]
   }
 
-  class MonadIntAskStringF[M[_]:MonadState[*[_], Int]:ApplicativeAsk[*[_], String]] {
-    import caio.mtl.ContextCombinator._
+  class MonadIntAskStringF[M[_]: MonadState[*[_], Int]: ApplicativeAsk[*[_], String]] {
+    import caio.mtl.ContextCombinator.{combinatorAsk, askStateCombinator}
 
     val as = new AskIntString[M]
   }

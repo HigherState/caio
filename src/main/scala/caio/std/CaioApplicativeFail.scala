@@ -1,17 +1,17 @@
 package caio.std
 
+import caio.Caio
 import caio.mtl.ApplicativeFail
-import caio._
+import cats.CommutativeApplicative
 import cats.data.NonEmptyList
-import cats.Applicative
 
 class CaioApplicativeFail[C, V, L] extends ApplicativeFail[Caio[C, V, L, *], V]{
-  val applicative: Applicative[Caio[C, V, L, *]] =
+  val applicative: CommutativeApplicative[Caio[C, V, L, *]] =
     new CaioApplicative[C, V, L]
 
   def failMany[A](failures: NonEmptyList[V]): Caio[C, V, L, A] =
-    FailureCaio(failures.head, failures.tail)
+    Caio.failMany(failures)
 
   def handleFailuresWith[A](fa: Caio[C, V, L, A])(f: NonEmptyList[V] => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    HandleFailureCaio(fa, f)
+    fa.handleFailuresWith(f)
 }

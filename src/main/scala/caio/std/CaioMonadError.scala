@@ -1,15 +1,12 @@
 package caio.std
 
-import caio.{Caio, HandleErrorCaio, IOCaio}
-import cats.effect.IO
+import caio.Caio
 import cats.MonadError
 
-class CaioMonadError[C, V, L]
-  extends CaioMonad[C, V, L] with MonadError[Caio[C, V, L, *], Throwable] {
-
-  def raiseError[A](e: Throwable): Caio[C, V, L, A] =
-    IOCaio(IO.raiseError(e))
+class CaioMonadError[C, V, L] extends CaioMonad[C, V, L] with MonadError[Caio[C, V, L, *], Throwable] {
+  def raiseError[A](ex: Throwable): Caio[C, V, L, A] =
+    Caio.raiseError(ex)
 
   def handleErrorWith[A](fa: Caio[C, V, L, A])(f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    HandleErrorCaio(fa, f)
+    fa.handleErrorWith(f)
 }

@@ -2,13 +2,14 @@ package caio.std
 
 import caio._
 import caio.implicits.StaticImplicits
-import cats.effect.{IO, LiftIO, Sync}
+import cats.effect.{IO, LiftIO}
 import cats.{Applicative, MonadError, Monoid}
 import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorTell, MonadState}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 
-class CaioEvaluationTests extends AsyncFunSpec with Matchers{
+class CaioEvaluationTests extends AsyncFunSpec with Matchers {
+  import caio.mtl.ContextProjector._
   import Event._
   import Exception._
   import Failure._
@@ -23,12 +24,11 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
     caio.runContext(c).unsafeRunSync()
   }
 
-  import caio.mtl.ContextProjector._
+
   val implicits = new StaticImplicits[C, V, L]{
     protected implicit def ML: Monoid[L] = EventMonoid
   }
   import implicits._
-  import cats.Monad.ops._
 
   describe("Setting and retrieving environment") {
 
@@ -93,25 +93,22 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
   }
   describe("throwing an exception") {
     it("Should throw exception if pure") {
-      intercept[Exception](IO.pure(throw Exception.exception1)) shouldBe Exception.exception1
-      intercept[Exception](Applicative[CaioT].pure(throw Exception.exception1)) shouldBe Exception.exception1
+      intercept[Exception](IO.pure[Unit](throw Exception.exception1)) shouldBe Exception.exception1
+      intercept[Exception](Caio.pure[Unit](throw Exception.exception1)) shouldBe Exception.exception1
     }
     it("Should capture exception if delay") {
-      run("1" -> 1, Sync[CaioT].delay(throw Exception.exception1)) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
+      run("1" -> 1, Caio(throw Exception.exception1)) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
     it("Should capture exception if flatMap") {
-      val iof =
-        IO.pure("a")
-          .flatMap{a => throw Exception.exception1}
       val f =
         Applicative[CaioT].pure("a")
-          .flatMap{a => throw Exception.exception1}
+          .flatMap{_ => throw Exception.exception1}
       run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
     it("Should capture exception if map") {
       val f =
         Applicative[CaioT].pure("a")
-          .map{a => throw Exception.exception1}
+          .map{_ => throw Exception.exception1}
       run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
   }
@@ -142,11 +139,11 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
         for {
           a <- Applicative[CaioT].pure("value")
           _ <- FunctorTell[CaioT, L].tell(Vector(event1))
-          i <- ApplicativeAsk[CaioT, Int].ask
+          _ <- ApplicativeAsk[CaioT, Int].ask
           _ <- FunctorTell[CaioT, L].tell(Vector(event2))
           _ <-  MonadState[CaioT, String].set(a)
           b <- Applicative[CaioT].pure(123)
-          i2 <- ApplicativeAsk[CaioT, Int].ask
+          _ <- ApplicativeAsk[CaioT, Int].ask
           a2 <-  MonadState[CaioT, String].get
           _ <- MonadError[CaioT, Throwable].raiseError[Int](exception1)
           _ <-FunctorTell[CaioT, L].tell(Vector(event3))
@@ -162,11 +159,11 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
         for {
           a <- Applicative[CaioT].pure("value")
           _ <- FunctorTell[CaioT, L].tell(Vector(event1))
-          i <- ApplicativeAsk[CaioT, Int].ask
+          _ <- ApplicativeAsk[CaioT, Int].ask
           _ <- FunctorTell[CaioT, L].tell(Vector(event2))
           _ <- MonadState[CaioT, String].set(a)
           b <- LiftIO[CaioT].liftIO(IO.delay(123))
-          i2 <- ApplicativeAsk[CaioT, Int].ask
+          _ <- ApplicativeAsk[CaioT, Int].ask
           a2 <- MonadState[CaioT, String].get
           _ <- FunctorTell[CaioT, L].tell(Vector(event3))
           _ <- MonadState[CaioT, String].set("new " + a2)
@@ -181,11 +178,11 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers{
         for {
           a <- Applicative[CaioT].pure("value")
           _ <- FunctorTell[CaioT, L].tell(Vector(event1))
-          i <- ApplicativeAsk[CaioT, Int].ask
+          _ <- ApplicativeAsk[CaioT, Int].ask
           _ <- FunctorTell[CaioT, L].tell(Vector(event2))
           _ <- MonadState[CaioT, String].set(a)
           b <- Applicative[CaioT].pure(123)
-          i2 <- ApplicativeAsk[CaioT, Int].ask
+          _ <- ApplicativeAsk[CaioT, Int].ask
           a2 <- MonadState[CaioT, String].get
           _ <- LiftIO[CaioT].liftIO(IO.raiseError[Int](exception1))
           _ <- FunctorTell[CaioT, L].tell(Vector(event3))

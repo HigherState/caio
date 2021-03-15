@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{Caio, MapCaio, TellCaio}
+import caio.Caio
 import cats.Functor
 import cats.mtl.FunctorTell
 
@@ -9,10 +9,10 @@ class CaioFunctorTell[C, V, L] extends FunctorTell[Caio[C, V, L, *], L]{
     new CaioFunctor[C, V, L] {}
 
   def tell(l: L): Caio[C, V, L, Unit] =
-    TellCaio(l)
+    Caio.tell(l)
 
   def writer[A](a: A, l: L): Caio[C, V, L, A] =
-    MapCaio[C, V, L, Unit, A](TellCaio(l), _ => a)
+    Caio.tell(l).as(a)
 
   def tuple[A](ta: (L, A)): Caio[C, V, L, A] =
     writer(ta._2, ta._1)
