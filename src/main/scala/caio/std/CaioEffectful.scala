@@ -4,14 +4,14 @@ import caio.Caio
 import caio.mtl.{ConcurrentEffectIsomorphism, Effectful}
 import cats.Monoid
 import cats.effect.ConcurrentEffect
-import cats.mtl.ApplicativeAsk
+import cats.mtl.Ask
 
 class CaioEffectful[C, V, L: Monoid](
-  applicativeAsk: ApplicativeAsk[Caio[C, V, L, *], C],
+  ask: Ask[Caio[C, V, L, *], C],
   base: ConcurrentEffect[Caio[Unit, V, L, *]]
 ) extends Effectful[Caio[C, V, L, *]]{
   def concurrentEffect: Caio[C, V, L, ConcurrentEffect[Caio[C, V, L, *]]] =
-    applicativeAsk.ask.map { c =>
+    ask.ask.map { (c: C) =>
       val iso = new CaioBijectionK[C, Unit, V, L](_ => c, _ => ())
       new ConcurrentEffectIsomorphism[Caio[C, V, L, *], Caio[Unit, V, L, *]](base, iso)
     }

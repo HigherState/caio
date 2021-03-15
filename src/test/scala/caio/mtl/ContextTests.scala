@@ -1,42 +1,44 @@
 package caio.mtl
 
-import cats.mtl.{ApplicativeAsk, MonadState}
+import cats.mtl.Stateful
 
 class ContextTests {
 
-  class AskInt[M[_]: ApplicativeAsk[*[_], Int]] {
-    def run: M[Int] = ApplicativeAsk[M,Int].ask
+  class AskInt[M[_]: InvariantAsk[*[_], Int]] {
+    def run: M[Int] = InvariantAsk[M,Int].ask
   }
 
-  class AskString[M[_]: ApplicativeAsk[*[_], String]] {
-    def run: M[String] = ApplicativeAsk[M, String].ask
+  class AskString[M[_]: InvariantAsk[*[_], String]] {
+    def run: M[String] = InvariantAsk[M, String].ask
   }
 
-  class AskIntString[M[_]: ApplicativeAsk[*[_], (Int, String)]] {
-    def run: M[(Int, String)] = ApplicativeAsk[M,(Int, String)].ask
+  class AskIntString[M[_]: InvariantAsk[*[_], (Int, String)]] {
+    def run: M[(Int, String)] = InvariantAsk[M,(Int, String)].ask
   }
 
-  class AskIntBoolean[M[_]: ApplicativeAsk[*[_], (Int, Boolean)]] {
-    def run: M[(Int, Boolean)] = ApplicativeAsk[M,(Int, Boolean)].ask
+  class AskIntBoolean[M[_]: InvariantAsk[*[_], (Int, Boolean)]] {
+    def run: M[(Int, Boolean)] = InvariantAsk[M,(Int, Boolean)].ask
   }
 
-  class AskIntBooleanString[M[_]: ApplicativeAsk[*[_], (Int, Boolean, String)]] {
-    def run: M[(Int, Boolean, String)] = ApplicativeAsk[M,(Int, Boolean, String)].ask
+  class AskIntBooleanString[M[_]: InvariantAsk[*[_], (Int, Boolean, String)]] {
+    def run: M[(Int, Boolean, String)] = InvariantAsk[M,(Int, Boolean, String)].ask
   }
 
-  class StateString[M[_]: MonadState[*[_], String]] {
-    def run: M[String] = MonadState[M, String].get
+
+  class StateString[M[_]: Stateful[*[_], String]] {
+    def run: M[String] = Stateful[M, String].get
   }
 
-  class StateIntString[M[_]: MonadState[*[_], (Int, String)]] {
-    def run: M[(Int, String)] = MonadState[M,(Int, String)].get
+  class StateIntString[M[_]: Stateful[*[_], (Int, String)]] {
+    def run: M[(Int, String)] = Stateful[M,(Int, String)].get
   }
 
-  class StateAskIntBooleanString[M[_]: ApplicativeAsk[*[_], (Int, String)]: MonadState[*[_], Boolean]] {
+  class StateAskIntBooleanString[M[_]: InvariantAsk[*[_], (Int, String)]: Stateful[*[_], Boolean]] {
     def run: M[(Int, Boolean, String)] = ???
   }
 
-  class AddAskContext[M[_]](implicit C:Provider[M]) {
+
+  class AddAskContext[M[_]](implicit C: Provider[M]) {
 
     val E = C.apply[Int]
     import E._
@@ -46,8 +48,8 @@ class ContextTests {
     def run:M[Int] = E.apply(3)(service.run)
   }
 
-  class ComplexStateString[M[_]:MonadState[*[_], String]] {
-    def run:M[String] = MonadState[M,String].get
+  class ComplexStateString[M[_]: Stateful[*[_], String]] {
+    def run: M[String] = Stateful[M,String].get
   }
 
   class AddStateContext[M[_]:Provider] {
@@ -57,7 +59,7 @@ class ContextTests {
 
     val service = new ComplexStateString[E.FE]
 
-    def run:M[String] = E.apply("Value")(service.run)
+    def run: M[String] = E.apply("Value")(service.run)
   }
 
   class Dependency[M[_], MC[_]:Provided[*[_], M, Int]]
@@ -65,13 +67,13 @@ class ContextTests {
 
     val e = implicitly[Provided[MC, M, Int]]
 
-    def run:M[Int] = e.apply(3)(a.run)
+    def run :M[Int] = e.apply(3)(a.run)
   }
 
   class Dependency2[M[_],
-    MC[_]:Provided[*[_], M, Int],
-    MC2[_]:Provided[*[_], MC, String]
-  ](a:AskIntString[MC2]){
+    MC[_]: Provided[*[_], M, Int],
+    MC2[_]: Provided[*[_], MC, String]
+  ](a: AskIntString[MC2]){
 
     val e = implicitly[Provided[MC, M, Int]]
     val e2 = implicitly[Provided[MC2, MC, String]]
@@ -80,16 +82,16 @@ class ContextTests {
       e.apply(3)(e2.apply("value")(a.run))
   }
 
-  class AskContext2[M[_]:Provider] {
+  class AskContext2[M[_]: Provider] {
 
-    val e:Provides[M, String] =
+    val e: Provides[M, String] =
       implicitly[Provider[M]].apply[String]
     import e._
 
     val nested = new AskContextNested[e.FE]()
   }
 
-  class AskContextNested[M[_]:Extender[*[_], String]:ApplicativeAsk[*[_], String]] {
+  class AskContextNested[M[_]: Extender[*[_], String]: InvariantAsk[*[_], String]] {
 
     val string2 = new AskString[M]
 
@@ -122,7 +124,8 @@ class ContextTests {
     val string1 = new AskString[e.FE]
   }
 
-  class MixContext2[M[_]:Provider] {
+
+  class MixContext2[M[_]: Provider] {
 
     val e:Provides[M, String] =
       implicitly[Provider[M]].apply[String]
@@ -134,9 +137,7 @@ class ContextTests {
     val nested = new MixContextNested[e.FE]()
   }
 
-  class MixContextNested[M[_]: Extender[*[_], String]: MonadState[*[_], String]] {
-
-
+  class MixContextNested[M[_]: Extender[*[_], String]: Stateful[*[_], String]] {
     val string2 = new StateString[M]
 
     val string4 = {

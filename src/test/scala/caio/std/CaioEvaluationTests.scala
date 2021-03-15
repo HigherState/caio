@@ -2,9 +2,10 @@ package caio.std
 
 import caio._
 import caio.implicits.StaticImplicits
+import caio.mtl.InvariantAsk
 import cats.effect.{IO, LiftIO}
 import cats.{Applicative, MonadError, Monoid}
-import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorTell, MonadState}
+import cats.mtl.{Censor, Tell, Stateful}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 
@@ -24,39 +25,30 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
     caio.runContext(c).unsafeRunSync()
   }
 
-
   val implicits = new StaticImplicits[C, V, L]{
     protected implicit def ML: Monoid[L] = EventMonoid
   }
+
   import implicits._
 
   describe("Setting and retrieving environment") {
-
     it ("Should get the state") {
-      val result =
-        for {
-          s <- ApplicativeAsk.ask[CaioT, Int]
-        } yield s
+      val result = InvariantAsk.ask[CaioT, Int]
       run("Testing" -> 123, result)._3 shouldBe Right(123)
     }
-
   }
 
   describe("Setting and retrieving state") {
-
     it ("Should get the state") {
-      val result =
-        for {
-          s <- MonadState.get[CaioT, String]
-        } yield s
+      val result = Stateful.get[CaioT, String]
       run("Testing" -> 123, result)._3 shouldBe Right("Testing")
     }
 
     it("Should set the state") {
       val result =
         for {
-          _ <- MonadState.set[CaioT, String]("Altered")
-          s <- MonadState.get[CaioT, String]
+          _ <- Stateful.set[CaioT, String]("Altered")
+          s <- Stateful.get[CaioT, String]
         } yield s
 
       run("Testing" -> 123, result)._3 shouldBe Right("Altered")
@@ -66,18 +58,15 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
   describe("Tell of an event") {
 
     it ("Should provide an event") {
-      val result =
-        for {
-          _ <- FunctorTell.tell[CaioT, L](Vector(event1))
-        } yield "finish"
+      val result = Tell.tell[CaioT, L](Vector(event1)).as("finish")
       run("Testing" -> 123, result)._2 shouldBe Vector(event1)
     }
 
     it ("Should combine events") {
       val result =
         for {
-          _ <- FunctorTell.tell[CaioT, L](Vector(event1))
-          _ <- FunctorTell.tell[CaioT, L](Vector(event2))
+          _ <- Tell.tell[CaioT, L](Vector(event1))
+          _ <- Tell.tell[CaioT, L](Vector(event2))
         } yield "finish"
       run("Testing" -> 123, result)._2 shouldBe Vector(event1, event2)
     }
@@ -86,8 +75,8 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
   describe("Censor event log") {
     it ("Should transform EventLog") {
       val result =
-        ApplicativeCensor[CaioT, L]
-          .censor(FunctorTell.tell[CaioT, L](Vector(event1, event2)))(_.reverse)
+        Censor[CaioT, L]
+          .censor(Tell.tell[CaioT, L](Vector(event1, event2)))(_.reverse)
       run("Testing" -> 123, result)._2 shouldBe Vector(event2, event1)
     }
   }
@@ -119,17 +108,17 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
       val result =
         for {
           a <- Applicative[CaioT].pure("value")
-          _ <- FunctorTell[CaioT, L].tell(Vector(event1))
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          _ <- FunctorTell[CaioT, L].tell(Vector(event2))
-          _ <- MonadState[CaioT, String].set(a)
+          _ <- Tell[CaioT, L].tell(Vector(event1))
+          _ <- InvariantAsk.ask[CaioT, Int]
+          _ <- Tell[CaioT, L].tell(Vector(event2))
+          _ <- Stateful[CaioT, String].set(a)
           b <- Applicative[CaioT].pure(123)
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          a2 <- MonadState[CaioT, String].get
-          _ <- FunctorTell[CaioT, L].tell(Vector(event3))
-          _ <- MonadState[CaioT, String].set("new " + a2)
-          i3 <- ApplicativeAsk[CaioT, Int].ask
-          a3 <- MonadState[CaioT, String].get
+          _ <- InvariantAsk.ask[CaioT, Int]
+          a2 <- Stateful[CaioT, String].get
+          _ <- Tell[CaioT, L].tell(Vector(event3))
+          _ <- Stateful[CaioT, String].set("new " + a2)
+          i3 <- InvariantAsk.ask[CaioT, Int]
+          a3 <- Stateful[CaioT, String].get
         } yield (i3 + b) -> a3
       run("Testing" -> 321, result) shouldBe (("new value" -> 321, Vector(event1, event2, event3), Right(444 -> "new value")))
     }
@@ -138,18 +127,18 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
       val result =
         for {
           a <- Applicative[CaioT].pure("value")
-          _ <- FunctorTell[CaioT, L].tell(Vector(event1))
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          _ <- FunctorTell[CaioT, L].tell(Vector(event2))
-          _ <-  MonadState[CaioT, String].set(a)
+          _ <- Tell[CaioT, L].tell(Vector(event1))
+          _ <- InvariantAsk.ask[CaioT, Int]
+          _ <- Tell[CaioT, L].tell(Vector(event2))
+          _ <-  Stateful[CaioT, String].set(a)
           b <- Applicative[CaioT].pure(123)
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          a2 <-  MonadState[CaioT, String].get
+          _ <- InvariantAsk.ask[CaioT, Int]
+          a2 <-  Stateful[CaioT, String].get
           _ <- MonadError[CaioT, Throwable].raiseError[Int](exception1)
-          _ <-FunctorTell[CaioT, L].tell(Vector(event3))
-          _ <-  MonadState[CaioT, String].set("new " + a2)
-          i3 <- ApplicativeAsk[CaioT, Int].ask
-          a3 <-  MonadState[CaioT, String].get
+          _ <-Tell[CaioT, L].tell(Vector(event3))
+          _ <-  Stateful[CaioT, String].set("new " + a2)
+          i3 <- InvariantAsk.ask[CaioT, Int]
+          a3 <-  Stateful[CaioT, String].get
         } yield (i3 + b) -> a3
       run("Testing" -> 321, result) shouldBe ("value" -> 321, Vector(event1, event2), (Left(Left(exception1))))
     }
@@ -158,17 +147,17 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
       val result =
         for {
           a <- Applicative[CaioT].pure("value")
-          _ <- FunctorTell[CaioT, L].tell(Vector(event1))
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          _ <- FunctorTell[CaioT, L].tell(Vector(event2))
-          _ <- MonadState[CaioT, String].set(a)
+          _ <- Tell[CaioT, L].tell(Vector(event1))
+          _ <- InvariantAsk.ask[CaioT, Int]
+          _ <- Tell[CaioT, L].tell(Vector(event2))
+          _ <- Stateful[CaioT, String].set(a)
           b <- LiftIO[CaioT].liftIO(IO.delay(123))
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          a2 <- MonadState[CaioT, String].get
-          _ <- FunctorTell[CaioT, L].tell(Vector(event3))
-          _ <- MonadState[CaioT, String].set("new " + a2)
-          i3 <- ApplicativeAsk[CaioT, Int].ask
-          a3 <- MonadState[CaioT, String].get
+          _ <- InvariantAsk.ask[CaioT, Int]
+          a2 <- Stateful[CaioT, String].get
+          _ <- Tell[CaioT, L].tell(Vector(event3))
+          _ <- Stateful[CaioT, String].set("new " + a2)
+          i3 <- InvariantAsk.ask[CaioT, Int]
+          a3 <- Stateful[CaioT, String].get
         } yield (i3 + b) -> a3
       run("Testing" -> 321, result) shouldBe (("new value" -> 321 ,Vector(event1, event2, event3), Right(444 -> "new value")))
     }
@@ -177,18 +166,18 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
       val result =
         for {
           a <- Applicative[CaioT].pure("value")
-          _ <- FunctorTell[CaioT, L].tell(Vector(event1))
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          _ <- FunctorTell[CaioT, L].tell(Vector(event2))
-          _ <- MonadState[CaioT, String].set(a)
+          _ <- Tell[CaioT, L].tell(Vector(event1))
+          _ <- InvariantAsk.ask[CaioT, Int]
+          _ <- Tell[CaioT, L].tell(Vector(event2))
+          _ <- Stateful[CaioT, String].set(a)
           b <- Applicative[CaioT].pure(123)
-          _ <- ApplicativeAsk[CaioT, Int].ask
-          a2 <- MonadState[CaioT, String].get
+          _ <- InvariantAsk.ask[CaioT, Int]
+          a2 <- Stateful[CaioT, String].get
           _ <- LiftIO[CaioT].liftIO(IO.raiseError[Int](exception1))
-          _ <- FunctorTell[CaioT, L].tell(Vector(event3))
-          _ <- MonadState[CaioT, String].set("new " + a2)
-          i3 <- ApplicativeAsk[CaioT, Int].ask
-          a3 <- MonadState[CaioT, String].get
+          _ <- Tell[CaioT, L].tell(Vector(event3))
+          _ <- Stateful[CaioT, String].set("new " + a2)
+          i3 <- InvariantAsk.ask[CaioT, Int]
+          a3 <- Stateful[CaioT, String].get
         } yield (i3 + b) -> a3
       run("Testing" -> 321, result) shouldBe (("value" -> 321, Vector(event1, event2), Left(Left(exception1))))
     }

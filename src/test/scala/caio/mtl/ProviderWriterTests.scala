@@ -1,29 +1,28 @@
 package caio.mtl
 
-import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorListen, FunctorTell}
+import cats.mtl.{Censor, Listen, Tell}
 
 class ProviderWriterTests {
 
-  class AskTell[M[_]:ApplicativeAsk[*[_], Int]:FunctorTell[*[_], L], L] {
-    def run:M[Int] = ApplicativeAsk[M,Int].ask
+  class AskTell[M[_]: InvariantAsk[*[_], Int]: Tell[*[_], L], L] {
+    def run: M[Int] = InvariantAsk[M,Int].ask
   }
 
-  class AskListen[M[_]:ApplicativeAsk[*[_], Int]:FunctorListen[*[_], L], L] {
-    def run:M[Int] = ApplicativeAsk[M,Int].ask
+  class AskListen[M[_]: InvariantAsk[*[_], Int]: Listen[*[_], L], L] {
+    def run: M[Int] = InvariantAsk[M,Int].ask
   }
 
-  class AskCensor[M[_]:ApplicativeAsk[*[_], Int]:ApplicativeCensor[*[_], L], L] {
-    def run:M[Int] = ApplicativeAsk[M,Int].ask
+  class AskCensor[M[_]: InvariantAsk[*[_], Int]: Censor[*[_], L], L] {
+    def run: M[Int] = InvariantAsk[M,Int].ask
   }
 
-  class CensorWriter[M[_]:Provider:ApplicativeCensor[*[_], L], L] {
+  class CensorWriter[M[_]: Provider: Censor[*[_], L], L] {
 
-    val tell = implicitly[FunctorTell[M, L]]
+    val tell = implicitly[Tell[M, L]]
 
-    val listen = implicitly[FunctorListen[M, L]]
+    val listen = implicitly[Listen[M, L]]
 
-    val censor = implicitly[ApplicativeCensor[M, L]]
-
+    val censor = implicitly[Censor[M, L]]
 
     val E = implicitly[Provider[M]].apply[Int]
     import E._
@@ -35,7 +34,7 @@ class ProviderWriterTests {
     val askCensor = new AskCensor[E.FE, L]
   }
 
-  class ListenerWriter[M[_]:Provider:FunctorListen[*[_], L], L] {
+  class ListenerWriter[M[_]: Provider: Listen[*[_], L], L] {
 
     val E = implicitly[Provider[M]].apply[Int]
     import E._
@@ -46,13 +45,11 @@ class ProviderWriterTests {
 
   }
 
-  class TellWriter[M[_]:Provider:FunctorTell[*[_], L], L] {
+  class TellWriter[M[_]: Provider: Tell[*[_], L], L] {
 
     val E = implicitly[Provider[M]].apply[Int]
     import E._
 
     val askTell = new AskTell[E.FE, L]
-
-
   }
 }

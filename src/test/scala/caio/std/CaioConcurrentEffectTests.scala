@@ -8,7 +8,7 @@ import caio.{Caio, Failure}
 import cats.{ Applicative, ApplicativeError, Monoid }
 import cats.syntax.parallel._
 import cats.data.NonEmptyList
-import cats.mtl.{ FunctorListen, FunctorTell, MonadState }
+import cats.mtl.{ Listen, Tell, Stateful }
 import cats.effect.{Clock, ContextShift, IO, Timer}
 import cats.effect.concurrent.Ref
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -101,10 +101,10 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
 
     it("Should handle logs when a fiber is joined") {
       val program =
-        FunctorListen[CaioT, EventLog].listen {
+        Listen[CaioT, EventLog].listen {
           for {
-            fiber <- effect.start(FunctorTell[CaioT, EventLog].tell(Vector(event1)))
-            _     <- FunctorTell[CaioT, EventLog].tell(Vector(event2))
+            fiber <- effect.start(Tell[CaioT, EventLog].tell(Vector(event1)))
+            _     <- Tell[CaioT, EventLog].tell(Vector(event2))
             _     <- fiber.join
           } yield ()
         }
@@ -115,8 +115,8 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
     it("Should handle logs properly") {
       def makeIOList(logFirst: Boolean, logSecond: Boolean): NonEmptyList[CaioT[Unit]] =
         NonEmptyList.of(
-          if (logFirst) FunctorTell[CaioT, EventLog].tell(Vector(event1)) else Applicative[CaioT].unit,
-          if (logSecond) FunctorTell[CaioT, EventLog].tell(Vector(event2)) else Applicative[CaioT].unit
+          if (logFirst) Tell[CaioT, EventLog].tell(Vector(event1)) else Applicative[CaioT].unit,
+          if (logSecond) Tell[CaioT, EventLog].tell(Vector(event2)) else Applicative[CaioT].unit
         )
 
       def program(logFirst: Boolean, logSecond: Boolean): CaioT[EventLog] =
@@ -130,9 +130,9 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
     it("Should set state when a fiber is joined") {
       val program =
         for {
-          fiber <- effect.start(MonadState[CaioT, Int].set(1))
+          fiber <- effect.start(Stateful[CaioT, Int].set(1))
           _     <- fiber.join
-          state <- MonadState[CaioT, Int].get
+          state <- Stateful[CaioT, Int].get
         } yield state
 
       run(program) shouldBe 1
@@ -141,12 +141,12 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
     it("Should set state in parallel") {
       def makeIOList(setFirst: Boolean, setSecond: Boolean): NonEmptyList[CaioT[Unit]] =
         NonEmptyList.of(
-          if (setFirst) MonadState[CaioT, Int].set(1) else Applicative[CaioT].unit,
-          if (setSecond) MonadState[CaioT, Int].set(2) else Applicative[CaioT].unit
+          if (setFirst) Stateful[CaioT, Int].set(1) else Applicative[CaioT].unit,
+          if (setSecond) Stateful[CaioT, Int].set(2) else Applicative[CaioT].unit
         )
 
       def program(setFirst: Boolean, setSecond: Boolean): CaioT[Int] =
-        makeIOList(setFirst, setSecond).parSequence *> MonadState[CaioT, Int].get
+        makeIOList(setFirst, setSecond).parSequence *> Stateful[CaioT, Int].get
 
       List(0, 1) should contain (run(program(true, false)))
       List(0, 2) should contain (run(program(false, true)))

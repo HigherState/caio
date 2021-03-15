@@ -2,10 +2,9 @@ package caio.std
 
 import caio.{Caio, Failure}
 import caio.Event.EventLog
-import caio.mtl.{ContextProjector, Extender, ExtendsOn, Provider}
+import caio.mtl.{ContextProjector, Extender, ExtendsOn, InvariantAsk, Provider}
 import cats.effect.{Effect, Sync}
 import cats.{Functor, Monad}
-import cats.mtl.ApplicativeAsk
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 class CaioExtenderTests extends AsyncFunSpec with Matchers{
@@ -16,27 +15,27 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
 
   val effect: Effect[CaioT] = new CaioEffect[Unit, Failure, EventLog](())()()()
 
-  class AskInt[M[_]: ApplicativeAsk[*[_], Int]] {
-    def run: M[Int] = ApplicativeAsk[M,Int].ask
+  class AskInt[M[_]: InvariantAsk[*[_], Int]] {
+    def run: M[Int] = InvariantAsk[M,Int].ask
   }
 
-  class AskAtomic1[M[_]: ApplicativeAsk[*[_], Atomic1]] {
-    def run: M[Atomic1] = ApplicativeAsk[M, Atomic1].ask
+  class AskAtomic1[M[_]: InvariantAsk[*[_], Atomic1]] {
+    def run: M[Atomic1] = InvariantAsk[M, Atomic1].ask
   }
-  class AskAtomic2[M[_]: ApplicativeAsk[*[_], Atomic2]] {
-    def run: M[Atomic2] = ApplicativeAsk[M, Atomic2].ask
-  }
-
-  class AskString[M[_]: ApplicativeAsk[*[_], String]] {
-    def run: M[String] = ApplicativeAsk[M, String].ask
+  class AskAtomic2[M[_]: InvariantAsk[*[_], Atomic2]] {
+    def run: M[Atomic2] = InvariantAsk[M, Atomic2].ask
   }
 
-  class AskIntString[M[_]: ApplicativeAsk[*[_], (Int, String)]:Functor] {
-    def run: M[(Int, String)] = ApplicativeAsk[M,(Int, String)].ask
+  class AskString[M[_]: InvariantAsk[*[_], String]] {
+    def run: M[String] = InvariantAsk[M, String].ask
   }
 
-  class AskIntBooleanString[M[_]: ApplicativeAsk[*[_], (Int, Boolean, String)]] {
-    def run: M[(Int, Boolean, String)] = ApplicativeAsk[M,(Int, Boolean, String)].ask
+  class AskIntString[M[_]: InvariantAsk[*[_], (Int, String)]:Functor] {
+    def run: M[(Int, String)] = InvariantAsk[M,(Int, String)].ask
+  }
+
+  class AskIntBooleanString[M[_]: InvariantAsk[*[_], (Int, Boolean, String)]] {
+    def run: M[(Int, Boolean, String)] = InvariantAsk[M,(Int, Boolean, String)].ask
   }
 
   class AddAskContext[M[_]](implicit C: Provider[M]) {

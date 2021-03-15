@@ -6,9 +6,9 @@ import cats.effect.concurrent.Deferred
 import cats.effect.{ContextShift, IO, LiftIO, Sync}
 
 import scala.concurrent.ExecutionContext
-import caio.std.{CaioApplicative, CaioApplicativeFail, CaioFunctorListen}
+import caio.std.{CaioApplicative, CaioApplicativeFail, CaioListen}
 import cats.data.NonEmptyList
-import cats.mtl.{ApplicativeAsk, FunctorListen, FunctorTell}
+import cats.mtl.{Ask, Listen, Tell}
 import cats.Applicative
 import cats.syntax.ApplicativeErrorOps
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -196,8 +196,8 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
       val program: CaioC[Context0 with Context1, Int] =
         for {
-          c0 <- ApplicativeAsk[CaioC[Context0, *], Context0].ask
-          c1 <- ApplicativeAsk[CaioC[Context1, *], Context1].ask
+          c0 <- Ask[CaioC[Context0, *], Context0].ask[Context0]
+          c1 <- Ask[CaioC[Context1, *], Context1].ask[Context1]
           c  <- Applicative[CaioC[Any, *]].pure(3)
         } yield c0.x + c1.y + c
 
@@ -208,8 +208,8 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
     it("Should provide context") {
       val program: CaioC[Any, Int] = {
-        ApplicativeAsk[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
-          .ask
+        Ask[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
+          .ask[(Int, Int, Int)]
           .map { case (a, b, c ) => a + b + c }
           .provideContext((1, 2, 3))
       }
@@ -270,14 +270,14 @@ class CaioTests extends AsyncFunSpec with Matchers {
     case object LogEvent0 extends LogEvent
     case object LogEvent1 extends LogEvent
 
-    implicit def implicits[A] = new CaioFunctorListen[C, V, List[A]]
+    implicit def implicits[A] = new CaioListen[C, V, List[A]]
 
     it("Should combine different log events") {
       val program: CaioL[List[LogEvent], (Unit, List[LogEvent])] =
-        FunctorListen[CaioL[List[LogEvent], *], List[LogEvent]].listen {
+        Listen[CaioL[List[LogEvent], *], List[LogEvent]].listen {
           for {
-            _ <- FunctorTell[CaioL[List[LogEvent0.type], *], List[LogEvent0.type]].tell(List(LogEvent0))
-            _ <- FunctorTell[CaioL[List[LogEvent1.type], *], List[LogEvent1.type]].tell(List(LogEvent1))
+            _ <- Tell[CaioL[List[LogEvent0.type], *], List[LogEvent0.type]].tell(List(LogEvent0))
+            _ <- Tell[CaioL[List[LogEvent1.type], *], List[LogEvent1.type]].tell(List(LogEvent1))
           } yield ()
         }
 

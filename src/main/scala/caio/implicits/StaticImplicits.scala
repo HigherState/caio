@@ -1,10 +1,10 @@
 package caio.implicits
 
 import caio.Caio
-import caio.mtl.ApplicativeFail
+import caio.mtl.{ApplicativeFail, InvariantAsk}
 import caio.std._
 import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
-import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
+import cats.mtl.{Censor, Stateful}
 import cats.{Monad, Monoid, Parallel}
 
 class StaticImplicits[C, V, L](implicit ML: Monoid[L]){
@@ -30,12 +30,12 @@ class StaticImplicits[C, V, L](implicit ML: Monoid[L]){
   implicit val staticCaioApplicativeFail: ApplicativeFail[Caio[C, V, L, *], V] =
     new CaioApplicativeFail[C, V, L]
 
-  implicit val staticCaioApplicativeCensor: ApplicativeCensor[Caio[C, V, L, *], L] =
-    new CaioApplicativeCensor[C, V, L]()(ML)
+  implicit val staticCaioCensor: Censor[Caio[C, V, L, *], L] =
+    new CaioCensor[C, V, L]()(ML)
 
-  implicit val staticCaioApplicativeAsk: ApplicativeAsk[Caio[C, V, L, *], C] =
-    new CaioApplicativeAsk[C, V, L]
+  implicit val staticCaioAsk: InvariantAsk[Caio[C, V, L, *], C] =
+    new CaioAsk[C, V, L]
 
-  implicit val staticCaioMonadState: MonadState[Caio[C, V, L, *], C] =
-    new CaioMonadState[C, V, L]
+  implicit val staticCaioStateful: Stateful[Caio[C, V, L, *], C] =
+    new CaioStateful[C, V, L]
 }
