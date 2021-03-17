@@ -4,7 +4,7 @@ import caio.Caio
 import caio.mtl.{ApplicativeFail, InvariantAsk}
 import caio.std._
 import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
-import cats.mtl.{Censor, Stateful}
+import cats.mtl.{Censor, Local, Stateful}
 import cats.{Monad, Monoid, Parallel}
 
 class StaticImplicits[C, V, L](implicit ML: Monoid[L]){
@@ -35,6 +35,9 @@ class StaticImplicits[C, V, L](implicit ML: Monoid[L]){
 
   implicit val staticCaioAsk: InvariantAsk[Caio[C, V, L, *], C] =
     new CaioAsk[C, V, L]
+
+  implicit val staticCaioLocal: Local[Caio[C, V, L, *], C] =
+    new CaioLocal[C, V, L]
 
   implicit val staticCaioStateful: Stateful[Caio[C, V, L, *], C] =
     new CaioStateful[C, V, L]

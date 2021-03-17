@@ -88,4 +88,7 @@ package object arbitrary {
 
   implicit def arbitraryForEventLog: Arbitrary[EventLog] =
     Arbitrary(getArbitrary[Int].map(TestEvent(_)).map(Vector(_)))
+
+  implicit def cogenForEvent: Cogen[Event] =
+    Cogen.cogenInt.contramap[Event](_.asInstanceOf[TestEvent].id)
 }

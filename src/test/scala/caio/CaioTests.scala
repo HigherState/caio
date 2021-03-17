@@ -1,14 +1,14 @@
 package caio
 
 import caio.implicits.{DynamicContextImplicits, StaticImplicits}
-import caio.mtl.ApplicativeFail
+import caio.mtl.{ApplicativeFail, InvariantAsk}
 import cats.effect.concurrent.Deferred
 import cats.effect.{ContextShift, IO, LiftIO, Sync}
 
 import scala.concurrent.ExecutionContext
 import caio.std.{CaioApplicative, CaioApplicativeFail, CaioListen}
 import cats.data.NonEmptyList
-import cats.mtl.{Ask, Listen, Tell}
+import cats.mtl.{Listen, Tell}
 import cats.Applicative
 import cats.syntax.ApplicativeErrorOps
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -148,6 +148,11 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
       handled.run(Map.empty).unsafeRunSync() shouldBe 4
     }
+
+    it("Should preserve failure when using tapFailures") {
+      val program = (Caio.pure(5) *> Caio.fail(new Failure("BOOM"))).tapFailures((_: NonEmptyList[Failure]) => Caio.unit)
+      program.either.run(Map.empty).unsafeRunSync() shouldBe Left(NonEmptyList.of(new Failure("BOOM")))
+    }
   }
 
   describe("Error Handling") {
@@ -196,8 +201,8 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
       val program: CaioC[Context0 with Context1, Int] =
         for {
-          c0 <- Ask[CaioC[Context0, *], Context0].ask[Context0]
-          c1 <- Ask[CaioC[Context1, *], Context1].ask[Context1]
+          c0 <- InvariantAsk[CaioC[Context0, *], Context0].ask[Context0]
+          c1 <- InvariantAsk[CaioC[Context1, *], Context1].ask[Context1]
           c  <- Applicative[CaioC[Any, *]].pure(3)
         } yield c0.x + c1.y + c
 
@@ -208,13 +213,19 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
     it("Should provide context") {
       val program: CaioC[Any, Int] = {
-        Ask[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
+        InvariantAsk[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
           .ask[(Int, Int, Int)]
           .map { case (a, b, c ) => a + b + c }
           .provideContext((1, 2, 3))
       }
 
       program.run.unsafeRunSync() shouldBe 6
+    }
+
+    it("Should preserve error when using tapError") {
+      case object CustomException extends Exception
+      val program = (Caio.pure(5) *> Caio.raiseError(CustomException)).tapError(_ => Caio.unit)
+      program.attempt.run(Map.empty).unsafeRunSync() shouldBe Left(CustomException)
     }
   }
 

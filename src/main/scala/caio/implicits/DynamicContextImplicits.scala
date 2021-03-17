@@ -1,11 +1,11 @@
 package caio.implicits
 
 import caio.Caio
-import caio.mtl.{ApplicativeFail, Effectful}
-import caio.std.{CaioAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioEffectful, CaioStateful, CaioParallel, CaioSync}
+import caio.mtl.{ApplicativeFail, Effectful, InvariantAsk}
+import caio.std.{CaioAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioEffectful, CaioLocal, CaioStateful, CaioParallel, CaioSync}
 import cats.{Monad, Monoid, Parallel}
 import cats.effect.{Async, Concurrent, ConcurrentEffect, ContextShift, IO, Sync}
-import cats.mtl.{Ask, Censor, Stateful}
+import cats.mtl.{Censor, Local, Stateful}
 
 class DynamicContextImplicits[V, L](implicit ML: Monoid[L]) {
 
@@ -36,13 +36,16 @@ class DynamicContextImplicits[V, L](implicit ML: Monoid[L]) {
   implicit def dynamicCaioCensor[C]: Censor[Caio[C, V, L, *], L] =
     static.staticCaioCensor.asInstanceOf[Censor[Caio[C, V, L, *], L]]
 
-  implicit def dynamicCaioAsk[C]: Ask[Caio[C, V, L, *], C] =
+  implicit def dynamicCaioAsk[C]: InvariantAsk[Caio[C, V, L, *], C] =
     new CaioAsk[C, V, L]
+
+  implicit def dynamicCaioLocal[C]: Local[Caio[C, V, L, *], C] =
+    new CaioLocal[C, V, L]
 
   implicit def dynamicCaioStateful[C]: Stateful[Caio[C, V, L, *], C] =
     new CaioStateful[C, V, L]
 
   implicit def dynamicCaioEffectful[C](implicit CE: ConcurrentEffect[Caio[Unit, V, L, *]]): Effectful[Caio[C, V, L, *]] =
-    new CaioEffectful[C, V, L](dynamicCaioAsk[C], CE)
+    new CaioEffectful[C, V, L](dynamicCaioLocal[C], CE)
 
 }
