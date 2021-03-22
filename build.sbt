@@ -20,7 +20,7 @@ publishArtifact in(Test, packageDoc) := true
 // enable publishing the test sources jar
 publishArtifact in(Test, packageSrc) := true
 
-val currentScalaVersion = "2.13.1"
+val currentScalaVersion = "2.13.5"
 ThisBuild / scalaVersion := currentScalaVersion
 crossScalaVersions := Seq("2.12.13", currentScalaVersion)
 
@@ -42,7 +42,6 @@ scalacOptions ++= Seq(
   "-Xlint:inaccessible", // Warn about inaccessible types in method signatures.
   "-Xlint:infer-any", // Warn when a type argument is inferred to be `Any`.
   "-Xlint:missing-interpolator", // A string literal appears to be missing an interpolator id.
-  "-Xlint:nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
   "-Xlint:nullary-unit", // Warn when nullary methods return Unit.
   "-Xlint:option-implicit", // Option.apply used implicit view.
   "-Xlint:poly-implicit-overload", // Parameterized overloaded implicit methods are not visible as view bounds.
@@ -60,7 +59,10 @@ scalacOptions ++= Seq(
 ) ++ {
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, v)) if v <= 12 =>
-      Seq("-Ypartial-unification")
+      Seq(
+        "-Ypartial-unification",
+        "-Xlint:nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
+      )
     case _ =>
       Seq("-Ymacro-annotations")
   }

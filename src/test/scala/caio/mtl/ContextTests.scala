@@ -4,39 +4,37 @@ import cats.mtl.{ApplicativeAsk, MonadState}
 
 class ContextTests {
 
-  class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
-    def run:M[Int] = ApplicativeAsk[M,Int].ask
+  class AskInt[M[_]: ApplicativeAsk[*[_], Int]] {
+    def run: M[Int] = ApplicativeAsk[M,Int].ask
   }
 
-  class AskString[M[_]:ApplicativeAsk[*[_], String]] {
-    def run:M[String] = ApplicativeAsk[M, String].ask
+  class AskString[M[_]: ApplicativeAsk[*[_], String]] {
+    def run: M[String] = ApplicativeAsk[M, String].ask
   }
 
-  class AskIntString[M[_]:ApplicativeAsk[*[_], (Int, String)]] {
-    def run:M[(Int, String)] = ApplicativeAsk[M,(Int, String)].ask
+  class AskIntString[M[_]: ApplicativeAsk[*[_], (Int, String)]] {
+    def run: M[(Int, String)] = ApplicativeAsk[M,(Int, String)].ask
   }
 
-  class AskIntBoolean[M[_]:ApplicativeAsk[*[_], (Int, Boolean)]] {
-    def run:M[(Int, Boolean)] = ApplicativeAsk[M,(Int, Boolean)].ask
+  class AskIntBoolean[M[_]: ApplicativeAsk[*[_], (Int, Boolean)]] {
+    def run: M[(Int, Boolean)] = ApplicativeAsk[M,(Int, Boolean)].ask
   }
 
-  class AskIntBooleanString[M[_]:ApplicativeAsk[*[_], (Int, Boolean, String)]] {
-    def run:M[(Int, Boolean, String)] = ApplicativeAsk[M,(Int, Boolean, String)].ask
+  class AskIntBooleanString[M[_]: ApplicativeAsk[*[_], (Int, Boolean, String)]] {
+    def run: M[(Int, Boolean, String)] = ApplicativeAsk[M,(Int, Boolean, String)].ask
   }
 
-
-  class StateString[M[_]:MonadState[*[_], String]] {
-    def run:M[String] = MonadState[M, String].get
+  class StateString[M[_]: MonadState[*[_], String]] {
+    def run: M[String] = MonadState[M, String].get
   }
 
-  class StateIntString[M[_]:MonadState[*[_], (Int, String)]] {
-    def run:M[(Int, String)] = MonadState[M,(Int, String)].get
+  class StateIntString[M[_]: MonadState[*[_], (Int, String)]] {
+    def run: M[(Int, String)] = MonadState[M,(Int, String)].get
   }
 
-  class StateAskIntBooleanString[M[_]:ApplicativeAsk[*[_], (Int, String)]:MonadState[*[_], Boolean]] {
-    def run:M[(Int, Boolean, String)] = ???
+  class StateAskIntBooleanString[M[_]: ApplicativeAsk[*[_], (Int, String)]: MonadState[*[_], Boolean]] {
+    def run: M[(Int, Boolean, String)] = ???
   }
-
 
   class AddAskContext[M[_]](implicit C:Provider[M]) {
 
@@ -106,8 +104,9 @@ class ContextTests {
 
   }
 
-  class AskContextNested2[M[_]:Extender[*[_], (Int, String)]] {
+  class AskContextNested2[M[_]: Extender[*[_], (Int, String)]] {
     import ContextProjector._
+
     val string2 = new AskString[M]
 
     val e = implicitly[Extender[M, (Int, String)]].apply[Boolean]
@@ -123,7 +122,6 @@ class ContextTests {
     val string1 = new AskString[e.FE]
   }
 
-
   class MixContext2[M[_]:Provider] {
 
     val e:Provides[M, String] =
@@ -136,13 +134,13 @@ class ContextTests {
     val nested = new MixContextNested[e.FE]()
   }
 
-  class MixContextNested[M[_]:Extender[*[_], String]:MonadState[*[_], String]] {
+  class MixContextNested[M[_]: Extender[*[_], String]: MonadState[*[_], String]] {
 
 
     val string2 = new StateString[M]
 
     val string4 = {
-      import ContextCombinator._
+      import ContextCombinator.{combinatorAsk, stateCombinator}
       new AskString[M]
     }
 
@@ -158,9 +156,9 @@ class ContextTests {
     val string3 = new AskString[e.FE]
   }
 
-  class AddContextMixed2[M[_]:Extender[*[_], (Int, String)]] {
+  class AddContextMixed2[M[_]: Extender[*[_], (Int, String)]] {
 
-    val (string2, intString, intString2) = {
+    val (string2, intString , intString2) = {
       import ContextProjector._
       (new AskString[M], new AskIntString[M], new StateIntString[M])
     }
@@ -179,8 +177,7 @@ class ContextTests {
     val string1 = new AskString[e.FE]
   }
 
-
-  class DoubleExtended[M[_]:Extender[*[_], Int]] {
+  class DoubleExtended[M[_]: Extender[*[_], Int]] {
 
     //Cannot have 2 Extends implicits in scope at the same time
     val ES: Extends[M, Int, String] = implicitly[Extender[M, Int]].apply[String]
@@ -198,11 +195,9 @@ class ContextTests {
     def run():(M[(Int, String)], M[(Int, Boolean)]) =
       ES.apply("String")(service1.run) ->
       EB.apply(false)(service2.run)
-
-
   }
 
-  class DoubleExtendedHierarchical[M[_]:Extender[*[_], Int]] {
+  class DoubleExtendedHierarchical[M[_]: Extender[*[_], Int]] {
 
     //Cannot have 2 Extends implicits in scope at the same time
     val ES = implicitly[Extender[M, Int]].apply[Boolean]
@@ -220,9 +215,5 @@ class ContextTests {
     def run() =
       ES.apply(false)(service1.run) ->
         ES.apply(false)(EB.apply("bob")(service2.run))
-
-
   }
-
-
 }
