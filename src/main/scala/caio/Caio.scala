@@ -69,6 +69,9 @@ sealed trait Caio[-C, +V, +L, +A] {
   @inline def listen: Caio[C, V, L, (A, L)] =
     ListenCaio(this)
 
+  @inline def localContext[C1 <: C](f: C1 => C1): Caio[C1, V, L, A] =
+    LocalContextCaio(this, f)
+
   @inline def either: Caio[C, Nothing, L, Either[NonEmptyList[V], A]] =
     HandleFailureCaio[C, V, Nothing, L, Either[NonEmptyList[V], A]](
       MapCaio[C, V, L, A, Either[NonEmptyList[V], A]](this, Right.apply),
@@ -80,6 +83,12 @@ sealed trait Caio[-C, +V, +L, +A] {
 
   def start[C1 <: C, V1 >: V, L1 >: L, A1 >: A](implicit M: Monoid[L1], CS: ContextShift[IO]): Caio[C1, V1, L1, Fiber[Caio[C1, V1, L1, *], A1]] =
     new CaioConcurrent[C1, V1, L1].start(this)
+
+  @inline def tapError[C1 <: C, V1 >: V, L1 >: L](f: Throwable => Caio[C1, V1, L1, Any]): Caio[C1, V1, L1, A] =
+    handleErrorWith(ex => f(ex) *> Caio.raiseError(ex))
+
+  @inline def tapFailures[C1 <: C, V1 >: V, L1 >: L](f: NonEmptyList[V1] => Caio[C1, V1, L1, Any]): Caio[C1, V1, L1, A] =
+    handleFailuresWith[C1, V1, V1, L1, A](fs => f(fs) *> Caio.failMany(fs))
 
   def timeoutTo[C1 <: C, V1 >: V, L1 >: L, A1 >: A]
     (duration: FiniteDuration, fallback: Caio[C1, V1, L1, A1])
@@ -161,6 +170,8 @@ final private[caio] case class CensorCaio[-C, +V, L, +A](source: Caio[C, V, L, A
 final private[caio] case class GetContextCaio[C]() extends Caio[C, Nothing, Nothing, C]
 
 final private[caio] case class SetContextCaio[C](c: C) extends Caio[C, Nothing, Nothing, Unit]
+
+final private[caio] case class LocalContextCaio[C, V, L, A](source: Caio[C, V, L, A], f: C => C) extends Caio[C, V, L, A]
 
 case class CaioUnhandledFailuresException[V](failure: NonEmptyList[V])
   extends Exception("Caio failures have not been handled.")
@@ -496,6 +507,14 @@ object Caio {
 
           case SetContextCaio(replaceC) =>
             foldCaio(Caio.unit, replaceC, l, handlers)
+
+          case LocalContextCaio(fa, f) =>
+            foldCaio(fa, f(c), l,
+              OnSuccess((_, _, a) => MapCaio(SetContextCaio(c), (_: Unit) => a)) :: 
+              OnError((_, _, e) => BindCaio(SetContextCaio(c), (_: Unit) => ErrorCaio(e))) ::
+              OnFailure((_, _, e) => BindCaio(SetContextCaio(c), (_: Unit) => FailureCaio(e.head, e.tail))) ::
+              handlers
+            )
         }
 
       foldCaio(caio, c, l, handlers)

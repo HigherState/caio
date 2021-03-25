@@ -182,15 +182,15 @@ class ResourceTests extends TestInstances {
     assertEquals(result.value, Some(Success("Hello world")))
   }
 
-  testAsync("liftF") { params =>
+  testAsync("eval") { params =>
     import params._
 
     forAll { (fa: CaioT[String]) =>
-      Resource.liftF(fa).use(Caio.pure) <-> fa
+      Resource.eval(fa).use(Caio.pure) <-> fa
     }
   }
 
-  testAsync("liftF - interruption") { params =>
+  testAsync("eval - interruption") { params =>
     import params._
 
     implicit val timer = getTimer(params.EC.timer[IO])
@@ -199,7 +199,7 @@ class ResourceTests extends TestInstances {
       Deferred[CaioT, ExitCase[Throwable]]
         .flatMap { stop =>
           val r = Resource
-            .liftF(Caio.never: CaioT[Int])
+            .eval(Caio.never: CaioT[Int])
             .use(Caio.pure)
             .guaranteeCase(stop.complete)
 
@@ -216,11 +216,11 @@ class ResourceTests extends TestInstances {
     assertEquals(res.value, Some(Success(ExitCase.Canceled)))
   }
 
-  testAsync("liftF(fa) <-> liftK.apply(fa)") { params =>
+  testAsync("eval(fa) <-> eval.apply(fa)") { params =>
     import params._
 
     forAll { (fa: CaioT[String], f: String => CaioT[Int]) =>
-      Resource.liftF(fa).use(f) <-> Resource.liftK[CaioT].apply(fa).use(f)
+      Resource.eval(fa).use(f) <-> Resource.liftK[CaioT].apply(fa).use(f)
     }
   }
 
@@ -228,7 +228,7 @@ class ResourceTests extends TestInstances {
     import params._
 
     forAll { (f: Int => CaioT[Int]) =>
-      Resource.liftF[CaioT, Int](Caio(0)).evalMap(f).use(Caio.pure) <-> f(0)
+      Resource.eval[CaioT, Int](Caio(0)).evalMap(f).use(Caio.pure) <-> f(0)
     }
   }
 
@@ -239,7 +239,7 @@ class ResourceTests extends TestInstances {
 
     forAll { (g: Int => CaioT[Int]) =>
       val effect: Int => CaioT[Int] = a => g(a) <* Caio(throw Foo)
-      Resource.liftF[CaioT, Int](Caio(0)).evalMap(effect).use(Caio.pure) <-> Caio.raiseError(Foo)
+      Resource.eval[CaioT, Int](Caio(0)).evalMap(effect).use(Caio.pure) <-> Caio.raiseError(Foo)
     }
   }
 
@@ -247,7 +247,7 @@ class ResourceTests extends TestInstances {
     import params._
 
     forAll { (f: Int => CaioT[Int]) =>
-      Resource.liftF[CaioT, Int](Caio(0)).evalTap(f).use(Caio.pure) <-> f(0).as(0)
+      Resource.eval[CaioT, Int](Caio(0)).evalTap(f).use(Caio.pure) <-> f(0).as(0)
     }
   }
 
@@ -257,7 +257,7 @@ class ResourceTests extends TestInstances {
 
     forAll { (g: Int => CaioT[Int]) =>
       val effect: Int => CaioT[Int] = a => (g(a) <* Caio(throw Foo))
-      Resource.liftF[CaioT, Int](Caio(0)).evalTap(effect).use(Caio.pure) <-> Caio.raiseError(Foo)
+      Resource.eval[CaioT, Int](Caio(0)).evalTap(effect).use(Caio.pure) <-> Caio.raiseError(Foo)
     }
   }
 
@@ -268,7 +268,7 @@ class ResourceTests extends TestInstances {
       val runWithTwo = new ~>[Kleisli[CaioT, Int, *], CaioT] {
         override def apply[A](fa: Kleisli[CaioT, Int, A]): CaioT[A] = fa(2)
       }
-      Resource.liftF[Kleisli[CaioT, Int, *], Int](fa).mapK(runWithTwo).use(Caio.pure) <-> fa(2)
+      Resource.eval[Kleisli[CaioT, Int, *], Int](fa).mapK(runWithTwo).use(Caio.pure) <-> fa(2)
     }
   }
 
@@ -327,7 +327,7 @@ class ResourceTests extends TestInstances {
 
     val released = new java.util.concurrent.atomic.AtomicBoolean(false)
     val release = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
-    val resource = Resource.liftF[CaioT, Unit](Caio.unit)
+    val resource = Resource.eval[CaioT, Unit](Caio.unit)
 
     val allocated = (release *> resource).allocated
 
@@ -356,10 +356,10 @@ class ResourceTests extends TestInstances {
     val plusOne: Kleisli[CaioT, Int, Int] = Kleisli { (i: Int) =>
       Caio(i + 1)
     }
-    val plusOneResource = Resource.liftF[Kleisli[CaioT, Int, *], Int](plusOne)
+    val plusOneResource = Resource.eval[Kleisli[CaioT, Int, *], Int](plusOne)
 
     val release = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
-    val resource = Resource.liftF[CaioT, Unit](Caio.unit)
+    val resource = Resource.eval[CaioT, Unit](Caio.unit)
 
     val allocated = ((release *> resource).mapK(takeAnInteger) *> plusOneResource).mapK(runWithTwo).allocated
 
@@ -398,10 +398,10 @@ class ResourceTests extends TestInstances {
     import cats.data.OptionT
     forAll { (ot1: OptionT[CaioT, Int], ot2: OptionT[CaioT, Int]) =>
       val lhs: Either[Throwable, Option[Int]] =
-        CE.toIO(Resource.liftF[OptionT[CaioT, *], Int](ot1 <+> ot2).use(OptionT.pure[CaioT](_)).value.attempt).unsafeRunSync()
+        CE.toIO(Resource.eval[OptionT[CaioT, *], Int](ot1 <+> ot2).use(OptionT.pure[CaioT](_)).value.attempt).unsafeRunSync()
       val rhs: Either[Throwable, Option[Int]] =
         CE.toIO(
-          (Resource.liftF[OptionT[CaioT, *], Int](ot1) <+> Resource.liftF[OptionT[CaioT, *], Int](ot2))
+          (Resource.eval[OptionT[CaioT, *], Int](ot1) <+> Resource.eval[OptionT[CaioT, *], Int](ot2))
             .use(OptionT.pure[CaioT](_))
             .value
             .attempt
@@ -486,14 +486,14 @@ class ResourceTests extends TestInstances {
       _ <- Resource.make(wait(1) *> Caio { leftAllocated = true }) { _ =>
         Caio { leftReleasing = true } *> wait(1) *> Caio { leftReleased = true }
       }
-      _ <- Resource.liftF[CaioT, Unit](wait(1) *> Caio.raiseError(new Exception))
+      _ <- Resource.eval[CaioT, Unit](wait(1) *> Caio.raiseError(new Exception))
     } yield ()
 
     val rhs = for {
       _ <- Resource.make(wait(1) *> Caio { rightAllocated = true }) { _ =>
         Caio { rightReleasing = true } *> wait(1) *> Caio { rightReleased = true }
       }
-      _ <- Resource.liftF(wait(2))
+      _ <- Resource.eval(wait(2))
     } yield ()
 
     val caio =
@@ -585,7 +585,7 @@ class ResourceTests extends TestInstances {
       Deferred[CaioT, ExitCase[Throwable]]
         .flatMap { stop =>
           val r = Resource
-            .liftF(Caio.never: CaioT[Int])
+            .eval(Caio.never: CaioT[Int])
             .onFinalizeCase(stop.complete)
             .use(Caio.pure)
 

@@ -1,11 +1,11 @@
 package caio.implicits
 
 import caio.Caio
-import caio.mtl.{ApplicativeFail, Effectful}
-import caio.std.{CaioApplicativeAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioEffectful, CaioMonadState, CaioParallel, CaioSync}
+import caio.mtl.{ApplicativeFail, Effectful, InvariantAsk}
+import caio.std.{CaioAsk, CaioAsync, CaioConcurrent, CaioContextShift, CaioEffectful, CaioLocal, CaioStateful, CaioParallel, CaioSync}
 import cats.{Monad, Monoid, Parallel}
 import cats.effect.{Async, Concurrent, ConcurrentEffect, ContextShift, IO, Sync}
-import cats.mtl.{ApplicativeAsk, ApplicativeCensor, MonadState}
+import cats.mtl.{Censor, Local, Stateful}
 
 class DynamicContextImplicits[V, L](implicit ML: Monoid[L]) {
 
@@ -33,16 +33,19 @@ class DynamicContextImplicits[V, L](implicit ML: Monoid[L]) {
   implicit def dynamicCaioApplicativeFail[C]: ApplicativeFail[Caio[C, V, L, *], V] =
     static.staticCaioApplicativeFail.asInstanceOf[ApplicativeFail[Caio[C, V, L, *], V]]
 
-  implicit def dynamicCaioApplicativeCensor[C]: ApplicativeCensor[Caio[C, V, L, *], L] =
-    static.staticCaioApplicativeCensor.asInstanceOf[ApplicativeCensor[Caio[C, V, L, *], L]]
+  implicit def dynamicCaioCensor[C]: Censor[Caio[C, V, L, *], L] =
+    static.staticCaioCensor.asInstanceOf[Censor[Caio[C, V, L, *], L]]
 
-  implicit def dynamicCaioApplicativeAsk[C]: ApplicativeAsk[Caio[C, V, L, *], C] =
-    new CaioApplicativeAsk[C, V, L]
+  implicit def dynamicCaioAsk[C]: InvariantAsk[Caio[C, V, L, *], C] =
+    new CaioAsk[C, V, L]
 
-  implicit def dynamicCaioMonadState[C]: MonadState[Caio[C, V, L, *], C] =
-    new CaioMonadState[C, V, L]
+  implicit def dynamicCaioLocal[C]: Local[Caio[C, V, L, *], C] =
+    new CaioLocal[C, V, L]
+
+  implicit def dynamicCaioStateful[C]: Stateful[Caio[C, V, L, *], C] =
+    new CaioStateful[C, V, L]
 
   implicit def dynamicCaioEffectful[C](implicit CE: ConcurrentEffect[Caio[Unit, V, L, *]]): Effectful[Caio[C, V, L, *]] =
-    new CaioEffectful[C, V, L](dynamicCaioApplicativeAsk[C], CE)
+    new CaioEffectful[C, V, L](dynamicCaioLocal[C], CE)
 
 }

@@ -4,7 +4,7 @@ import caio.<~>
 import cats.effect._
 
 class ConcurrentEffectIsomorphism[F[_], G[_]](
-  concurrentEffect:ConcurrentEffect[G],
+  concurrentEffect: ConcurrentEffect[G],
   isomorphism: F <~> G) extends ConcurrentEffect[F]{
 
   private val invert = isomorphism.invert
@@ -36,7 +36,7 @@ class ConcurrentEffectIsomorphism[F[_], G[_]](
     invert(concurrentEffect.asyncF(k.andThen(isomorphism.apply)))
 
   def suspend[A](thunk: => F[A]): F[A] =
-    invert(concurrentEffect.suspend(isomorphism(thunk)))
+    invert(concurrentEffect.defer(isomorphism(thunk)))
 
   def bracketCase[A, B](acquire: F[A])(use: A => F[B])(release: (A, ExitCase[Throwable]) => F[Unit]): F[B] = {
     def releaseG:(A, ExitCase[Throwable]) => G[Unit] = (a, e) => isomorphism(release(a, e))

@@ -9,8 +9,8 @@ import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
 case class CaioExtender[C, V, L:Monoid, E1](
-  applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
-  monadState:MonadState[Caio[C, V, L, *], E1],
+  applicativeAsk: InvariantAsk[Caio[C, V, L, *], E1],
+  state: Stateful[Caio[C, V, L, *], E1],
 )(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C]) extends Extender[Caio[C, V, L, *], E1] {
 
   def apply[E2](implicit EV: E1 =:!= E2): mtl.Extends[Caio[C, V, L, *], E1, E2] =
@@ -19,9 +19,9 @@ case class CaioExtender[C, V, L:Monoid, E1](
 }
 
 case class CaioExtendsOn[C, C0, V, L:Monoid, E1](
-  applicativeAsk:ApplicativeAsk[Caio[C, V, L, *], E1],
-  monadState:MonadState[Caio[C, V, L, *], E1],
-  functionK:Caio[C0, V, L, *] ~> Caio[C, V, L, *]
+  applicativeAsk: InvariantAsk[Caio[C, V, L, *], E1],
+  state: Stateful[Caio[C, V, L, *], E1],
+  functionK: Caio[C0, V, L, *] ~> Caio[C, V, L, *]
 )(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C])
   extends ExtendsOn[Caio[C, V, L, *], Caio[C0, V, L, *], E1] {
   def bijectionK(e2: E1): Caio[C0, V, L, *] <~> Caio[C, V, L, *] = ???
@@ -30,22 +30,21 @@ case class CaioExtendsOn[C, C0, V, L:Monoid, E1](
     CaioExtends[C, V, L, E1, E2]()
 }
 
-case class CaioExtends[C, V, L:Monoid, E1, E2]()
-                                              (implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C])
+case class CaioExtends[C, V, L:Monoid, E1, E2]()(implicit M: Mixer[C, E1], I:Mixer[(E1, Unit), C])
   extends Extends[Caio[C, V, L, *], E1, E2] {
 
   type FE[A] = Caio[(E1, E2), V, L, A]
 
-  val applicativeAsk: ApplicativeAsk[FE, (E1, E2)] =
-    new CaioApplicativeAsk[(E1, E2), V, L]
+  val ask: InvariantAsk[FE, (E1, E2)] =
+    new CaioAsk[(E1, E2), V, L]
 
-  val monadState: MonadState[FE, (E1, E2)] =
-    new CaioMonadState[(E1, E2), V, L]
+  val stateful: Stateful[FE, (E1, E2)] =
+    new CaioStateful[(E1, E2), V, L]
 
   def extender[E3](implicit M: Mixer[(E1, E2), E3], I:Mixer[(E3, Unit), (E1, E2)]): ExtendsOn[FE, Caio[C, V, L, *], E3] =
     CaioExtendsOn[(E1, E2), C, V, L, E3](
-      new MixedApplicativeAsk[FE, (E1, E2), E3](applicativeAsk),
-      new MixedMonadState[FE, (E1, E2), E3](monadState),
+      new MixedAsk[FE, (E1, E2), E3](ask),
+      new MixedStateful[FE, (E1, E2), E3](stateful),
       functionK
     )
 
@@ -90,14 +89,14 @@ case class CaioExtends[C, V, L:Monoid, E1, E2]()
   implicit def transformApplicativeFail[V2](implicit A:ApplicativeFail[Caio[C, V, L, *], V2]):ApplicativeFail[FE, V2] =
     A.asInstanceOf[ApplicativeFail[FE, V2]]
 
-  implicit def transformFunctorTell[L2](implicit F:FunctorTell[Caio[C, V, L, *], L2]):FunctorTell[FE, L2] =
-    F.asInstanceOf[FunctorTell[FE, L2]]
+  implicit def transformTell[L2](implicit F: Tell[Caio[C, V, L, *], L2]): Tell[FE, L2] =
+    F.asInstanceOf[Tell[FE, L2]]
 
-  implicit def transformFunctorListen[L2](implicit F:FunctorListen[Caio[C, V, L, *], L2]):FunctorListen[FE, L2] =
-    F.asInstanceOf[FunctorListen[FE, L2]]
+  implicit def transformListen[L2](implicit F: Listen[Caio[C, V, L, *], L2]): Listen[FE, L2] =
+    F.asInstanceOf[Listen[FE, L2]]
 
-  implicit def transformApplicativeCensor[L2](implicit F:ApplicativeCensor[Caio[C, V, L, *], L2]):ApplicativeCensor[FE, L2] =
-    F.asInstanceOf[ApplicativeCensor[FE, L2]]
+  implicit def transformCensor[L2](implicit F: Censor[Caio[C, V, L, *], L2]): Censor[FE, L2] =
+    F.asInstanceOf[Censor[FE, L2]]
 }
 
 
@@ -109,7 +108,7 @@ object CaioProvider {
   }
   implicit def unit[V, L:Monoid]:Provider[Caio[Unit, V, L, *]] =
     CaioExtender[Unit, V, L, Unit](
-      new CaioApplicativeAsk[Unit, V, L],
-      new CaioMonadState[Unit, V, L]
+      new CaioAsk[Unit, V, L],
+      new CaioStateful[Unit, V, L]
     )
 }

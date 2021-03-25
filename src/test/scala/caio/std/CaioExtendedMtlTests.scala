@@ -1,10 +1,10 @@
 package caio.std
 
 import caio._
-import caio.mtl.{ApplicativeFail, ContextProjector, Extender, Provider}
+import caio.mtl.{ApplicativeFail, ContextProjector, Extender, InvariantAsk, Provider}
 import cats.{Applicative, Monad, MonadError}
 import cats.effect.{IO, LiftIO, Sync}
-import cats.mtl.{ApplicativeAsk, FunctorListen, MonadState}
+import cats.mtl.{Listen, Stateful}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
 class CaioExtendedMtlTests extends AsyncFunSpec with Matchers{
@@ -12,14 +12,14 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers{
 
   class Nested1[
     M[_]
-      :ApplicativeAsk[*[_], Atomic1]
-      :FunctorListen[*[_], Event]
+      :InvariantAsk[*[_], Atomic1]
+      :Listen[*[_], Event]
       :ApplicativeFail[*[_], Failure]:Monad]{
 
     def eval(): M[String] =
       for {
-        a <- implicitly[ApplicativeAsk[M, Atomic1]].ask
-        _ <- implicitly[FunctorListen[M, Event]].writer((), Event.event1)
+        a <- implicitly[InvariantAsk[M, Atomic1]].ask
+        _ <- implicitly[Listen[M, Event]].writer((), Event.event1)
       } yield "Nested1:" + a.value
 
     def evalFail(): M[String] =
@@ -35,12 +35,12 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers{
 
   class Nested2[
     M[_]
-      :ApplicativeAsk[*[_], Atomic2]
+      :InvariantAsk[*[_], Atomic2]
       :LiftIO:MonadError[*[_], Throwable]]{
 
     def eval(): M[String] =
       for {
-        a <- implicitly[ApplicativeAsk[M, Atomic2]].ask
+        a <- implicitly[InvariantAsk[M, Atomic2]].ask
         time <- implicitly[LiftIO[M]].liftIO(IO.delay(System.currentTimeMillis()))
       } yield "Nested2:" + a.value + ":" + time
 
@@ -54,19 +54,18 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers{
         .handleError(evalError())(e => "Nested2:exception:" + e.toString)
   }
 
-  class Nested3[M[_]: MonadState[*[_], Atomic3]: Sync]{
-
+  class Nested3[M[_]: Stateful[*[_], Atomic3]: Sync] {
     def eval():M[String] =
       for {
-        ms <- implicitly[MonadState[M, Atomic3]].get
-        _ <- implicitly[MonadState[M, Atomic3]].set(new Atomic3("Nested3:" + ms.value))
+        ms <- implicitly[Stateful[M, Atomic3]].get
+        _ <- implicitly[Stateful[M, Atomic3]].set(new Atomic3("Nested3:" + ms.value))
       } yield "Nested3:" + ms.value
   }
 
   class ExtendsNested[
     M[_]:Extender[*[_], Atomic1]
       :LiftIO
-      :FunctorListen[*[_], Event]
+      :Listen[*[_], Event]
       :ApplicativeFail[*[_], Failure]
       :Sync] {
 
@@ -120,7 +119,7 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers{
   }
 
   class ExtendsProvided[
-    M[_]:Provider:LiftIO:FunctorListen[*[_], Event]:MonadError[*[_], Throwable]:ApplicativeFail[*[_], Failure]:Sync] {
+    M[_]: Provider: LiftIO: Listen[*[_], Event]: MonadError[*[_], Throwable]: ApplicativeFail[*[_], Failure]: Sync] {
 
     val E = implicitly[Provider[M]].apply[Atomic1]
     import E._

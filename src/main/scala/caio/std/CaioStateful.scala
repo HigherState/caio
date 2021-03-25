@@ -2,9 +2,9 @@ package caio.std
 
 import caio.Caio
 import cats.Monad
-import cats.mtl.MonadState
+import cats.mtl.Stateful
 
-class CaioMonadState[C, V, L] extends MonadState[Caio[C, V, L, *], C] {
+class CaioStateful[C, V, L] extends Stateful[Caio[C, V, L, *], C] {
   val monad: Monad[Caio[C, V, L, *]] =
     new CaioMonad[C, V, L]
 
@@ -14,9 +14,9 @@ class CaioMonadState[C, V, L] extends MonadState[Caio[C, V, L, *], C] {
   def set(s: C): Caio[C, V, L, Unit] =
     Caio.setContext(s)
 
-  def inspect[A](f: C => A): Caio[C, V, L, A] =
+  override def inspect[A](f: C => A): Caio[C, V, L, A] =
     Caio.getContext.map(f)
 
-  def modify(f: C => C): Caio[C, V, L, Unit] =
+  override def modify(f: C => C): Caio[C, V, L, Unit] =
     Caio.modifyContext(f)
 }

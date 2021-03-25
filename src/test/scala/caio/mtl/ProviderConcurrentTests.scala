@@ -2,64 +2,54 @@ package caio.mtl
 
 import cats.{Applicative, Functor, Monad, MonadError}
 import cats.effect.{Async, Bracket, Concurrent, LiftIO, Sync}
-import cats.mtl.{ApplicativeAsk, ApplicativeCensor, FunctorListen, FunctorTell, MonadState}
+import cats.mtl.{Censor, Listen, Tell, Stateful}
 
 class ProviderConcurrentTests {
 
-  class StateFunctor[M[_]:MonadState[*[_], Int]:Functor] {
-    def run:M[Int] = MonadState[M,Int].get
+  class StateFunctor[M[_]: Stateful[*[_], Int]: Functor] {
+    def run: M[Int] = Stateful[M,Int].get
   }
 
-  class StateApplicative[M[_]:MonadState[*[_], Int]:Applicative] {
-    def run:M[Int] = MonadState[M,Int].get
+  class StateApplicative[M[_]: Stateful[*[_], Int]: Applicative] {
+    def run: M[Int] = Stateful[M,Int].get
   }
 
-  class StateMonad[M[_]:MonadState[*[_], Int]:Monad] {
-    def run:M[Int] = MonadState[M,Int].get
+  class StateMonad[M[_]: Stateful[*[_], Int]: Monad] {
+    def run: M[Int] = Stateful[M,Int].get
   }
 
-  class AskMonadError[M[_]:ApplicativeAsk[*[_], Int]:MonadError[*[_], Throwable]] {
-    def run:M[Int] = ApplicativeAsk[M, Int].ask
+  class AskMonadError[M[_]: InvariantAsk[*[_], Int]: MonadError[*[_], Throwable]] {
+    def run: M[Int] = InvariantAsk[M, Int].ask
 
-    def fail:M[Unit] =
+    def fail: M[Unit] =
       MonadError[M, Throwable].raiseError(new Exception("Test"))
   }
 
-  class AskBracket[M[_]:ApplicativeAsk[*[_], Int]:Bracket[*[_], Throwable]] {
-    def run:M[Int] = ApplicativeAsk[M, Int].ask
-
+  class AskBracket[M[_]: InvariantAsk[*[_], Int]: Bracket[*[_], Throwable]] {
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
-  class StateSync[M[_]:MonadState[*[_], Int]:Sync] {
-    def run:M[Int] = MonadState[M,Int].get
-  }
-  class StateAsync[M[_]:MonadState[*[_], Int]:Async] {
-    def run:M[Int] = MonadState[M,Int].get
+  class StateSync[M[_]: Stateful[*[_], Int]: Sync] {
+    def run: M[Int] = Stateful[M,Int].get
   }
 
-  class StateConcurrent[M[_]:MonadState[*[_], Int]:Concurrent] {
-    def run:M[Int] = MonadState[M,Int].get
+  class StateAsync[M[_]: Stateful[*[_], Int]: Async] {
+    def run: M[Int] = Stateful[M,Int].get
   }
 
-  class AskLiftIO[M[_]:ApplicativeAsk[*[_], Int]:LiftIO] {
-    def run:M[Int] = ApplicativeAsk[M, Int].ask
+  class StateConcurrent[M[_]: Stateful[*[_], Int]: Concurrent] {
+    def run: M[Int] = Stateful[M,Int].get
   }
 
-  class AskFail[M[_]:ApplicativeAsk[*[_], Int]:ApplicativeFail[*[_], V], V] {
-    def run:M[Int] = ApplicativeAsk[M, Int].ask
+  class AskLiftIO[M[_]: InvariantAsk[*[_], Int]: LiftIO] {
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
-  class FunctorCheck[M[_]:Provider:Monad] {
-    val functor = implicitly[Functor[M]]
-
-
-    val E = Provider[M].apply[Int]
-    import E._
-
-    val stateFunctor = new StateFunctor[E.FE]
+  class AskFail[M[_]: InvariantAsk[*[_], Int]: ApplicativeFail[*[_], V], V] {
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
-  class FunctorCheck2[M[_]:Provider:Sync] {
+  class FunctorCheck[M[_]: Provider: Monad] {
     val functor = implicitly[Functor[M]]
 
     val E = Provider[M].apply[Int]
@@ -68,7 +58,7 @@ class ProviderConcurrentTests {
     val stateFunctor = new StateFunctor[E.FE]
   }
 
-  class FunctorCheck3[M[_]:Provider:Concurrent] {
+  class FunctorCheck2[M[_]: Provider: Sync] {
     val functor = implicitly[Functor[M]]
 
     val E = Provider[M].apply[Int]
@@ -77,8 +67,16 @@ class ProviderConcurrentTests {
     val stateFunctor = new StateFunctor[E.FE]
   }
 
+  class FunctorCheck3[M[_]: Provider: Concurrent] {
+    val functor = implicitly[Functor[M]]
 
-  class MonadCheck[M[_]:Provider:Sync] {
+    val E = Provider[M].apply[Int]
+    import E._
+
+    val stateFunctor = new StateFunctor[E.FE]
+  }
+
+  class MonadCheck[M[_]: Provider: Sync] {
 
     val functor = implicitly[Functor[M]]
 
@@ -96,7 +94,7 @@ class ProviderConcurrentTests {
     val stateMonad = new StateMonad[E.FE]
   }
 
-  class MonadErrorCheck[M[_]:Provider:Sync] {
+  class MonadErrorCheck[M[_]: Provider: Sync] {
 
     val functor = implicitly[Functor[M]]
 
@@ -118,7 +116,7 @@ class ProviderConcurrentTests {
     val askMonadError = new AskMonadError[E.FE]
   }
 
-  class BracketCheck[M[_]:Provider:Sync] {
+  class BracketCheck[M[_]: Provider: Sync] {
 
     val functor = implicitly[Functor[M]]
 
@@ -144,7 +142,7 @@ class ProviderConcurrentTests {
     val askBracket = new AskBracket[E.FE]
   }
 
-  class SyncCheck[M[_]:Provider:Sync] {
+  class SyncCheck[M[_]: Provider: Sync] {
 
     val functor = implicitly[Functor[M]]
 
@@ -174,7 +172,7 @@ class ProviderConcurrentTests {
     val syncBracket = new StateSync[E.FE]
   }
 
-  class LiftIOCheck[M[_]:Provider:LiftIO] {
+  class LiftIOCheck[M[_]: Provider: LiftIO] {
 
     val liftIO = implicitly[LiftIO[M]]
 
@@ -184,7 +182,7 @@ class ProviderConcurrentTests {
     val askLiftIO = new AskLiftIO[E.FE]
   }
 
-  class AsyncCheck[M[_]:Provider:Concurrent] {
+  class AsyncCheck[M[_]: Provider: Concurrent] {
 
     val functor = implicitly[Functor[M]]
 
@@ -221,7 +219,7 @@ class ProviderConcurrentTests {
   }
 
 
-  class ConcurrentCheck[M[_]:Provider:Concurrent] {
+  class ConcurrentCheck[M[_]: Provider: Concurrent] {
 
     val functor = implicitly[Functor[M]]
 
@@ -262,7 +260,7 @@ class ProviderConcurrentTests {
   }
 
 
-  class TotalCheck[M[_]:Provider:Concurrent:ApplicativeFail[*[_], V]:ApplicativeCensor[*[_],L], V, L] {
+  class TotalCheck[M[_]: Provider: Concurrent: ApplicativeFail[*[_], V]: Censor[*[_],L], V, L] {
 
     val functor = implicitly[Functor[M]]
 
@@ -284,11 +282,11 @@ class ProviderConcurrentTests {
 
     val fail = implicitly[ApplicativeFail[M, V]]
 
-    val tell = implicitly[FunctorTell[M, L]]
+    val tell = implicitly[Tell[M, L]]
 
-    val listen = implicitly[FunctorListen[M, L]]
+    val listen = implicitly[Listen[M, L]]
 
-    val censor = implicitly[ApplicativeCensor[M, L]]
+    val censor = implicitly[Censor[M, L]]
 
     val E = Provider[M].apply[Int]
     import E._
