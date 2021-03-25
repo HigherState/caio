@@ -138,7 +138,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
       val program =
         for {
           a <- Applicative[CaioT].pure(3)
-          b <- Sync[CaioT].suspend(Applicative[CaioT].pure(7))
+          b <- Sync[CaioT].defer(Applicative[CaioT].pure(7))
           _ <- ApplicativeFail[CaioT, Failure].fail[Unit](new Failure(b.toString))
           c <- LiftIO[CaioT].liftIO(IO.delay(6))
         } yield a + b + c
