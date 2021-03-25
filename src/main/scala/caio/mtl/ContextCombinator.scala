@@ -48,6 +48,6 @@ trait ContextCombinator {
 
 }
 
-case class AskCombinator[M[_], A](A:ApplicativeAsk[M, A]) extends AnyVal
+case class AskCombinator[M[_], A](A: ApplicativeAsk[M, A]) extends AnyVal
 
 object ContextCombinator extends ContextCombinator

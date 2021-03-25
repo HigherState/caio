@@ -12,45 +12,44 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
   import cats.implicits._
   type CaioT[A] = Caio[Unit, Failure, EventLog, A]
 
-  implicit val caioMonad:Monad[CaioT] = new CaioMonad[Unit, Failure, EventLog]
+  implicit val caioMonad: Monad[CaioT] = new CaioMonad[Unit, Failure, EventLog]
 
-  val effect:Effect[CaioT] = new CaioEffect[Unit, Failure, EventLog](())()()()
+  val effect: Effect[CaioT] = new CaioEffect[Unit, Failure, EventLog](())()()()
 
-  class AskInt[M[_]:ApplicativeAsk[*[_], Int]] {
-    def run:M[Int] = ApplicativeAsk[M,Int].ask
+  class AskInt[M[_]: ApplicativeAsk[*[_], Int]] {
+    def run: M[Int] = ApplicativeAsk[M,Int].ask
   }
 
-  class AskAtomic1[M[_]:ApplicativeAsk[*[_], Atomic1]] {
-    def run:M[Atomic1] = ApplicativeAsk[M, Atomic1].ask
+  class AskAtomic1[M[_]: ApplicativeAsk[*[_], Atomic1]] {
+    def run: M[Atomic1] = ApplicativeAsk[M, Atomic1].ask
   }
-  class AskAtomic2[M[_]:ApplicativeAsk[*[_], Atomic2]] {
-    def run:M[Atomic2] = ApplicativeAsk[M, Atomic2].ask
-  }
-
-  class AskString[M[_]:ApplicativeAsk[*[_], String]] {
-    def run:M[String] = ApplicativeAsk[M, String].ask
+  class AskAtomic2[M[_]: ApplicativeAsk[*[_], Atomic2]] {
+    def run: M[Atomic2] = ApplicativeAsk[M, Atomic2].ask
   }
 
-  class AskIntString[M[_]:ApplicativeAsk[*[_], (Int, String)]:Functor] {
-    def run:M[(Int, String)] = ApplicativeAsk[M,(Int, String)].ask
+  class AskString[M[_]: ApplicativeAsk[*[_], String]] {
+    def run: M[String] = ApplicativeAsk[M, String].ask
   }
 
-  class AskIntBooleanString[M[_]:ApplicativeAsk[*[_], (Int, Boolean, String)]] {
-    def run:M[(Int, Boolean, String)] = ApplicativeAsk[M,(Int, Boolean, String)].ask
+  class AskIntString[M[_]: ApplicativeAsk[*[_], (Int, String)]:Functor] {
+    def run: M[(Int, String)] = ApplicativeAsk[M,(Int, String)].ask
   }
 
+  class AskIntBooleanString[M[_]: ApplicativeAsk[*[_], (Int, Boolean, String)]] {
+    def run: M[(Int, Boolean, String)] = ApplicativeAsk[M,(Int, Boolean, String)].ask
+  }
 
-  class AddAskContext[M[_]](implicit C:Provider[M]) {
+  class AddAskContext[M[_]](implicit C: Provider[M]) {
 
     val E = C.apply[Int]
     import E._
 
     val service = new AskInt[E.FE]
 
-    def run:M[Int] = E.apply(3)(service.run)
+    def run: M[Int] = E.apply(3)(service.run)
   }
 
-  class AddAskThreeContext[M[_]:Monad](implicit C:Provider[M]) {
+  class AddAskThreeContext[M[_]: Monad](implicit C: Provider[M]) {
     import cats.implicits._
 
     val E = C.apply[(String,Int)]
@@ -62,7 +61,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
 
     val service3 = new AskIntString[E.FE]
 
-    def run(s:String, i:Int): M[(Int, String, (Int, String))] =
+    def run(s: String, i: Int): M[(Int, String, (Int, String))] =
       for {
         s1 <- E.apply(s -> i)(service1.run)
         s2 <- E.apply(s -> i)(service2.run)
@@ -70,7 +69,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
       } yield (s1, s2, s3)
   }
 
-  def runSuccess[A](caio:CaioT[A]):A =
+  def runSuccess[A](caio: CaioT[A]): A =
     effect.toIO(caio).unsafeRunSync()
 
   describe("Provider tests") {
@@ -86,7 +85,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     }
   }
 
-  class AddAskThreeExtended[M[_]:Monad:Extender[*[_], (String, Boolean)]] {
+  class AddAskThreeExtended[M[_]: Monad: Extender[*[_], (String, Boolean)]] {
 
     val E = implicitly[Extender[M, (String, Boolean)]].apply[Int]
     import E._
@@ -99,7 +98,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
 
     val service4 = new AskIntBooleanString[E.FE]
 
-    def run(i:Int): M[(Int, String, (Int, String), (Int, Boolean, String))] =
+    def run(i: Int): M[(Int, String, (Int, String), (Int, Boolean, String))] =
       for {
         s1 <- E.apply(i)(service1.run)
         s2 <- E.apply(i)(service2.run)
@@ -108,19 +107,18 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
       } yield (s1, s2, s3, s4)
   }
 
-  class NestedContext[M[_]:Monad:Provider] {
+  class NestedContext[M[_]: Monad: Provider] {
     val E = implicitly[Provider[M]].apply[(String, Boolean)]
     import E._
 
     val service1 = new AskString[E.FE]
     val service2 = new AddAskThreeExtended[E.FE]
 
-    def run(s:String, b:Boolean, i:Int): M[(String, (Int, String, (Int, String), (Int, Boolean, String)))] =
+    def run(s: String, b: Boolean, i: Int): M[(String, (Int, String, (Int, String), (Int, Boolean, String)))] =
       for {
         s1 <- E.apply(s -> b)(service1.run)
         s2 <- E.apply(s -> b)(service2.run(i))
       } yield (s1, s2)
-
   }
 
   describe("Extender tests") {
@@ -132,7 +130,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     }
   }
 
-  class DoubleNestedContext[M[_]:Monad:Provider] {
+  class DoubleNestedContext[M[_]: Monad: Provider] {
 
     val E = implicitly[Provider[M]].apply[(String, Boolean)]
     import E._
@@ -140,7 +138,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     val service1 = new AskString[E.FE]
     val service2 = new ExtenderStringBoolean[E.FE]
 
-    def run(s:String, b:Boolean, ci:Int, a1:Atomic1, a2:Atomic2):
+    def run(s: String, b: Boolean, ci: Int, a1: Atomic1, a2: Atomic2):
       M[(String,
         (String,
           ((Int, String), (Int, Boolean, String), Atomic1),
@@ -153,7 +151,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
       } yield (s1, s2)
   }
 
-  class ExtenderStringBoolean[M[_]:Monad:Extender[*[_], (String, Boolean)]] {
+  class ExtenderStringBoolean[M[_]: Monad: Extender[*[_], (String, Boolean)]] {
 
     val service0 = {
       import ContextProjector._
@@ -167,7 +165,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     val service2 = new ExtenderIntBoolean[E.FE]
     val service3 = new AskInt[E.FE]
 
-    def run(i:Int, a1:Atomic1, a2:Atomic2): M[
+    def run(i: Int, a1: Atomic1, a2: Atomic2): M[
       (String,
         ((Int, String), (Int, Boolean, String), Atomic1),
         ((Int, String), (Int, Boolean, String), Atomic2),
@@ -181,7 +179,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
 
   }
 
-  class ExtenderIntString[M[_]:Monad:Extender[*[_], (Int, String, Boolean)]] {
+  class ExtenderIntString[M[_]: Monad: Extender[*[_], (Int, String, Boolean)]] {
 
     val E = implicitly[Extender[M, (Int, String, Boolean)]].apply[Atomic1]
     import E._
@@ -190,7 +188,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     val service2 = new AskIntBooleanString[E.FE]
     val service3 = new AskAtomic1[E.FE]
 
-    def run(a:Atomic1): M[((Int, String), (Int, Boolean, String), Atomic1)] =
+    def run(a: Atomic1): M[((Int, String), (Int, Boolean, String), Atomic1)] =
       for {
         s1 <- E.apply(a)(service1.run)
         s2 <- E.apply(a)(service2.run)
@@ -198,7 +196,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
       } yield (s1, s2, s3)
   }
 
-  class ExtenderIntBoolean[M[_]:Monad:Extender[*[_], (Int, Boolean, String)]] {
+  class ExtenderIntBoolean[M[_]: Monad: Extender[*[_], (Int, Boolean, String)]] {
 
     val E = implicitly[Extender[M, (Int, Boolean, String)]].apply[Atomic2]
     import E._
@@ -207,7 +205,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     val service2 = new AskIntBooleanString[E.FE]
     val service3 = new AskAtomic2[E.FE]
 
-    def run(a:Atomic2): M[((Int, String), (Int, Boolean, String), Atomic2)] =
+    def run(a: Atomic2): M[((Int, String), (Int, Boolean, String), Atomic2)] =
       for {
         s1 <- E.apply(a)(service1.run)
         s2 <- E.apply(a)(service2.run)
@@ -230,16 +228,16 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
   }
 
   class ApplyDown[
-    F[_]:Sync:Extender[*[_], Int],
-    FC[_]:ExtendsOn[*[_], F, String]
-  ](f:AskInt[F], fc:AskIntString[FC]) {
+    F[_]: Sync:Extender[*[_], Int],
+    FC[_]: ExtendsOn[*[_], F, String]
+  ](f: AskInt[F], fc:AskIntString[FC]) {
 
     val E = implicitly[Extender[F, Int]].apply[Atomic1]
     import E._
 
     val service1 = new AskAtomic1[E.FE]
 
-    def eval(s:String):F[(Int, String)] = {
+    def eval(s: String):F[(Int, String)] = {
       for {
         i <- f.run
         p <- implicitly[ExtendsOn[FC, F, String]].bijectionK(s).unapply(fc.run)
@@ -266,5 +264,4 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
 //    }
 
   }*/
-
 }
