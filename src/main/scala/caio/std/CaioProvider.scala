@@ -51,8 +51,8 @@ case class CaioExtends[C, V, L:Monoid, E1, E2]()(implicit M: Mixer[C, E1], I:Mix
   def functionK: Caio[C, V, L, *] ~> FE =
     new (Caio[C, V, L, *] ~> FE) {
       def apply[A](fa: Caio[C, V, L, A]): Caio[(E1, E2), V, L, A] =
-        KleisliCaio[(E1, E2), V, L, A] { c2 =>
-          Caio.foldIO[C, V, L, A](fa, I.mix(c2._1 -> ())).map(_.contextMap(c => M.mix(c) -> c2._2))
+        KleisliCaio[(E1, E2), V, L, A] { (c2, ref) =>
+          Caio.foldIO[C, V, L, A](fa, I.mix(c2._1 -> ()), ref).map(_.contextMap(c => M.mix(c) -> c2._2))
         }
     }
 

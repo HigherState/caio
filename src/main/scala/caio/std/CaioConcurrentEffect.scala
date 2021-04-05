@@ -4,6 +4,7 @@ import caio._
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.effect._
+import cats.effect.concurrent.Ref
 
 class CaioConcurrentEffect[C, V, L: Monoid]
   (c:C)
@@ -41,19 +42,19 @@ class CaioConcurrentEffect[C, V, L: Monoid]
     }
 
   override def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
-    KleisliCaio[C, V, L, A]{ c =>
-      val k2 = k.andThen(c0 => Caio.foldIO(c0, c).flatMap(eval))
+    KleisliCaio[C, V, L, A]{ (c, ref) =>
+      val k2 = k.andThen(c0 => Caio.foldIO(c0, c, ref).flatMap(eval))
       IO.asyncF(k2).map(a => FoldCaioSuccess[C, V, L, A](c, Monoid[L].empty, a))
     }
 
   def runCancelable[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[Caio[C, V, L, *]]] =
     Caio
-      .foldIO(fa, c)
+      .foldIO(fa, c, Ref.unsafe[IO, L](Monoid[L].empty))
       .runCancelable(handle(_, cb))
       .map(Caio.liftIO)
 
   def runAsync[A](fa: Caio[C, V, L, A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
     Caio
-      .foldIO(fa, c)
+      .foldIO(fa, c, Ref.unsafe[IO, L](Monoid[L].empty))
       .runAsync(handle(_, cb))
 }
