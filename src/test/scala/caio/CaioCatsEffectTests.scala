@@ -13,7 +13,7 @@ import org.scalacheck.Prop.forAll
 
 import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
-import scala.util.{Failure, Success, Try}
+import scala.util.{Success, Try}
 
 class CaioCatsEffectTests extends TestInstances {
   import arbitrary._
@@ -121,7 +121,7 @@ class CaioCatsEffectTests extends TestInstances {
 
   testGlobalAsync("fromTry handles Failure") { params =>
     case object Foo extends Exception
-    val t: Try[Nothing] = Failure(Foo)
+    val t: Try[Nothing] = scala.util.Failure(Foo)
 
     assertEquals(params.CE.toIO(Caio.fromTry(t).attempt).unsafeRunSync().left.toOption.get, Foo)
   }
@@ -158,7 +158,7 @@ class CaioCatsEffectTests extends TestInstances {
 
     params.EC.tick()
 
-    assertEquals(f.value, Some(Failure(dummy)))
+    assertEquals(f.value, Some(scala.util.Failure(dummy)))
   }
 
   testAsync("Caio.async does not break referential transparency") { params =>

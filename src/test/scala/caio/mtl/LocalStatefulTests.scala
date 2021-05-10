@@ -12,7 +12,7 @@ class LocalStatefulTests extends TestInstances {
 
   checkAllAsync("Caio") { params =>
     import params._
-    StatefulTests[CaioT, C].stateful[Int]
+    StatefulTests[CaioT, C].stateful
   }
 
   checkAllAsync("Stateful[Caio]") { _ =>
