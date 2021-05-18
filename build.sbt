@@ -12,13 +12,13 @@ releaseProcess -= ReleaseTransformations.publishArtifacts
 // end sbt-release plugin settings
 
 // enable publishing the jar produced by `test:package`
-publishArtifact in(Test, packageBin) := true
+Test / packageBin / publishArtifact := true
 
 // enable publishing the test API jar
-publishArtifact in(Test, packageDoc) := true
+Test / packageDoc / publishArtifact := true
 
 // enable publishing the test sources jar
-publishArtifact in(Test, packageSrc) := true
+Test / packageSrc / publishArtifact := true
 
 val currentScalaVersion = "2.13.5"
 ThisBuild / scalaVersion := currentScalaVersion
