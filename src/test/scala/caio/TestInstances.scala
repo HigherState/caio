@@ -24,28 +24,31 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 
 class TestInstances extends DisciplineSuite with CatsTestInstances {
-  type C = Map[String, String]
-  type L = EventLog
-  type V = Failure
+  type C        = Map[String, String]
+  type L        = EventLog
+  type V        = Failure
   type CaioT[A] = Caio[C, V, L, A]
 
   val implicits: DynamicContextImplicits[V, L] = new DynamicContextImplicits[V, L]
 
-  implicit val C = Map.empty[String, String]
+  implicit val C           = Map.empty[String, String]
   implicit val isomorphism = invariant[CaioT](implicits.dynamicCaioMonad[C])
 
   protected class TestParams(testContext: TestContext, contextShift: ContextShift[IO]) {
     def this(testContext: TestContext) = this(testContext, testContext.ioContextShift)
-    implicit val EC: TestContext = testContext
-    implicit val CS: ContextShift[IO] = contextShift
+    implicit val EC: TestContext                   = testContext
+    implicit val CS: ContextShift[IO]              = contextShift
     implicit val CE: CaioConcurrentEffect[C, V, L] = concurrentEffect(CS)
-    implicit val SGK: SemigroupK[CaioT] = new SemigroupK[CaioT] {
+    implicit val SGK: SemigroupK[CaioT]            = new SemigroupK[CaioT] {
       override def combineK[A](x: CaioT[A], y: CaioT[A]): CaioT[A] = x <* y
     }
   }
 
   def concurrentEffect(cs: ContextShift[IO]): CaioConcurrentEffect[C, V, L] =
-    new CaioConcurrentEffect[C, V, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) => IO.unit)(Event.EventMonoid, cs)
+    new CaioConcurrentEffect[C, V, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) => IO.unit)(
+      Event.EventMonoid,
+      cs
+    )
 
   def checkAllAsync(name: String)(f: TestParams => Laws#RuleSet): Unit = {
     val context = TestContext()
@@ -57,30 +60,30 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
 
   def testAsync(name: String)(f: TestParams => Any): Unit = {
     val context = TestContext()
-    property(name)(silenceSystemErr(() => { f(new TestParams(context)); () }))(Location.empty)
+    property(name)(silenceSystemErr { () => f(new TestParams(context)); () })(Location.empty)
   }
 
   def testGlobalAsync(name: String)(f: TestParams => Any): Unit = {
     val context = TestContext()
-    val CS = IO.contextShift(ExecutionContext.global)
-    property(name)(silenceSystemErr(() => { f(new TestParams(context, CS)); () }))(Location.empty)
+    val CS      = IO.contextShift(ExecutionContext.global)
+    property(name)(silenceSystemErr { () => f(new TestParams(context, CS)); () })(Location.empty)
   }
 
   def getTimer(ioTimer: Timer[IO])(implicit CS: ContextShift[IO], CE: CaioConcurrentEffect[C, V, L]): Timer[CaioT] =
     new Timer[CaioT] {
       val clock: Clock[CaioT]                          = Clock.create[CaioT]
-      def sleep(duration: FiniteDuration): CaioT[Unit] = implicits.dynamicCaioConcurrent[C].liftIO(ioTimer.sleep(duration))
+      def sleep(duration: FiniteDuration): CaioT[Unit] =
+        implicits.dynamicCaioConcurrent[C].liftIO(ioTimer.sleep(duration))
     }
 
   protected def silenceSystemErr[A](thunk: () => A): A = synchronized {
-    val oldErr = System.err
+    val oldErr    = System.err
     val outStream = new ByteArrayOutputStream()
-    val fakeErr = new PrintStream(outStream)
+    val fakeErr   = new PrintStream(outStream)
     System.setErr(fakeErr)
 
-    try {
-      thunk()
-    } catch {
+    try thunk()
+    catch {
       case NonFatal(e) =>
         fakeErr.close()
         val out = new String(outStream.toByteArray, StandardCharsets.UTF_8)
@@ -99,26 +102,27 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
   }
 
   protected def catchSystemErrInto[T](outStream: OutputStream)(thunk: => T): T = synchronized {
-    val oldErr = System.err
+    val oldErr  = System.err
     val fakeErr = new PrintStream(outStream)
     System.setErr(fakeErr)
-    try {
-      thunk
-    } finally {
+    try thunk
+    finally {
       System.setErr(oldErr)
       fakeErr.close()
     }
   }
 
   implicit def eqCaio[C, V, L: Monoid, A: Eq](implicit C: C, ec: TestContext): Eq[Caio[C, V, L, A]] =
-    (x: Caio[C, V, L, A], y: Caio[C, V, L, A]) =>
-      eqIO[A].eqv(x.run(C), y.run(C))
+    (x: Caio[C, V, L, A], y: Caio[C, V, L, A]) => eqIO[A].eqv(x.run(C), y.run(C))
 
   implicit def eqCaioPar[C, V, L: Monoid, A: Eq](implicit C: C, ec: TestContext): Eq[ParCaio[C, V, L, A]] =
-    (x: ParCaio[C, V, L, A], y: ParCaio[C, V, L, A]) =>
-      eqCaio[C, V, L, A].eqv(unwrap(x), unwrap(y))
+    (x: ParCaio[C, V, L, A], y: ParCaio[C, V, L, A]) => eqCaio[C, V, L, A].eqv(unwrap(x), unwrap(y))
 
-  implicit def caioIsEqToProp[C, V, L: Monoid, A: Eq](implicit C: C, ec: TestContext, pp: Caio[C, V, L, A] => Pretty): IsEq[Caio[C, V, L, A]] => Prop =
+  implicit def caioIsEqToProp[C, V, L: Monoid, A: Eq](implicit
+    C: C,
+    ec: TestContext,
+    pp: Caio[C, V, L, A] => Pretty
+  ): IsEq[Caio[C, V, L, A]] => Prop =
     isEq =>
       if (eqCaio[C, V, L, A].eqv(isEq.lhs, isEq.rhs)) Prop.proved
       else

@@ -5,7 +5,7 @@ import caio.mtl.ApplicativeFail
 import cats.CommutativeApplicative
 import cats.data.NonEmptyList
 
-class CaioApplicativeFail[C, V, L] extends ApplicativeFail[Caio[C, V, L, *], V]{
+class CaioApplicativeFail[C, V, L] extends ApplicativeFail[Caio[C, V, L, *], V] {
   val applicative: CommutativeApplicative[Caio[C, V, L, *]] =
     new CaioApplicative[C, V, L]
 

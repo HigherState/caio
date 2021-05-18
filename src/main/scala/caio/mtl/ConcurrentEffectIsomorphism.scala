@@ -3,14 +3,14 @@ package caio.mtl
 import caio.<~>
 import cats.effect._
 
-class ConcurrentEffectIsomorphism[F[_], G[_]](
-  concurrentEffect: ConcurrentEffect[G],
-  isomorphism: F <~> G) extends ConcurrentEffect[F]{
+class ConcurrentEffectIsomorphism[F[_], G[_]](concurrentEffect: ConcurrentEffect[G], isomorphism: F <~> G)
+    extends ConcurrentEffect[F] {
 
   private val invert = isomorphism.invert
 
   def runCancelable[A](fa: F[A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[CancelToken[F]] =
-    concurrentEffect.runCancelable(isomorphism(fa))(cb)
+    concurrentEffect
+      .runCancelable(isomorphism(fa))(cb)
       .map(isomorphism.unapply)
 
   def runAsync[A](fa: F[A])(cb: Either[Throwable, A] => IO[Unit]): SyncIO[Unit] =
@@ -18,13 +18,13 @@ class ConcurrentEffectIsomorphism[F[_], G[_]](
 
   def start[A](fa: F[A]): F[Fiber[F, A]] =
     invert {
-      concurrentEffect.map(concurrentEffect.start(isomorphism(fa))){_.mapK[F](invert)}
+      concurrentEffect.map(concurrentEffect.start(isomorphism(fa)))(_.mapK[F](invert))
     }
 
   def racePair[A, B](fa: F[A], fb: F[B]): F[Either[(A, Fiber[F, B]), (Fiber[F, A], B)]] =
     isomorphism.unapply {
-      concurrentEffect.map(concurrentEffect.racePair(isomorphism(fa), isomorphism(fb))){
-        case Left((a, fb)) => Left(a -> fb.mapK(invert))
+      concurrentEffect.map(concurrentEffect.racePair(isomorphism(fa), isomorphism(fb))) {
+        case Left((a, fb))  => Left(a -> fb.mapK(invert))
         case Right((fa, b)) => Right(fa.mapK(invert) -> b)
       }
     }
@@ -39,7 +39,7 @@ class ConcurrentEffectIsomorphism[F[_], G[_]](
     invert(concurrentEffect.defer(isomorphism(thunk)))
 
   def bracketCase[A, B](acquire: F[A])(use: A => F[B])(release: (A, ExitCase[Throwable]) => F[Unit]): F[B] = {
-    def releaseG:(A, ExitCase[Throwable]) => G[Unit] = (a, e) => isomorphism(release(a, e))
+    def releaseG: (A, ExitCase[Throwable]) => G[Unit] = (a, e) => isomorphism(release(a, e))
     invert(concurrentEffect.bracketCase(isomorphism(acquire))(use.andThen(isomorphism.apply))(releaseG))
   }
 

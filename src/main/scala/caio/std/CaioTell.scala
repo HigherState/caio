@@ -4,11 +4,11 @@ import caio.Caio
 import cats.Functor
 import cats.mtl.Tell
 
-class CaioTell[C, V, L] extends Tell[Caio[C, V, L, *], L]{
+class CaioTell[C, V, L] extends Tell[Caio[C, V, L, *], L] {
   override def functor: Functor[Caio[C, V, L, *]] =
     new CaioFunctor[C, V, L] {}
 
-  def tell(l: L): Caio[C, V, L, Unit] =
+  def tell(l: L): Caio[C, V, L, Unit]             =
     Caio.tell(l)
 
   override def writer[A](a: A, l: L): Caio[C, V, L, A] =
