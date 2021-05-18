@@ -2,6 +2,7 @@ package caio.mtl
 
 import cats.{Applicative, ApplicativeError, Monad, MonadError}
 import cats.data.NonEmptyList
+import cats.mtl.Handle
 
 trait ApplicativeFail[F[_], V] {
   val applicative: Applicative[F]
@@ -70,5 +71,12 @@ object ApplicativeFail {
 
       def tailRecM[A, B](a: A)(f: A => F[Either[A, B]]): F[B] =
         M.tailRecM(a)(f)
+    }
+
+  implicit def handle[F[_], V](implicit AF: ApplicativeFail[F, V]): Handle[F, NonEmptyList[V]] =
+    new Handle[F, NonEmptyList[V]] {
+      override def applicative                                         = AF.applicative
+      override def handleWith[A](fa: F[A])(f: NonEmptyList[V] => F[A]) = AF.resolveWith(fa) { case nel => f(nel) }
+      override def raise[E2 <: NonEmptyList[V], A](e: E2)              = AF.failMany(e)
     }
 }
