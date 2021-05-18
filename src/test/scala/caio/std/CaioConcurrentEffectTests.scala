@@ -99,6 +99,18 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
       run(program(true, true)).toList should contain oneOf(-1, -2)
     }
 
+    it("Should handle logs when a fiber is never joined") {
+      val program =
+        Listen[CaioT, EventLog].listen {
+          for {
+            _ <- effect.start(Tell[CaioT, EventLog].tell(Vector(event1)))
+            _ <- Tell[CaioT, EventLog].tell(Vector(event2))
+          } yield ()
+        }
+
+      run(program)._2 should contain theSameElementsAs Vector(event1, event2)
+    }
+
     it("Should handle logs when a fiber is joined") {
       val program =
         Listen[CaioT, EventLog].listen {

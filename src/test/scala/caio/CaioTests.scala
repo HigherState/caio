@@ -79,7 +79,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
          for {
             a <- Applicative[CaioT].pure(n)
             c <- summation(n - 1)
-            l <- KleisliCaio[C, V, L, Long]{ ctx => IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c))}
+            l <- KleisliCaio[C, V, L, Long]{ case (ctx, _) => IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c)) }
           } yield l
         } else
           Applicative[CaioT].pure(n)
