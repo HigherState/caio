@@ -2,7 +2,7 @@ package caio.mtl
 
 import caio.TestInstances
 
-import cats.mtl.{ Censor, Local, Stateful }
+import cats.mtl.{Censor, Local, Stateful}
 import cats.laws.discipline.SerializableTests
 import cats.mtl.laws.discipline.{CensorTests, LocalTests, StatefulTests}
 

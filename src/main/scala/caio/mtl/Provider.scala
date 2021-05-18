@@ -1,9 +1,9 @@
 package caio.mtl
 
 import caio.<~>
-import cats.{Applicative, Functor, Monad, MonadError, ~>}
+import cats.{~>, Applicative, Functor, Monad, MonadError}
 import cats.effect.{Async, Bracket, Concurrent, ConcurrentEffect, LiftIO, Sync}
-import cats.mtl.{Censor, Listen, Tell, Stateful}
+import cats.mtl.{Censor, Listen, Stateful, Tell}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
 
@@ -24,12 +24,11 @@ trait ExtendsOn[F[_], Source[_], Context] extends Extender[F, Context] {
   def bijectionK(e2: Context): Source <~> F
 }
 
-
 trait Extends[F[_], E1, E2] {
 
   type FE[A]
 
-  def concurrentEffect(c:E2)(implicit CE:ConcurrentEffect[F]):ConcurrentEffect[FE] =
+  def concurrentEffect(c: E2)(implicit CE: ConcurrentEffect[F]): ConcurrentEffect[FE] =
     new ConcurrentEffectIsomorphism[FE, F](CE, apply(c))
 
   def ask: InvariantAsk[FE, (E1, E2)]
@@ -38,7 +37,7 @@ trait Extends[F[_], E1, E2] {
 
   // E3 has to be purely a recombination of E1, and E2 otherwise we cannot perform an unapply
   // Inverse includes Unit so we can map back when E1 may be Unit
-  def extender[E3](implicit M: Mixer[(E1, E2), E3], I: Mixer[(E3, Unit), (E1, E2)]):Extender[FE, E3]
+  def extender[E3](implicit M: Mixer[(E1, E2), E3], I: Mixer[(E3, Unit), (E1, E2)]): Extender[FE, E3]
 
   def functionK: F ~> FE
 
@@ -81,5 +80,5 @@ trait Extends[F[_], E1, E2] {
 }
 
 object Provider {
-  def apply[F[_]](implicit P:Provider[F]):Provider[F] = P
+  def apply[F[_]](implicit P: Provider[F]): Provider[F] = P
 }

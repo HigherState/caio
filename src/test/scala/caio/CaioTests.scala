@@ -28,7 +28,6 @@ class CaioTests extends AsyncFunSpec with Matchers {
   type CaioV[V1, A] = Caio[C, V1, L, A]
   type CaioL[L1, A] = Caio[C, V, L1, A]
 
-
   val implicits = new DynamicContextImplicits[V, L]
   import implicits._
 
@@ -76,10 +75,10 @@ class CaioTests extends AsyncFunSpec with Matchers {
     it("should be stack-safe under flatmap with Kleisli") {
       def summation(n: Long): CaioT[Long] =
         if (n > 0) {
-         for {
+          for {
             a <- Applicative[CaioT].pure(n)
             c <- summation(n - 1)
-            l <- KleisliCaio[C, V, L, Long]{ ctx => IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c))}
+            l <- KleisliCaio[C, V, L, Long](ctx => IO.pure(FoldCaioSuccess(ctx, EventMonoid.empty, a + c)))
           } yield l
         } else
           Applicative[CaioT].pure(n)
@@ -212,12 +211,11 @@ class CaioTests extends AsyncFunSpec with Matchers {
     }
 
     it("Should provide context") {
-      val program: CaioC[Any, Int] = {
+      val program: CaioC[Any, Int] =
         InvariantAsk[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
           .ask[(Int, Int, Int)]
-          .map { case (a, b, c ) => a + b + c }
+          .map { case (a, b, c) => a + b + c }
           .provideContext((1, 2, 3))
-      }
 
       program.run.unsafeRunSync() shouldBe 6
     }

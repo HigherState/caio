@@ -4,9 +4,8 @@ import caio.{Caio, ParCaio}
 import cats.{CommutativeApplicative, Monoid}
 import cats.effect.{ContextShift, IO}
 
-class CaioParApplicative[C, V, L: Monoid]
-  (C: CaioConcurrent[C, V, L])
-  (implicit CS: ContextShift[IO]) extends CommutativeApplicative[ParCaio[C, V, L, *]] {
+class CaioParApplicative[C, V, L: Monoid](C: CaioConcurrent[C, V, L])(implicit CS: ContextShift[IO])
+    extends CommutativeApplicative[ParCaio[C, V, L, *]] {
 
   override def pure[A](x: A): ParCaio[C, V, L, A] =
     Par(Caio.pure(x))

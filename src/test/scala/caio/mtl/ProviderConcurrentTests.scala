@@ -2,20 +2,20 @@ package caio.mtl
 
 import cats.{Applicative, Functor, Monad, MonadError}
 import cats.effect.{Async, Bracket, Concurrent, LiftIO, Sync}
-import cats.mtl.{Censor, Listen, Tell, Stateful}
+import cats.mtl.{Censor, Listen, Stateful, Tell}
 
 class ProviderConcurrentTests {
 
   class StateFunctor[M[_]: Stateful[*[_], Int]: Functor] {
-    def run: M[Int] = Stateful[M,Int].get
+    def run: M[Int] = Stateful[M, Int].get
   }
 
   class StateApplicative[M[_]: Stateful[*[_], Int]: Applicative] {
-    def run: M[Int] = Stateful[M,Int].get
+    def run: M[Int] = Stateful[M, Int].get
   }
 
   class StateMonad[M[_]: Stateful[*[_], Int]: Monad] {
-    def run: M[Int] = Stateful[M,Int].get
+    def run: M[Int] = Stateful[M, Int].get
   }
 
   class AskMonadError[M[_]: InvariantAsk[*[_], Int]: MonadError[*[_], Throwable]] {
@@ -30,15 +30,15 @@ class ProviderConcurrentTests {
   }
 
   class StateSync[M[_]: Stateful[*[_], Int]: Sync] {
-    def run: M[Int] = Stateful[M,Int].get
+    def run: M[Int] = Stateful[M, Int].get
   }
 
   class StateAsync[M[_]: Stateful[*[_], Int]: Async] {
-    def run: M[Int] = Stateful[M,Int].get
+    def run: M[Int] = Stateful[M, Int].get
   }
 
   class StateConcurrent[M[_]: Stateful[*[_], Int]: Concurrent] {
-    def run: M[Int] = Stateful[M,Int].get
+    def run: M[Int] = Stateful[M, Int].get
   }
 
   class AskLiftIO[M[_]: InvariantAsk[*[_], Int]: LiftIO] {
@@ -218,7 +218,6 @@ class ProviderConcurrentTests {
     val askLiftIO = new AskLiftIO[E.FE]
   }
 
-
   class ConcurrentCheck[M[_]: Provider: Concurrent] {
 
     val functor = implicitly[Functor[M]]
@@ -259,8 +258,7 @@ class ProviderConcurrentTests {
     val stateConcurrent = new StateConcurrent[E.FE]
   }
 
-
-  class TotalCheck[M[_]: Provider: Concurrent: ApplicativeFail[*[_], V]: Censor[*[_],L], V, L] {
+  class TotalCheck[M[_]: Provider: Concurrent: ApplicativeFail[*[_], V]: Censor[*[_], L], V, L] {
 
     val functor = implicitly[Functor[M]]
 
@@ -311,7 +309,7 @@ class ProviderConcurrentTests {
 
     val askFail = new AskFail[E.FE, V]
 
-    val T = new ProviderWriterTests
+    val T       = new ProviderWriterTests
     val askTell = new T.AskTell[E.FE, L]
 
     val askListen = new T.AskListen[E.FE, L]

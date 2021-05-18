@@ -3,7 +3,7 @@ package caio.std
 import caio.Caio
 import cats.CommutativeApplicative
 
-class CaioApplicative[C, V, L] extends CommutativeApplicative[Caio[C, V, L, *]]{
+class CaioApplicative[C, V, L] extends CommutativeApplicative[Caio[C, V, L, *]] {
   def pure[A](x: A): Caio[C, V, L, A] =
     Caio.pure(x)
 

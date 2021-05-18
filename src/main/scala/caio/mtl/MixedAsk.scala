@@ -4,8 +4,7 @@ import cats.Applicative
 import cats.mtl.{Ask, Stateful}
 import io.typechecked.alphabetsoup.Mixer
 
-class MixedAsk[F[_], E1, E2](Ask: Ask[F, E1])(implicit mixer: Mixer[E1, E2])
-  extends InvariantAsk[F, E2]{
+class MixedAsk[F[_], E1, E2](Ask: Ask[F, E1])(implicit mixer: Mixer[E1, E2]) extends InvariantAsk[F, E2] {
 
   val applicative: Applicative[F] =
     Ask.applicative
@@ -17,8 +16,7 @@ class MixedAsk[F[_], E1, E2](Ask: Ask[F, E1])(implicit mixer: Mixer[E1, E2])
     Ask.reader[C](a => f(mixer.mix(a)))
 }
 
-class MixedState2Ask[F[_], E1, E2](state: Stateful[F, E1])(implicit mixer: Mixer[E1, E2])
-  extends InvariantAsk[F, E2]{
+class MixedState2Ask[F[_], E1, E2](state: Stateful[F, E1])(implicit mixer: Mixer[E1, E2]) extends InvariantAsk[F, E2] {
 
   val applicative: Applicative[F] =
     state.monad
@@ -29,4 +27,3 @@ class MixedState2Ask[F[_], E1, E2](state: Stateful[F, E1])(implicit mixer: Mixer
   override def reader[C](f: E2 => C): F[C] =
     state.inspect[C](a => f(mixer.mix(a)))
 }
-

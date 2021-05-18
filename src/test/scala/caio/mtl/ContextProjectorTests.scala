@@ -3,10 +3,10 @@ package caio.mtl
 import cats.mtl.Stateful
 import org.scalatest.{AsyncFunSpec, Matchers}
 
-class ContextProjectorTests extends AsyncFunSpec with Matchers{
+class ContextProjectorTests extends AsyncFunSpec with Matchers {
 
   class AskInt[M[_]: InvariantAsk[*[_], Int]] {
-    def run: M[Int] = InvariantAsk[M,Int].ask
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
   class AskString[M[_]: InvariantAsk[*[_], String]] {
@@ -28,7 +28,7 @@ class ContextProjectorTests extends AsyncFunSpec with Matchers{
   }
 
   class MonadInt[M[_]: Stateful[*[_], Int]] {
-    def run: M[Int] = Stateful[M,Int].get
+    def run: M[Int] = Stateful[M, Int].get
   }
 
   class MonadString[M[_]: Stateful[*[_], String]] {
@@ -53,7 +53,7 @@ class ContextProjectorTests extends AsyncFunSpec with Matchers{
   }
 
   class MonadIntAskStringF[M[_]: Stateful[*[_], Int]: InvariantAsk[*[_], String]] {
-    import caio.mtl.ContextCombinator.{combinatorAsk, askStateCombinator}
+    import caio.mtl.ContextCombinator.{askStateCombinator, combinatorAsk}
 
     val as = new AskIntString[M]
   }

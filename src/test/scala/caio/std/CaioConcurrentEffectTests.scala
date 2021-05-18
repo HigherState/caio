@@ -5,10 +5,10 @@ import caio.implicits.StaticImplicits
 import caio.mtl.ApplicativeFail
 import caio.{Caio, Failure}
 
-import cats.{ Applicative, ApplicativeError, Monoid }
+import cats.{Applicative, ApplicativeError, Monoid}
 import cats.syntax.parallel._
 import cats.data.NonEmptyList
-import cats.mtl.{ Listen, Tell, Stateful }
+import cats.mtl.{Listen, Stateful, Tell}
 import cats.effect.{Clock, ContextShift, IO, Timer}
 import cats.effect.concurrent.Ref
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -23,12 +23,14 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
   implicit val CS: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
   val C = new StaticImplicits[Int, Failure, EventLog] {
-    protected implicit def ML: Monoid[EventLog] = EventMonoid
+    implicit protected def ML: Monoid[EventLog] = EventMonoid
   }
 
   import C._
 
-  val effect = new CaioConcurrentEffect[Int, Failure, EventLog](0)((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) => IO.unit)
+  val effect = new CaioConcurrentEffect[Int, Failure, EventLog](0)((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) =>
+    IO.unit
+  )
 
   val T: Timer[IO] = IO.timer(ExecutionContext.global)
 
@@ -53,13 +55,13 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
       val program =
         for {
           ref  <- Ref.of[CaioT, List[Int]](Nil)
-          _    <- numbers.parTraverse_ { n => timer.sleep(random.nextInt(100).millis) *> ref.update(_ :+ n) }
+          _    <- numbers.parTraverse_(n => timer.sleep(random.nextInt(100).millis) *> ref.update(_ :+ n))
           list <- ref.get
         } yield NonEmptyList.fromListUnsafe(list)
 
       val result = run(program)
 
-      result should not be equal (numbers)
+      result should not be equal(numbers)
       result.toList should contain theSameElementsAs (numbers.toList)
     }
 
@@ -75,17 +77,19 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
           failures.map(failure => -failure.value.toInt)
         }
 
-      run(program(true, false)) should be equals (NonEmptyList.of(-1))
-      run(program(false, true)) should be equals (NonEmptyList.of(-2))
+      (run(program(true, false)) should be).equals(NonEmptyList.of(-1))
+      (run(program(false, true)) should be).equals(NonEmptyList.of(-2))
       run(program(false, false)).toList should contain theSameElementsAs List(1, 2)
-      run(program(true, true)).toList should contain oneOf(-1, -2)
+      run(program(true, true)).toList should contain oneOf (-1, -2)
     }
 
-     it("Should handle errors properly") {
+    it("Should handle errors properly") {
       def makeIOList(failFirst: Boolean, failSecond: Boolean): NonEmptyList[CaioT[Int]] =
         NonEmptyList.of(
-          if (failFirst) ApplicativeError[CaioT, Throwable].raiseError[Int](new Exception("1")) else Applicative[CaioT].pure(1),
-          if (failSecond) ApplicativeError[CaioT, Throwable].raiseError[Int](new Exception("2")) else Applicative[CaioT].pure(2)
+          if (failFirst) ApplicativeError[CaioT, Throwable].raiseError[Int](new Exception("1"))
+          else Applicative[CaioT].pure(1),
+          if (failSecond) ApplicativeError[CaioT, Throwable].raiseError[Int](new Exception("2"))
+          else Applicative[CaioT].pure(2)
         )
 
       def program(failFirst: Boolean, failSecond: Boolean): CaioT[NonEmptyList[Int]] =
@@ -93,10 +97,10 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
           NonEmptyList.of(-throwable.getMessage.toInt)
         }
 
-      run(program(true, false)) should be equals (NonEmptyList.of(-1))
-      run(program(false, true)) should be equals (NonEmptyList.of(-2))
+      (run(program(true, false)) should be).equals(NonEmptyList.of(-1))
+      (run(program(false, true)) should be).equals(NonEmptyList.of(-2))
       run(program(false, false)).toList should contain theSameElementsAs List(1, 2)
-      run(program(true, true)).toList should contain oneOf(-1, -2)
+      run(program(true, true)).toList should contain oneOf (-1, -2)
     }
 
     it("Should handle logs when a fiber is joined") {
@@ -122,8 +126,8 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
       def program(logFirst: Boolean, logSecond: Boolean): CaioT[EventLog] =
         makeIOList(logFirst, logSecond).parSequence.listen.map(_._2)
 
-      run(program(true, false)) should be equals (NonEmptyList.of(event1))
-      run(program(false, true)) should be equals (NonEmptyList.of(event2))
+      (run(program(true, false)) should be).equals(NonEmptyList.of(event1))
+      (run(program(false, true)) should be).equals(NonEmptyList.of(event2))
       run(program(true, true)).toList should contain theSameElementsAs List(event1, event2)
     }
 
@@ -148,9 +152,9 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
       def program(setFirst: Boolean, setSecond: Boolean): CaioT[Int] =
         makeIOList(setFirst, setSecond).parSequence *> Stateful[CaioT, Int].get
 
-      List(0, 1) should contain (run(program(true, false)))
-      List(0, 2) should contain (run(program(false, true)))
-      List(1, 2) should contain (run(program(true, true)))
+      List(0, 1) should contain(run(program(true, false)))
+      List(0, 2) should contain(run(program(false, true)))
+      List(1, 2) should contain(run(program(true, true)))
       run(program(false, false)) shouldBe 0
     }
   }

@@ -5,7 +5,7 @@ import cats.data.NonEmptyList
 case class Failure(value: String)
 
 object Failure {
-  type EoF = ErrorOrFailure[Failure]
+  type EoF      = ErrorOrFailure[Failure]
   type Failures = NonEmptyList[Failure]
 
   val failure1 = Failure("this is a failure 1")

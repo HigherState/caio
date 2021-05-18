@@ -5,15 +5,15 @@ import cats.mtl.{Censor, Listen, Tell}
 class ProviderWriterTests {
 
   class AskTell[M[_]: InvariantAsk[*[_], Int]: Tell[*[_], L], L] {
-    def run: M[Int] = InvariantAsk[M,Int].ask
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
   class AskListen[M[_]: InvariantAsk[*[_], Int]: Listen[*[_], L], L] {
-    def run: M[Int] = InvariantAsk[M,Int].ask
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
   class AskCensor[M[_]: InvariantAsk[*[_], Int]: Censor[*[_], L], L] {
-    def run: M[Int] = InvariantAsk[M,Int].ask
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
   class CensorWriter[M[_]: Provider: Censor[*[_], L], L] {

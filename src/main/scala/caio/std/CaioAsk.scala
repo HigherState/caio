@@ -14,4 +14,3 @@ class CaioAsk[C, V, L] extends InvariantAsk[Caio[C, V, L, *], C] {
   override def reader[A](f: C => A): Caio[C, V, L, A] =
     Caio.getContext.map(f)
 }
-

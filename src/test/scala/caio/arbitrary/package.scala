@@ -9,10 +9,12 @@ import org.scalacheck.Arbitrary.{arbitrary => getArbitrary}
 import scala.util.Either
 
 package object arbitrary {
-  implicit def arbitraryForCaio[C: Arbitrary, V: Arbitrary, L: Arbitrary: Monoid, A: Arbitrary: Cogen]: Arbitrary[Caio[C, V, L, A]] =
+  implicit def arbitraryForCaio[C: Arbitrary, V: Arbitrary, L: Arbitrary: Monoid, A: Arbitrary: Cogen]
+    : Arbitrary[Caio[C, V, L, A]] =
     Arbitrary(Gen.delay(genCaio[C, V, L, A]))
 
-  implicit def arbitraryForParCaio[C: Arbitrary, V: Arbitrary, L: Arbitrary: Monoid, A: Arbitrary: Cogen]: Arbitrary[ParCaio[C, V, L, A]] =
+  implicit def arbitraryForParCaio[C: Arbitrary, V: Arbitrary, L: Arbitrary: Monoid, A: Arbitrary: Cogen]
+    : Arbitrary[ParCaio[C, V, L, A]] =
     Arbitrary(arbitraryForCaio[C, V, L, A].arbitrary.map(Par.apply))
 
   def genCaio[C: Arbitrary, V: Arbitrary, L: Arbitrary: Monoid, A: Arbitrary: Cogen]: Gen[Caio[C, V, L, A]] =
