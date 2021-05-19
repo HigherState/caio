@@ -1,3 +1,4 @@
+import sbt.util
 name := "caio"
 
 organization := "io.higherstate"
@@ -19,6 +20,8 @@ Test / packageDoc / publishArtifact := true
 
 // enable publishing the test sources jar
 Test / packageSrc / publishArtifact := true
+
+ThisBuild / evictionErrorLevel := util.Level.Warn
 
 val currentScalaVersion = "2.13.5"
 ThisBuild / scalaVersion := currentScalaVersion
@@ -72,13 +75,13 @@ scalacOptions ++= Seq(
 javacOptions ++= Seq("-target", "1.8", "-source", "1.8", "-Xlint:deprecation")
 
 libraryDependencies ++= Seq(
-  "org.typelevel"  %% "cats-mtl"         % "1.2.0",
-  "org.typelevel"  %% "cats-effect"      % "2.5.0",
-  "org.typelevel"  %% "cats-mtl-laws"    % "1.2.0" % "test",
-  "org.typelevel"  %% "cats-effect-laws" % "2.5.0" % "test",
-  "org.typelevel"  %% "discipline-munit" % "1.0.6" % "test",
-  "io.typechecked" %% "alphabet-soup"    % "0.3.0",
-  "org.scalatest"  %% "scalatest"        % "3.0.8" % "test"
+  "org.typelevel"        %% "cats-mtl"         % "1.2.0",
+  "org.typelevel"        %% "cats-effect"      % "2.5.0",
+  "org.typelevel"        %% "cats-mtl-laws"    % "1.2.0" % "test",
+  "org.typelevel"        %% "cats-effect-laws" % "2.5.0" % "test",
+  "org.typelevel"        %% "discipline-munit" % "1.0.6" % "test",
+  "com.github.alterego7" %% "alphabet-soup"    % "0.4.0",
+  "org.scalatest"        %% "scalatest"        % "3.0.8" % "test"
 ) ++ {
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, v)) if v <= 12 =>
