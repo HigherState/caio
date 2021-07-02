@@ -23,7 +23,7 @@ Test / packageSrc / publishArtifact := true
 
 ThisBuild / evictionErrorLevel := util.Level.Warn
 
-val currentScalaVersion = "2.13.5"
+val currentScalaVersion = "2.13.6"
 ThisBuild / scalaVersion := currentScalaVersion
 crossScalaVersions := Seq("2.12.13", currentScalaVersion)
 
@@ -93,7 +93,7 @@ libraryDependencies ++= Seq(
 
 testFrameworks += new TestFramework("munit.Framework")
 
-addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full)
+addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full)
 
 resolvers ++= Seq(
   "Maven Central Server" at "https://repo1.maven.org/maven2",
