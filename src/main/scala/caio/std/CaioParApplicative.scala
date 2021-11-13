@@ -2,7 +2,7 @@ package caio.std
 
 import caio.{Caio, ParCaio}
 import cats.{CommutativeApplicative, Monoid}
-import cats.effect.{ContextShift, IO}
+import cats.effect.IO
 
 class CaioParApplicative[C, V, L: Monoid](C: CaioConcurrent[C, V, L])(implicit CS: ContextShift[IO])
     extends CommutativeApplicative[ParCaio[C, V, L, *]] {

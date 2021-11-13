@@ -23,9 +23,8 @@ Test / packageSrc / publishArtifact := true
 
 ThisBuild / evictionErrorLevel := util.Level.Warn
 
-val currentScalaVersion = "2.13.6"
+val currentScalaVersion = "2.13.7"
 ThisBuild / scalaVersion := currentScalaVersion
-crossScalaVersions := Seq("2.12.13", currentScalaVersion)
 
 scalacOptions ++= Seq(
   "-deprecation",                  // Emit warning and location for usages of deprecated APIs.
@@ -59,41 +58,25 @@ scalacOptions ++= Seq(
   "-Ywarn-unused:locals",          // Warn if a local definition is unused.
   "-Ywarn-unused:patvars",         // Warn if a variable bound in a pattern is unused.
   "-Ywarn-unused:privates",        // Warn if a private member is unused.
-  "-Ywarn-value-discard"           // Warn when non-Unit expression results are unused.
-) ++ {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, v)) if v <= 12 =>
-      Seq(
-        "-Ypartial-unification",
-        "-Xlint:nullary-override" // Warn when non-nullary `def f()' overrides nullary `def f'.
-      )
-    case _                       =>
-      Seq("-Ymacro-annotations")
-  }
-}
+  "-Ywarn-value-discard",           // Warn when non-Unit expression results are unused.
+  "-Ymacro-annotations"
+)
 
-javacOptions ++= Seq("-target", "1.8", "-source", "1.8", "-Xlint:deprecation")
+javacOptions ++= Seq("-target", "1.11", "-source", "1.11", "-Xlint:deprecation")
 
 libraryDependencies ++= Seq(
-  "org.typelevel"        %% "cats-mtl"         % "1.2.0",
-  "org.typelevel"        %% "cats-effect"      % "2.5.0",
-  "org.typelevel"        %% "cats-mtl-laws"    % "1.2.0" % "test",
-  "org.typelevel"        %% "cats-effect-laws" % "2.5.0" % "test",
+  "org.typelevel"        %% "cats-mtl"         % "1.2.1",
+  "org.typelevel"        %% "cats-effect"      % "3.2.9",
+  "org.typelevel"        %% "cats-mtl-laws"    % "1.2.1" % "test",
+  "org.typelevel"        %% "cats-effect-laws" % "3.2.9" % "test",
   "org.typelevel"        %% "discipline-munit" % "1.0.6" % "test",
   "com.github.alterego7" %% "alphabet-soup"    % "0.4.0",
   "org.scalatest"        %% "scalatest"        % "3.0.8" % "test"
-) ++ {
-  CrossVersion.partialVersion(scalaVersion.value) match {
-    case Some((2, v)) if v <= 12 =>
-      Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
-    case _                       =>
-      Nil
-  }
-}
+)
 
 testFrameworks += new TestFramework("munit.Framework")
 
-addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.0" cross CrossVersion.full)
+addCompilerPlugin("org.typelevel" % "kind-projector" % "0.13.2" cross CrossVersion.full)
 
 resolvers ++= Seq(
   "Maven Central Server" at "https://repo1.maven.org/maven2",

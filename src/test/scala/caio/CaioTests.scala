@@ -6,7 +6,7 @@ import cats.effect.concurrent.Deferred
 import cats.effect.{ContextShift, IO, LiftIO, Sync}
 
 import scala.concurrent.ExecutionContext
-import caio.std.{CaioApplicative, CaioApplicativeFail, CaioListen}
+import caio.std.{CaioApplicative, CaioListen}
 import cats.data.NonEmptyList
 import cats.mtl.{Listen, Tell}
 import cats.Applicative

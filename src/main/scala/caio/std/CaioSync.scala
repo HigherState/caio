@@ -1,15 +1,15 @@
 package caio.std
 
 import caio._
-import cats.Monoid
-import cats.effect.Sync
+import cats.effect.{IO, Sync}
 
-class CaioSync[C, V, L: Monoid] extends CaioBracket[C, V, L] with Sync[Caio[C, V, L, *]] {
-  def suspend[A](thunk: => Caio[C, V, L, A]): Caio[C, V, L, A] =
-    KleisliCaio[C, V, L, A] { c =>
-      Caio.foldIO(thunk, c)
-    }
+trait CaioSync[C, L]
+  extends CaioDefer[C, L]
+    with CaioUnique[C, L]
+    with CaioMonadCancel[C, L]
+    with CaioClock[C, L]
+    with Sync[Caio[C, L, *]] {
 
-  override def delay[A](thunk: => A): Caio[C, V, L, A] =
-    Caio(thunk)
+  def suspend[A](hint: Sync.Type)(thunk: => A): Caio[C, L, A] =
+    IOCaio[A](IO.suspend(hint)(thunk))
 }
