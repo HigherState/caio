@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{<~>, mtl, Caio, KleisliCaio}
+import caio.{<~>, mtl, Caio}
 import caio.mtl._
 import cats.effect._
 import cats._
@@ -37,10 +37,10 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
   type FE[A] = Caio[(E1, E2), L, A]
 
   val ask: InvariantAsk[FE, (E1, E2)] =
-    new CaioAsk[(E1, E2), L]
+    CaioAsk[(E1, E2), L]
 
-  val stateful: Stateful[FE, (E1, E2)] =
-    new CaioStateful[(E1, E2), L]
+  val stateful: Stateful[FE, (E1, E2)]                                                                                =
+    new CaioStateful[(E1, E2), L] {}
 
   def extender[E3](implicit M: Mixer[(E1, E2), E3], I: Mixer[(E3, Unit), (E1, E2)]): ExtendsOn[FE, Caio[C, L, *], E3] =
     CaioExtendsOn[(E1, E2), C, L, E3](
@@ -52,8 +52,8 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
   def functionK: Caio[C, L, *] ~> FE =
     new (Caio[C, L, *] ~> FE) {
       def apply[A](fa: Caio[C, L, A]): Caio[(E1, E2), L, A] =
-        KleisliCaio[(E1, E2), L, A] { c2 =>
-          Caio.foldIO[C, L, A](fa, I.mix(c2._1 -> ())).map(_.contextMap(c => M.mix(c) -> c2._2))
+        Caio.KleisliCaio[(E1, E2), L, A] { (c2, ref) =>
+          Caio.foldIO[C, L, A](fa, I.mix(c2._1 -> ()), ref).map(_.contextMap(c => M.mix(c) -> c2._2))
         }
     }
 
@@ -72,9 +72,6 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
   implicit def transformMonadError[E](implicit M: MonadError[Caio[C, L, *], E]): MonadError[FE, E] =
     M.asInstanceOf[MonadError[FE, E]]
 
-  implicit def transformBracket[E](implicit M: Bracket[Caio[C, L, *], E]): Bracket[FE, E] =
-    M.asInstanceOf[Bracket[FE, E]]
-
   implicit def transformSync(implicit S: Sync[Caio[C, L, *]]): Sync[FE] =
     S.asInstanceOf[Sync[FE]]
 
@@ -87,11 +84,6 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
   implicit def transformConcurrent(implicit C: Concurrent[Caio[C, L, *]]): Concurrent[FE] =
     C.asInstanceOf[Concurrent[FE]]
 
-  implicit def transformApplicativeFail[V2](implicit
-    A: ApplicativeFail[Caio[C, L, *], V2]
-  ): ApplicativeFail[FE, V2] =
-    A.asInstanceOf[ApplicativeFail[FE, V2]]
-
   implicit def transformTell[L2](implicit F: Tell[Caio[C, L, *], L2]): Tell[FE, L2] =
     F.asInstanceOf[Tell[FE, L2]]
 
@@ -103,11 +95,11 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
 }
 
 object CaioProvider {
-  implicit val M: Mixer[Unit, Unit]                              = new Mixer[Unit, Unit] {
+  implicit val M: Mixer[Unit, Unit]                        = new Mixer[Unit, Unit] {
     override def mix(a: Unit): Unit = ()
 
     override def inject(b: Unit, a: Unit): Unit = ()
   }
   implicit def unit[L: Monoid]: Provider[Caio[Unit, L, *]] =
-    CaioExtender[Unit, L, Unit](new CaioAsk[Unit, L], new CaioStateful[Unit, L])
+    CaioExtender[Unit, L, Unit](CaioAsk[Unit, L], CaioStateful[Unit, L])
 }

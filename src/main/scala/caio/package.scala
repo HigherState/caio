@@ -1,9 +1,9 @@
-import caio.std.Par
+import cats.effect.{Fiber, Outcome}
 
 package object caio {
-
-  type ParCaio[C, V, L, +A] = Par.Type[C, V, L, A]
-
   type <~>[F[_], G[_]] = BijectionK[F, G]
 
+  type OutcomeCaio[C, L, A] = Outcome[Caio[C, L, *], Throwable, A]
+
+  type FiberCaio[C, L, A] = Fiber[Caio[C, L, *], Throwable, A]
 }

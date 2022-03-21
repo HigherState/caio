@@ -1,44 +1,41 @@
 package caio.implicits
 
 import caio.Caio
-import caio.mtl.{ApplicativeFail, InvariantAsk}
+import caio.mtl.InvariantAsk
 import caio.std._
-import cats.effect.{Async, Concurrent, ContextShift, IO, Sync}
+import cats.{CommutativeMonad, Monoid, Parallel}
+import cats.effect.{Async, Concurrent, LiftIO, Sync}
+import cats.effect.instances.spawn
 import cats.mtl.{Censor, Local, Stateful}
-import cats.{Monad, Monoid, Parallel}
 
-class StaticImplicits[C, V, L](implicit ML: Monoid[L]) {
+class StaticImplicits[C, L] {
+  implicit val staticCaioMonad: CommutativeMonad[Caio[C, L, *]] =
+    CaioMonad[C, L]
 
-  implicit val staticCaioMonad: Monad[Caio[C, V, L, *]] =
-    new CaioMonad[C, V, L]
+  implicit val staticCaioSync: Sync[Caio[C, L, *]] =
+    CaioSync[C, L]
 
-  implicit val staticCaioSync: Sync[Caio[C, V, L, *]] =
-    new CaioSync[C, V, L]()(ML)
+  implicit val staticCaioAsync: Async[Caio[C, L, *]] =
+    CaioAsync[C, L]
 
-  implicit val staticCaioAsync: Async[Caio[C, V, L, *]] =
-    new CaioAsync[C, V, L]()(ML)
+  implicit val staticCaioConcurrent: Concurrent[Caio[C, L, *]] =
+    CaioConcurrent[C, L]
 
-  implicit def staticCaioConcurrent(implicit CS: ContextShift[IO]): Concurrent[Caio[C, V, L, *]] =
-    new CaioConcurrent[C, V, L]()(ML, CS)
+  implicit def staticCaioCensor(implicit M: Monoid[L]): Censor[Caio[C, L, *], L] =
+    CaioCensor[C, L]
 
-  implicit def staticCaioContextShift(implicit CS: ContextShift[IO]): ContextShift[Caio[C, V, L, *]] =
-    new CaioContextShift[C, V, L]()(ML, CS)
+  implicit val staticCaioAsk: InvariantAsk[Caio[C, L, *], C] =
+    CaioAsk[C, L]
 
-  implicit def staticCaioParallel(implicit CS: ContextShift[IO]): Parallel[Caio[C, V, L, *]] =
-    new CaioParallel[C, V, L]()(ML, CS)
+  implicit val staticCaioLocal: Local[Caio[C, L, *], C] =
+    CaioLocal[C, L]
 
-  implicit val staticCaioApplicativeFail: ApplicativeFail[Caio[C, V, L, *], V] =
-    new CaioApplicativeFail[C, V, L]
+  implicit val staticCaioStateful: Stateful[Caio[C, L, *], C] =
+    CaioStateful[C, L]
 
-  implicit val staticCaioCensor: Censor[Caio[C, V, L, *], L] =
-    new CaioCensor[C, V, L]()(ML)
+  implicit val staticLiftIO: LiftIO[Caio[C, L, *]] =
+    CaioLiftIO[C, L]
 
-  implicit val staticCaioAsk: InvariantAsk[Caio[C, V, L, *], C] =
-    new CaioAsk[C, V, L]
-
-  implicit val staticCaioLocal: Local[Caio[C, V, L, *], C] =
-    new CaioLocal[C, V, L]
-
-  implicit val staticCaioStateful: Stateful[Caio[C, V, L, *], C] =
-    new CaioStateful[C, V, L]
+  implicit val staticCaioParallel: Parallel.Aux[Caio[C, L, *], Caio.Par[C, L, *]] =
+    spawn.parallelForGenSpawn[Caio[C, L, *], Throwable]
 }

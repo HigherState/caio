@@ -2,7 +2,7 @@ package caio.mtl
 
 import caio.<~>
 import cats.{~>, Applicative, Functor, Monad, MonadError}
-import cats.effect.{Async, Bracket, Concurrent, ConcurrentEffect, LiftIO, Sync}
+import cats.effect.{Async, Concurrent, LiftIO, Sync}
 import cats.mtl.{Censor, Listen, Stateful, Tell}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
@@ -27,9 +27,6 @@ trait ExtendsOn[F[_], Source[_], Context] extends Extender[F, Context] {
 trait Extends[F[_], E1, E2] {
 
   type FE[A]
-
-  def concurrentEffect(c: E2)(implicit CE: ConcurrentEffect[F]): ConcurrentEffect[FE] =
-    new ConcurrentEffectIsomorphism[FE, F](CE, apply(c))
 
   def ask: InvariantAsk[FE, (E1, E2)]
 
@@ -60,8 +57,6 @@ trait Extends[F[_], E1, E2] {
 
   implicit def transformMonadError[E](implicit M: MonadError[F, E]): MonadError[FE, E]
 
-  implicit def transformBracket[E](implicit M: Bracket[F, E]): Bracket[FE, E]
-
   implicit def transformSync(implicit S: Sync[F]): Sync[FE]
 
   implicit def transformAsync(implicit A: Async[F]): Async[FE]
@@ -69,8 +64,6 @@ trait Extends[F[_], E1, E2] {
   implicit def transformLiftIO(implicit L: LiftIO[F]): LiftIO[FE]
 
   implicit def transformConcurrent(implicit C: Concurrent[F]): Concurrent[FE]
-
-  implicit def transformApplicativeFail[V](implicit A: ApplicativeFail[F, V]): ApplicativeFail[FE, V]
 
   implicit def transformTell[L](implicit F: Tell[F, L]): Tell[FE, L]
 

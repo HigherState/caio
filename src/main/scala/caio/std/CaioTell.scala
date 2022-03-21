@@ -1,28 +1,26 @@
 package caio.std
 
 import caio.Caio
-import cats.mtl.{Censor, Listen, Tell}
+import cats.{Functor, Monoid}
+import cats.mtl.Tell
 
 trait CaioTell[C, L] extends Tell[Caio[C, L, *], L] {
+  val monoid: Monoid[L]
 
-  def tell(l: L): Caio[C, L, Unit]             =
-    Caio.tell(l)
+  override def functor: Functor[Caio[C, L, *]] =
+    CaioFunctor[C, L]
+
+  def tell(l: L): Caio[C, L, Unit] =
+    Caio.tell(l)(monoid)
 
   override def writer[A](a: A, l: L): Caio[C, L, A] =
-    Caio.tell(l).as(a)
+    Caio.tell(l)(monoid).as(a)
 
   override def tuple[A](ta: (L, A)): Caio[C, L, A] =
     writer(ta._2, ta._1)
 }
 
-trait CaioListen[C, L] extends CaioTell[C, L] with Listen[Caio[C, L, *], L] {
-  def listen[A](fa: Caio[C, L, A]): Caio[C, L, (A, L)] =
-    fa.listen
+object CaioTell {
+  def apply[C, L](implicit M: Monoid[L]): CaioTell[C, L] =
+    new CaioTell[C, L] { val monoid: Monoid[L] = M }
 }
-
-trait CaioCensor[C, L] extends CaioListen[C, L] with CaioMonoid[L] with Censor[Caio[C, L, *], L] {
-
-  def censor[A](fa: Caio[C, L, A])(f: L => L): Caio[C, L, A] =
-    fa.censor(f)
-}
-
