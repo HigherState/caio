@@ -1,57 +1,63 @@
 package caio.std
 
-import caio.{Caio, IOCaio, KleisliCaio}
-import cats.effect.kernel.Cont
-import cats.effect.{Async, Deferred, IO}
+import caio.Caio
+import cats.~>
+import cats.effect.{Async, IO, Ref, Sync}
+import cats.effect.kernel.{Cont, MonadCancel}
 
 import scala.concurrent.ExecutionContext
 
-trait CaioAsync[C, L] extends CaioSync[C,  L] with CaioTemporal[C, L] with Async[Caio[C, L, *]] {
+class CaioAsync[C, L] extends CaioTemporal[C, L] with Async[Caio[C, L, *]] {
+  final def suspend[A](hint: Sync.Type)(thunk: => A): Caio[C, L, A] =
+    Caio.liftIO(IO.suspend(hint)(thunk))
 
-
-//  def start[A](fa: Caio[C, V, L, A]): Caio[C, V, L, Fiber[Caio[C, V, L, *], Throwable, A]] =
-//    KleisliCaio[C, V, L, Fiber[Caio[C, V, L, *], A]] { c =>
-//      val fiberIO: IO[Fiber[IO, FoldCaioPure[C, V, L, A]]] =
-//        Caio.foldIO(fa, c).start
-//      fiberIO.map { fiber =>
-//        val cancel: IO[Unit] = fiber.cancel
-//
-//        val join = fiber.join
-//        FoldCaioSuccess(c, Monoid[L].empty, Fiber(KleisliCaio[C, V, L, A](_ => join), IOCaio(cancel)))
-//      }
-//    }
-//
-//  def async[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[C, V, L, A] =
-//    Caio.async[A](k)
-//
-//  /**
-//   * AsyncF application will discard any failure, Log or context change information.
-//   * @param k
-//   * @tparam A
-//   * @return
-//   */
-//  def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
-//    Caio.asyncF[C, V, L, A](k)
-//
-//  /**
-//   * Important override otherwise can get caught in an infinite loop
-//   * @param ioa
-//   * @tparam A
-//   * @return
-//   */
-//  def liftIO[A](io: IO[A]): Caio[C, V, L, A] =
-//    Caio.liftIO(io)
-
-  def evalOn[A](fa: Caio[C, L, A], ec: ExecutionContext): Caio[C, L, A] =
-    KleisliCaio[C, L, A] { c =>
-      IO.asyncForIO.evalOn(Caio.foldIO(fa, c), ec)
+  final def evalOn[A](fa: Caio[C, L, A], ec: ExecutionContext): Caio[C, L, A] =
+    Caio.KleisliCaio[C, L, A] { case (c, ref) =>
+      Async[IO].evalOn(Caio.foldIO(fa, c, ref), ec)
     }
 
-  def executionContext: Caio[C, L, ExecutionContext] =
-    IOCaio(IO.asyncForIO.executionContext)
+  final def executionContext: Caio[C, L, ExecutionContext] =
+    Caio.liftIO(Async[IO].executionContext)
 
-  def cont[K, R](body: Cont[Caio[C, L, *], K, R]): Caio[C, L, R] = ???
+  final def cont[K, R](body: Cont[Caio[C, L, *], K, R]): Caio[C, L, R] =
+    Caio.getContext[C].flatMap { c =>
+      Caio
+        .RefIOCaio[L, (Either[Throwable, R], C)] { ref =>
+          Async[IO].cont[K, (Either[Throwable, R], C)] {
+            new Cont[IO, K, (Either[Throwable, R], C)] {
+              import cats.syntax.all._
 
-  def deferred[A]: Caio[C, L, Deferred[Caio[C, L, *], A]] =
-    IOCaio(IO(Deferred.unsafe[Caio[C, L, *], A](this)))
+              def apply[G[_]: MonadCancel[*[_], Throwable]]
+                : (Either[Throwable, K] => Unit, G[K], IO ~> G) => G[(Either[Throwable, R], C)] =
+                (resume, get, lift) =>
+                  for {
+                    state  <- lift(Ref.of[IO, C](c))
+                    newCont = new (Caio[C, L, *] ~> G) {
+                                def apply[A](fa: Caio[C, L, A]): G[A] =
+                                  for {
+                                    foldPureCaio <- lift(Caio.foldIO[C, L, A](fa, c, ref))
+                                    _            <- lift(state.set(foldPureCaio.c))
+                                    value        <- lift(foldPureCaio.toIO)
+                                  } yield value
+                              }
+                    either <- body[G].apply(resume, get, newCont).attempt
+                    newC   <- lift(state.get)
+                  } yield (either, newC)
+            }
+          }
+        }
+        .flatMap { case (either, newC) =>
+          Caio.setContext(newC) *> Caio.fromEither(either)
+        }
+    }
+
+  final override def async[A](
+    k: (Either[Throwable, A] => Unit) => Caio[C, L, Option[Caio[C, L, Unit]]]
+  ): Caio[C, L, A] =
+    super.async(args => Caio.defer(k(args)))
+}
+
+object CaioAsync {
+  def apply[C, L]: CaioAsync[C, L] =
+    new CaioAsync[C, L]
 }
