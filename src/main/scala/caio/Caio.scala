@@ -11,7 +11,7 @@ import caio.std.{
   CaioSpawn,
   CaioTemporal
 }
-import cats.{Align, Functor, Monoid, Parallel, SemigroupK, Traverse}
+import cats.{Align, CommutativeApplicative, Functor, Monoid, Parallel, SemigroupK, Traverse}
 import cats.data.Ior
 import cats.effect.{Async, Deferred, IO, Ref, Resource, Unique}
 import cats.effect.kernel.{ParallelF, Poll}
@@ -344,7 +344,7 @@ object Caio {
     Traverse[T].sequence(tma)
 
   def sleep(duration: FiniteDuration): Caio[Any, Nothing, Unit] =
-    CaioTemporal[Any, Nothing].sleep(duration)
+    Caio.liftIO(IO.sleep(duration))
 
   def some[A](a: A): Caio[Any, Nothing, Option[A]] =
     pure(Some(a))
@@ -380,6 +380,9 @@ object Caio {
 
   def whenA[C, L](cond: Boolean)(action: => Caio[C, L, Unit]): Caio[C, L, Unit] =
     CaioApplicative[C, L].whenA(cond)(action)
+
+  implicit def commutativeApplicativeForCaioPar[C, L]: CommutativeApplicative[Caio.Par[C, L, *]] =
+    cats.effect.instances.spawn.commutativeApplicativeForParallelF
 
   implicit def alignForCaio[C, L]: Align[Caio[C, L, *]] =
     new Align[Caio[C, L, *]] {

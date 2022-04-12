@@ -8,7 +8,7 @@ import cats.effect.{Deferred, Resource, Outcome}
 import cats.effect.Resource._
 import cats.kernel.laws.discipline.MonoidTests
 import cats.laws.IsEqArrow
-import cats.laws.discipline.{MonadErrorTests, SemigroupKTests, catsLawsIsEqToProp}
+import cats.laws.discipline.{MonadErrorTests, ParallelTests, SemigroupKTests, catsLawsIsEqToProp}
 import cats.syntax.apply._
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
@@ -44,6 +44,12 @@ class ResourceTests extends TestInstances {
     forAll { (acquire: CaioT[String], release: String => CaioT[Unit], f: String => CaioT[String]) =>
       acquire.bracket(f)(release) <-> Resource.make(acquire)(release).use(f)
     }
+  }
+
+  checkAllAsync("Resource[Caio, *]") { params =>
+    import params._
+    val module = ParallelTests[Resource[CaioT, *]]
+    module.parallel[Int, Int]
   }
 
   testAsync("releases resources in reverse order of acquisition") { params =>

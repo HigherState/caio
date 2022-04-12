@@ -105,6 +105,16 @@ class CaioCatsEffectTests extends TestInstances {
     assertEquals(effect.get, 10)
   }
 
+  testAsync("Caio.async protects against thrown exceptions") { params =>
+    val dummy = new RuntimeException("dummy")
+    val caio  = Caio.async[Any, Nothing, Int](_ => throw dummy)
+    val f     = params.CE.unsafeToFuture(caio)
+
+    params.EC.tick()
+
+    assertEquals(f.value, Some(scala.util.Failure(dummy)))
+  }
+
   testAsync("Caio.async does not break referential transparency") { params =>
     val caio = Caio.async_[Int](_(Right(10)))
     val sum = for (a <- caio; b <- caio; c <- caio) yield a + b + c
@@ -319,6 +329,46 @@ class CaioCatsEffectTests extends TestInstances {
 
     assertEquals(r, Left(e))
     assert(e.getSuppressed.isEmpty)
+  }
+
+  testGlobalAsync("bracket signals the error in use and logs the error from release") { params =>
+    val e1 = new RuntimeException("error in use")
+    val e2 = new RuntimeException("error in release")
+
+    var r: Option[Either[Throwable, Nothing]] = None
+    val sysErr                                = catchSystemErr {
+      val caio =
+        Caio.unit
+          .bracket[C, L, Unit, Nothing](_ => Caio.raiseError(e1))(_ => Caio.raiseError(e2))
+          .attempt
+
+      r = Some(params.CE.unsafeRunSync(caio))
+    }
+
+    assertEquals(r, Some(Left(e1)))
+    assert(sysErr.contains("error in release"))
+    assert(e1.getSuppressed.isEmpty)
+    assert(e2.getSuppressed.isEmpty)
+  }
+
+  testAsync("bracket does not evaluate use on cancel") { params =>
+    import params._
+
+    var use     = false
+    var release = false
+
+    val task = Caio
+      .sleep(2.second)
+      .bracket[C, L, Unit, Unit](_ => Caio { use = true })(_ => Caio { release = true })
+      .timeoutTo[C, L, Unit](1.second, Caio.never)
+
+    val f = CE.unsafeToFuture(task)
+
+    EC.tick()
+
+    assertEquals(f.value, None)
+    assertEquals(use, false)
+    assertEquals(release, false)
   }
 
   testAsync("start forks automatically") { params =>
