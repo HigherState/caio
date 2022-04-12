@@ -454,14 +454,26 @@ object Caio {
     }
 
   @inline private[caio] def foldIO[C, L, A](caio: Caio[C, L, A], c: C): IO[FoldCaioPure[C, L, A]] = {
-    def safeFold(caio: Caio[Any, Any, Any], c: Any, l: Option[(Any, Monoid[Any])], handlers: List[Handler]): IO[FoldCaioPure[Any, Any, Any]] = {
-      @tailrec def foldCaio(caio: Caio[Any, Any, Any], c: Any, l: Option[(Any, Monoid[Any])], handlers: List[Handler]): IO[FoldCaioPure[Any, Any, Any]] =
+    def safeFold(
+      caio: Caio[Any, Any, Any],
+      c: Any,
+      l: Option[(Any, Monoid[Any])],
+      handlers: List[Handler]
+    ): IO[FoldCaioPure[Any, Any, Any]] = {
+      @tailrec def foldCaio(
+        caio: Caio[Any, Any, Any],
+        c: Any,
+        l: Option[(Any, Monoid[Any])],
+        handlers: List[Handler]
+      ): IO[FoldCaioPure[Any, Any, Any]] =
         caio match {
           case BindCaio(PureCaio(a), f) =>
             foldCaio(tryOrError(f(a)), c, l, handlers)
 
           case BindCaio(caio: IOCaio[_], f) =>
-            caio.f().redeemWith(e => safeFold(ErrorCaio(e), c, l, handlers), a => safeFold(tryOrError(f(a)), c, l, handlers))
+            caio
+              .f()
+              .redeemWith(e => safeFold(ErrorCaio(e), c, l, handlers), a => safeFold(tryOrError(f(a)), c, l, handlers))
 
           case BindCaio(source, f) =>
             foldCaio(source, c, l, OnSuccess((_, _, a) => f(a)) :: handlers)
@@ -513,10 +525,22 @@ object Caio {
             foldCaio(Caio.unit, c, combineL(l, Some((l2, monoid))), handlers)
 
           case ListenCaio(source, monoid) =>
-            foldCaio(source, c, l, OnSuccess((_, l, a) => PureCaio(a -> l.map(_._1).getOrElse(monoid.empty))) :: handlers)
+            foldCaio(
+              source,
+              c,
+              l,
+              OnSuccess((_, l, a) => PureCaio(a -> l.map(_._1).getOrElse(monoid.empty))) :: handlers
+            )
 
           case CensorCaio(source, f, monoid) =>
-            foldCaio(source, c, l, OnSuccess((_, l, a) => BindCaio(SetCaio(l.map(_._1).map(f).getOrElse(Some(monoid.empty)), monoid), (_:Unit) => PureCaio(a))) :: handlers)
+            foldCaio(
+              source,
+              c,
+              l,
+              OnSuccess((_, l, a) =>
+                BindCaio(SetCaio(l.map(_._1).map(f).getOrElse(Some(monoid.empty)), monoid), (_: Unit) => PureCaio(a))
+              ) :: handlers
+            )
 
           case ClearCaio(source) =>
             foldCaio(source, c, None, handlers)
@@ -553,8 +577,7 @@ object Caio {
     def unapply[A](io: IOCaio[A]): Option[() => IO[A]] = Some(io.f)
   }
 
-  final private[caio] case class KleisliCaio[C, L, +A](kleisli: C => IO[FoldCaioPure[C, L, A]])
-      extends Caio[C, L, A]
+  final private[caio] case class KleisliCaio[C, L, +A](kleisli: C => IO[FoldCaioPure[C, L, A]]) extends Caio[C, L, A]
 
   final private case class BindCaio[-C, +L, E, +A](source: Caio[C, L, E], f: E => Caio[C, L, A]) extends Caio[C, L, A]
 

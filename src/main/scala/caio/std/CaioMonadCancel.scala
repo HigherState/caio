@@ -21,7 +21,9 @@ trait CaioMonadCancel[C, L] extends CaioMonadError[C, L] with MonadCancel[Caio[C
   override def guaranteeCase[A](caio: Caio[C, L, A])(finalizer: OutcomeCaio[C, L, A] => Caio[C, L, Unit]): Caio[C, L, A] =
     uncancelable { poll =>
       val finalized = onCancel(poll(caio), Caio.defer(finalizer(Outcome.canceled)))
-      val handled   = onError(finalized) { case e => handleError(Caio.defer(finalizer(Outcome.errored(e))))(Logger.reportFailure) }
+      val handled   = onError(finalized) { case e =>
+        handleError(Caio.defer(finalizer(Outcome.errored(e))))(Logger.reportFailure)
+      }
       flatTap(handled)(a => Caio.defer(finalizer(Outcome.succeeded(pure(a)))))
     }
 }

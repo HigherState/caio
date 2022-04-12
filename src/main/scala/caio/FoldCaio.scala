@@ -44,7 +44,8 @@ sealed trait FoldCaioPure[C, L, +A] extends FoldCaio[C, L, A] {
   def mapL[B](f: L => L): FoldCaioPure[C, L, A]
 }
 
-final private[caio] case class FoldCaioSuccess[C, L, +A](c: C, opt: Option[(L, Monoid[L])], a: A) extends FoldCaioPure[C, L, A] {
+final private[caio] case class FoldCaioSuccess[C, L, +A](c: C, opt: Option[(L, Monoid[L])], a: A)
+    extends FoldCaioPure[C, L, A] {
 
   def toIO: IO[A] =
     IO.pure(a)

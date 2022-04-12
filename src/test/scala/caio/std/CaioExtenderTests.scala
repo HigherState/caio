@@ -8,14 +8,14 @@ import cats.effect.Sync
 import cats.{Functor, Monad}
 import org.scalatest.{AsyncFunSpec, Matchers}
 
-class CaioExtenderTests extends AsyncFunSpec with Matchers{
+class CaioExtenderTests extends AsyncFunSpec with Matchers {
   import cats.implicits._
   type CaioT[A] = Caio[Unit, EventLog, A]
 
   val dispatcher: CaioDispatcher[Unit, EventLog] = CaioDispatcher.unsafe[Unit, EventLog](())()()
 
   class AskInt[M[_]: InvariantAsk[*[_], Int]] {
-    def run: M[Int] = InvariantAsk[M,Int].ask
+    def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
   class AskAtomic1[M[_]: InvariantAsk[*[_], Atomic1]] {
@@ -29,12 +29,12 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     def run: M[String] = InvariantAsk[M, String].ask
   }
 
-  class AskIntString[M[_]: InvariantAsk[*[_], (Int, String)]:Functor] {
-    def run: M[(Int, String)] = InvariantAsk[M,(Int, String)].ask
+  class AskIntString[M[_]: InvariantAsk[*[_], (Int, String)]: Functor] {
+    def run: M[(Int, String)] = InvariantAsk[M, (Int, String)].ask
   }
 
   class AskIntBooleanString[M[_]: InvariantAsk[*[_], (Int, Boolean, String)]] {
-    def run: M[(Int, Boolean, String)] = InvariantAsk[M,(Int, Boolean, String)].ask
+    def run: M[(Int, Boolean, String)] = InvariantAsk[M, (Int, Boolean, String)].ask
   }
 
   class AddAskContext[M[_]](implicit C: Provider[M]) {
@@ -50,7 +50,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
   class AddAskThreeContext[M[_]: Monad](implicit C: Provider[M]) {
     import cats.implicits._
 
-    val E = C.apply[(String,Int)]
+    val E = C.apply[(String, Int)]
     import E._
 
     val service1 = new AskInt[E.FE]
@@ -79,7 +79,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     }
     it("Should handle recombining context") {
       val ask = new AddAskThreeContext[CaioT]()
-      runSuccess(ask.run("value",0)) shouldBe ((0, "value", 0 -> "value"))
+      runSuccess(ask.run("value", 0)) shouldBe ((0, "value", 0 -> "value"))
     }
   }
 
@@ -124,7 +124,7 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
 
     it("Should lift value") {
       val nestedContext = new NestedContext[CaioT]()
-      runSuccess(nestedContext.run("test", false, 6)) shouldBe (("test",(6,"test",(6,"test"), (6, false, "test"))))
+      runSuccess(nestedContext.run("test", false, 6)) shouldBe (("test", (6, "test", (6, "test"), (6, false, "test"))))
     }
   }
 
@@ -136,13 +136,12 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     val service1 = new AskString[E.FE]
     val service2 = new ExtenderStringBoolean[E.FE]
 
-    def run(s: String, b: Boolean, ci: Int, a1: Atomic1, a2: Atomic2):
-      M[(String,
-        (String,
-          ((Int, String), (Int, Boolean, String), Atomic1),
-          ((Int, String), (Int, Boolean, String), Atomic2),
-          Int)
-        )] =
+    def run(s: String, b: Boolean, ci: Int, a1: Atomic1, a2: Atomic2): M[
+      (
+        String,
+        (String, ((Int, String), (Int, Boolean, String), Atomic1), ((Int, String), (Int, Boolean, String), Atomic2), Int)
+      )
+    ] =
       for {
         s1 <- E.apply(s -> b)(service1.run)
         s2 <- E.apply(s -> b)(service2.run(ci, a1, a2))
@@ -164,10 +163,8 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     val service3 = new AskInt[E.FE]
 
     def run(i: Int, a1: Atomic1, a2: Atomic2): M[
-      (String,
-        ((Int, String), (Int, Boolean, String), Atomic1),
-        ((Int, String), (Int, Boolean, String), Atomic2),
-      Int)] =
+      (String, ((Int, String), (Int, Boolean, String), Atomic1), ((Int, String), (Int, Boolean, String), Atomic2), Int)
+    ] =
       for {
         s1 <- service0.run
         s2 <- E.apply(i)(service1.run(a1))
@@ -216,31 +213,30 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers{
     //It will not replace values of the same type.
     it("Should lift value") {
       val doubleNestedTest = new DoubleNestedContext[CaioT]
-      val a1 = new Atomic1("a1")
-      val a2 = new Atomic2("a2")
-      val toEval = doubleNestedTest.run("test", false, 1, a1, a2)
+      val a1               = new Atomic1("a1")
+      val a2               = new Atomic2("a2")
+      val toEval           = doubleNestedTest.run("test", false, 1, a1, a2)
       runSuccess(toEval) shouldBe (
-        ("test",("test",((1,"test"),(1,false,"test"),a1),((1,"test"),(1,false,"test"),a2),1))
+        (
+          "test",
+          ("test", ((1, "test"), (1, false, "test"), a1), ((1, "test"), (1, false, "test"), a2), 1)
+        )
       )
     }
   }
 
-  class ApplyDown[
-    F[_]: Sync:Extender[*[_], Int],
-    FC[_]: ExtendsOn[*[_], F, String]
-  ](f: AskInt[F], fc:AskIntString[FC]) {
+  class ApplyDown[F[_]: Sync: Extender[*[_], Int], FC[_]: ExtendsOn[*[_], F, String]](f: AskInt[F], fc: AskIntString[FC]) {
 
     val E = implicitly[Extender[F, Int]].apply[Atomic1]
     import E._
 
     val service1 = new AskAtomic1[E.FE]
 
-    def eval(s: String):F[(Int, String)] = {
+    def eval(s: String): F[(Int, String)] =
       for {
         i <- f.run
         p <- implicitly[ExtendsOn[FC, F, String]].bijectionK(s).unapply(fc.run)
       } yield (p._1 + i) -> p._2
-    }
   }
 
   /*describe("Extends On") {

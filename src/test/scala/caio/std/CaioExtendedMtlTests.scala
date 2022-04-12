@@ -45,9 +45,7 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers {
       } yield "Nested3:" + ms.value
   }
 
-  class ExtendsNested[
-    M[_]: Extender[*[_], Atomic1]: LiftIO: Listen[*[_], Event]: Sync
-  ] {
+  class ExtendsNested[M[_]: Extender[*[_], Atomic1]: LiftIO: Listen[*[_], Event]: Sync] {
 
     val nested1 = {
       import ContextProjector._
@@ -86,9 +84,7 @@ class CaioExtendedMtlTests extends AsyncFunSpec with Matchers {
       } yield n2 -> n3
   }
 
-  class ExtendsProvided[
-    M[_]: Provider: LiftIO: Listen[*[_], Event]: MonadError[*[_], Throwable]: Sync
-  ] {
+  class ExtendsProvided[M[_]: Provider: LiftIO: Listen[*[_], Event]: MonadError[*[_], Throwable]: Sync] {
 
     val E             = implicitly[Provider[M]].apply[Atomic1]
     import E._

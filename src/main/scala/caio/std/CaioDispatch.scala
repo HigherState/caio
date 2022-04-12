@@ -1,7 +1,7 @@
 package caio.std
 
 import caio.Caio
-import caio.mtl.{DispatcherIsomorphism, Dispatch}
+import caio.mtl.{Dispatch, DispatcherIsomorphism}
 import cats.mtl.Ask
 import cats.effect.Resource
 import cats.effect.std.Dispatcher

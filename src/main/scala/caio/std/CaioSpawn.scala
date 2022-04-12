@@ -40,7 +40,11 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
               case s: FoldCaioSuccess[C, L, A] =>
                 IO.pure(
                   s.map(a =>
-                    Left((Some(s.c), s.opt, Outcome.succeeded[Caio[C, L, *], Throwable, A](Caio.pure(a))) -> fiber2Caio(fiberB))
+                    Left(
+                      (Some(s.c), s.opt, Outcome.succeeded[Caio[C, L, *], Throwable, A](Caio.pure(a))) -> fiber2Caio(
+                        fiberB
+                      )
+                    )
                   )
                 )
             }
@@ -55,7 +59,9 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
               case s: FoldCaioSuccess[C, L, B] =>
                 IO.pure(
                   s.map(b =>
-                    Right((fiber2Caio(fiberA), (Some(s.c), s.opt, Outcome.succeeded[Caio[C, L, *], Throwable, B](Caio.pure(b)))))
+                    Right(
+                      (fiber2Caio(fiberA), (Some(s.c), s.opt, Outcome.succeeded[Caio[C, L, *], Throwable, B](Caio.pure(b))))
+                    )
                   )
                 )
             }
@@ -68,7 +74,9 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
           setLogsAndContext(tuple).map(outcomeCaio => Right((fiber, outcomeCaio)))
       }
 
-  @inline private def setLogsAndContext[A](tuple: (Option[C], Option[(L, Monoid[L])], OutcomeCaio[C, L, A])): Caio[C, L, OutcomeCaio[C, L, A]] =
+  @inline private def setLogsAndContext[A](
+    tuple: (Option[C], Option[(L, Monoid[L])], OutcomeCaio[C, L, A])
+  ): Caio[C, L, OutcomeCaio[C, L, A]] =
     tuple match {
       case (Some(c), Some((l, monoid)), outcomeCaio) =>
         Caio.setContext(c) *> Caio.tell(l)(monoid).as(outcomeCaio)
@@ -80,7 +88,9 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
         Caio.pure(outcomeCaio)
     }
 
-  @inline private def toOutcomeCaio[A](outcomeIO: OutcomeIO[FoldCaioPure[C, L, A]]): (Option[C], Option[(L, Monoid[L])], OutcomeCaio[C, L, A]) =
+  @inline private def toOutcomeCaio[A](
+    outcomeIO: OutcomeIO[FoldCaioPure[C, L, A]]
+  ): (Option[C], Option[(L, Monoid[L])], OutcomeCaio[C, L, A]) =
     outcomeIO match {
       case Outcome.Canceled()    =>
         (None, None, Outcome.canceled[Caio[C, L, *], Throwable, A])
