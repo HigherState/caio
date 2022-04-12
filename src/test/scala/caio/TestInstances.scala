@@ -7,7 +7,7 @@ import caio.Event.EventLog
 import caio.implicits.DynamicContextImplicits
 import caio.std.CaioDispatcher
 
-import cats.{Eq, Monoid, SemigroupK, Order}
+import cats.{Eq, SemigroupK, Order}
 import cats.laws.IsEq
 import cats.laws.discipline.SemigroupalTests.Isomorphisms.invariant
 import cats.effect.{Async, IO, Outcome}

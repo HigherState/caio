@@ -8,7 +8,7 @@ import cats.{ Applicative, ApplicativeError }
 import cats.syntax.parallel._
 import cats.data.NonEmptyList
 import cats.mtl.{ Listen, Tell, Stateful }
-import cats.effect.{Deferred, Ref}
+import cats.effect.Ref
 
 import org.scalatest.{AsyncFunSpec, Matchers}
 
@@ -66,20 +66,6 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
       run(program(false, true)) should be equals (NonEmptyList.of(-2))
       run(program(false, false)).toList should contain theSameElementsAs List(1, 2)
       run(program(true, true)).toList should contain oneOf(-1, -2)
-    }
-
-    it("Should handle logs when a fiber is never joined") {
-      val program =
-        Listen[CaioT, EventLog].listen {
-          for {
-            latch <- Deferred[CaioT, Unit]
-            _     <- (Tell[CaioT, EventLog].tell(Vector(event1)) *> latch.complete(())).start
-            _     <- Tell[CaioT, EventLog].tell(Vector(event2))
-            _     <- latch.get
-          } yield ()
-        }
-
-      run(program)._2 should contain theSameElementsAs Vector(event1, event2)
     }
 
     it("Should handle logs when a fiber is joined") {

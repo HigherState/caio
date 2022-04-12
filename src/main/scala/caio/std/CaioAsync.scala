@@ -12,8 +12,8 @@ class CaioAsync[C, L] extends CaioTemporal[C, L] with Async[Caio[C, L, *]] {
     Caio.liftIO(IO.suspend(hint)(thunk))
 
   final def evalOn[A](fa: Caio[C, L, A], ec: ExecutionContext): Caio[C, L, A] =
-    Caio.KleisliCaio[C, L, A] { case (c, ref) =>
-      Async[IO].evalOn(Caio.foldIO(fa, c, ref), ec)
+    Caio.KleisliCaio[C, L, A] { c =>
+      Async[IO].evalOn(Caio.foldIO(fa, c), ec)
     }
 
   final def executionContext: Caio[C, L, ExecutionContext] =
@@ -21,34 +21,32 @@ class CaioAsync[C, L] extends CaioTemporal[C, L] with Async[Caio[C, L, *]] {
 
   final def cont[K, R](body: Cont[Caio[C, L, *], K, R]): Caio[C, L, R] =
     Caio.getContext[C].flatMap { c =>
-      Caio
-        .RefIOCaio[L, (Either[Throwable, R], C)] { ref =>
-          Async[IO].cont[K, (Either[Throwable, R], C)] {
-            new Cont[IO, K, (Either[Throwable, R], C)] {
-              import cats.syntax.all._
+      Caio.liftIO[(Either[Throwable, R], C)] {
+        Async[IO].cont[K, (Either[Throwable, R], C)] {
+          new Cont[IO, K, (Either[Throwable, R], C)] {
+            import cats.syntax.all._
 
-              def apply[G[_]: MonadCancel[*[_], Throwable]]
-                : (Either[Throwable, K] => Unit, G[K], IO ~> G) => G[(Either[Throwable, R], C)] =
-                (resume, get, lift) =>
-                  for {
-                    state  <- lift(Ref.of[IO, C](c))
-                    newCont = new (Caio[C, L, *] ~> G) {
-                                def apply[A](fa: Caio[C, L, A]): G[A] =
-                                  for {
-                                    foldPureCaio <- lift(Caio.foldIO[C, L, A](fa, c, ref))
-                                    _            <- lift(state.set(foldPureCaio.c))
-                                    value        <- lift(foldPureCaio.toIO)
-                                  } yield value
-                              }
-                    either <- body[G].apply(resume, get, newCont).attempt
-                    newC   <- lift(state.get)
-                  } yield (either, newC)
-            }
+            def apply[G[_]: MonadCancel[*[_], Throwable]]
+              : (Either[Throwable, K] => Unit, G[K], IO ~> G) => G[(Either[Throwable, R], C)] =
+              (resume, get, lift) =>
+                for {
+                  state  <- lift(Ref.of[IO, C](c))
+                  newCont = new (Caio[C, L, *] ~> G) {
+                              def apply[A](fa: Caio[C, L, A]): G[A] =
+                                for {
+                                  foldPureCaio <- lift(Caio.foldIO[C, L, A](fa, c))
+                                  _            <- lift(state.set(foldPureCaio.c))
+                                  value        <- lift(foldPureCaio.toIO)
+                                } yield value
+                            }
+                  either <- body[G].apply(resume, get, newCont).attempt
+                  newC   <- lift(state.get)
+                } yield (either, newC)
           }
         }
-        .flatMap { case (either, newC) =>
-          Caio.setContext(newC) *> Caio.fromEither(either)
-        }
+      } flatMap { case (either, newC) =>
+        Caio.setContext(newC) *> Caio.fromEither(either)
+      }
     }
 
   final override def async[A](

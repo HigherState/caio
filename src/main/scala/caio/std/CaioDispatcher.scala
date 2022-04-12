@@ -18,7 +18,7 @@ class CaioDispatcher[C, L](c: C)(onSuccess: (C, Option[L]) => IO[Unit] = (_: C, 
     Caio.liftIO(closeDispatcher)
 
   def toIO[A](fa: Caio[C, L, A]): IO[FoldCaioPure[C, L, A]] =
-    Caio.foldIO[C, L, A](fa, c, Ref.unsafe[IO, Option[L]](None))
+    Caio.foldIO[C, L, A](fa, c)
 
   def unsafeToFutureCancelable[A](fa: Caio[C, L, A]): (Future[A], () => Future[Unit]) = {
     val io = IO.async[A](cb => toIO(fa).attempt.flatMap(handle(_, cb)))
@@ -33,9 +33,9 @@ class CaioDispatcher[C, L](c: C)(onSuccess: (C, Option[L]) => IO[Unit] = (_: C, 
       case Left(ex)                         =>
         Vector(IO(cb(Left(ex))), onError(ex, c, None)).parSequence_.as(None)
       case Right(FoldCaioSuccess(c2, l, a)) =>
-        Vector(IO(cb(Right(a))), onSuccess(c2, l)).parSequence_.as(None)
+        Vector(IO(cb(Right(a))), onSuccess(c2, l.map(_._1))).parSequence_.as(None)
       case Right(FoldCaioError(c2, l, ex))  =>
-        Vector(IO(cb(Left(ex))), onError(ex, c2, l)).parSequence_.as(None)
+        Vector(IO(cb(Left(ex))), onError(ex, c2, l.map(_._1))).parSequence_.as(None)
     }
 }
 
