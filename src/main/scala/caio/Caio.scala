@@ -257,6 +257,9 @@ object Caio {
   def async_[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[Any, Nothing, A] =
     CaioAsync[Any, Nothing].async_[A](k)
 
+  def blocking[A](thunk: => A): Caio[Any, Nothing, A] =
+    IOCaio[A](IO.blocking(thunk))
+
   def bracketFull[C, L, A, B](acquire: Poll[Caio[C, L, *]] => Caio[C, L, A])(use: A => Caio[C, L, B])(
     release: (A, OutcomeCaio[C, L, B]) => Caio[C, L, Unit]
   ): Caio[C, L, B] =

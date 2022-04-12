@@ -69,6 +69,9 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
   implicit def transformMonad(implicit M: Monad[Caio[C, L, *]]): Monad[FE] =
     M.asInstanceOf[Monad[FE]]
 
+  implicit def transformMonadCancel(implicit M: MonadCancel[Caio[C, L, *], Throwable]): MonadCancel[FE, Throwable] =
+    M.asInstanceOf[MonadCancel[FE, Throwable]]
+
   implicit def transformMonadError[E](implicit M: MonadError[Caio[C, L, *], E]): MonadError[FE, E] =
     M.asInstanceOf[MonadError[FE, E]]
 
