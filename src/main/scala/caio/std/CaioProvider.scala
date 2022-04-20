@@ -52,8 +52,8 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
   def functionK: Caio[C, L, *] ~> FE =
     new (Caio[C, L, *] ~> FE) {
       def apply[A](fa: Caio[C, L, A]): Caio[(E1, E2), L, A] =
-        Caio.KleisliCaio[(E1, E2), L, A] { (c2, ref) =>
-          Caio.foldIO[C, L, A](fa, I.mix(c2._1 -> ()), ref).map(_.contextMap(c => M.mix(c) -> c2._2))
+        Caio.KleisliCaio[(E1, E2), L, A] { c2 =>
+          Caio.foldIO[C, L, A](fa, I.mix(c2._1 -> ())).map(_.contextMap(c => M.mix(c) -> c2._2))
         }
     }
 
@@ -68,6 +68,9 @@ case class CaioExtends[C, L: Monoid, E1, E2]()(implicit M: Mixer[C, E1], I: Mixe
 
   implicit def transformMonad(implicit M: Monad[Caio[C, L, *]]): Monad[FE] =
     M.asInstanceOf[Monad[FE]]
+
+  implicit def transformMonadCancel(implicit M: MonadCancel[Caio[C, L, *], Throwable]): MonadCancel[FE, Throwable] =
+    M.asInstanceOf[MonadCancel[FE, Throwable]]
 
   implicit def transformMonadError[E](implicit M: MonadError[Caio[C, L, *], E]): MonadError[FE, E] =
     M.asInstanceOf[MonadError[FE, E]]

@@ -18,8 +18,8 @@ import io.typechecked.alphabetsoup.Mixer
  */
 class CaioFunctionK[C1, C2, L](f: C2 => C1, invF: (C1, C2) => C2) extends FunctionK[Caio[C1, L, *], Caio[C2, L, *]] {
   def apply[A](fa: Caio[C1, L, A]): Caio[C2, L, A] =
-    Caio.KleisliCaio[C2, L, A] { (c2, ref) =>
-      Caio.foldIO[C1, L, A](fa, f(c2), ref).map(_.contextMap(c1 => invF(c1, c2)))
+    Caio.KleisliCaio[C2, L, A] { c2 =>
+      Caio.foldIO[C1, L, A](fa, f(c2)).map(_.contextMap(c1 => invF(c1, c2)))
     }
 }
 

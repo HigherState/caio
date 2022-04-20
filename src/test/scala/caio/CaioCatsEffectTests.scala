@@ -32,7 +32,7 @@ class CaioCatsEffectTests extends TestInstances {
   }
 
   testAsync("defer evaluation until run") { params =>
-    var run = false
+    var run  = false
     val caio = Caio { run = true }
     assertEquals(run, false)
     params.CE.unsafeRunSync(caio)
@@ -49,7 +49,7 @@ class CaioCatsEffectTests extends TestInstances {
 
   testAsync("produce a failure when the registration raises an error after callback") { params =>
     val dummy = new RuntimeException("dummy")
-    val caio = Caio.async[C, L, Int] { cb => Caio(cb(Right(10))).as(None) }.flatMap(_ => Caio.raiseError(dummy)).attempt
+    val caio  = Caio.async[C, L, Int](cb => Caio(cb(Right(10))).as(None)).flatMap(_ => Caio.raiseError(dummy)).attempt
     assertEquals(params.CE.unsafeRunSync(caio), Left(dummy))
   }
 
@@ -105,9 +105,23 @@ class CaioCatsEffectTests extends TestInstances {
     assertEquals(effect.get, 10)
   }
 
+  testAsync("Caio.async protects against thrown exceptions") { params =>
+    val dummy = new RuntimeException("dummy")
+    val caio  = Caio.async[Any, Nothing, Int](_ => throw dummy)
+    val f     = params.CE.unsafeToFuture(caio)
+
+    params.EC.tick()
+
+    assertEquals(f.value, Some(scala.util.Failure(dummy)))
+  }
+
   testAsync("Caio.async does not break referential transparency") { params =>
-    val caio = Caio.async_[Int](_(Right(10)))
-    val sum = for (a <- caio; b <- caio; c <- caio) yield a + b + c
+    val caio  = Caio.async_[Int](_(Right(10)))
+    val sum   = for {
+      a <- caio
+      b <- caio
+      c <- caio
+    } yield a + b + c
     val value = params.CE.unsafeRunSync(sum)
     assertEquals(value, 30)
   }
@@ -159,8 +173,8 @@ class CaioCatsEffectTests extends TestInstances {
 
     forAll { (a: Int, f: (Int, Int) => Int, g: (Int, Int) => Int) =>
       var effect = a
-      val caio1 = Caio.fromFuture[C, L, Int](Caio(Future { effect = f(effect, a); effect }))
-      val caio2 = Caio.fromFuture[C, L, Int](Caio(Future { effect = g(effect, a); effect }))
+      val caio1  = Caio.fromFuture[C, L, Int](Caio(Future { effect = f(effect, a); effect }))
+      val caio2  = Caio.fromFuture[C, L, Int](Caio(Future { effect = g(effect, a); effect }))
 
       caio2.flatMap(_ => caio1).flatMap(_ => caio2) <-> Caio(g(f(g(a, a), a), a))
     }
@@ -172,7 +186,7 @@ class CaioCatsEffectTests extends TestInstances {
         case Right(l) =>
           if (n <= 0) Caio.pure(l)
           else loop(source, n - 1)
-        case Left(e) =>
+        case Left(e)  =>
           Caio.raiseError(e)
       }
 
@@ -185,7 +199,7 @@ class CaioCatsEffectTests extends TestInstances {
 
   testAsync("attempt foldLeft sequence") { params =>
     val count = 10000
-    val loop = (0 until count).foldLeft(Caio(0)) { (acc, _) =>
+    val loop  = (0 until count).foldLeft(Caio(0)) { (acc, _) =>
       acc.attempt.flatMap {
         case Right(x) => Caio.pure(x + 1)
         case Left(e)  => Caio.raiseError(e)
@@ -201,7 +215,7 @@ class CaioCatsEffectTests extends TestInstances {
 
   testAsync("Caio(throw ex).attempt.map") { params =>
     val dummy = new RuntimeException("dummy")
-    val caio = Caio[Int](throw dummy).attempt.map {
+    val caio  = Caio[Int](throw dummy).attempt.map {
       case Left(`dummy`) => 100
       case _             => 0
     }
@@ -215,7 +229,7 @@ class CaioCatsEffectTests extends TestInstances {
 
   testAsync("Caio(throw ex).flatMap.attempt.map") { params =>
     val dummy = new RuntimeException("dummy")
-    val caio = Caio[Int](throw dummy).flatMap(Caio.pure).attempt.map {
+    val caio  = Caio[Int](throw dummy).flatMap(Caio.pure).attempt.map {
       case Left(`dummy`) => 100
       case _             => 0
     }
@@ -229,7 +243,7 @@ class CaioCatsEffectTests extends TestInstances {
 
   testAsync("Caio(throw ex).map.attempt.map") { params =>
     val dummy = new RuntimeException("dummy")
-    val caio = Caio[Int](throw dummy).map(x => x).attempt.map {
+    val caio  = Caio[Int](throw dummy).map(x => x).attempt.map {
       case Left(`dummy`) => 100
       case _             => 0
     }
@@ -242,7 +256,7 @@ class CaioCatsEffectTests extends TestInstances {
   }
 
   testAsync("IO.async.attempt.map") { params =>
-    val dummy = new RuntimeException("dummy")
+    val dummy  = new RuntimeException("dummy")
     val source = Caio.async_[Int] { callback =>
       params.EC.execute(() => callback(Left(dummy)))
     }
@@ -260,7 +274,7 @@ class CaioCatsEffectTests extends TestInstances {
   }
 
   testAsync("IO.async.flatMap.attempt.map") { params =>
-    val dummy = new RuntimeException("dummy")
+    val dummy  = new RuntimeException("dummy")
     val source = Caio.async_[Int] { callback =>
       params.EC.execute(() => callback(Left(dummy)))
     }
@@ -278,7 +292,7 @@ class CaioCatsEffectTests extends TestInstances {
   }
 
   testAsync("IO.async.attempt.flatMap") { params =>
-    val dummy = new RuntimeException("dummy")
+    val dummy  = new RuntimeException("dummy")
     val source = Caio.async_[Int] { callback =>
       params.EC.execute(() => callback(Left(dummy)))
     }
@@ -321,6 +335,46 @@ class CaioCatsEffectTests extends TestInstances {
     assert(e.getSuppressed.isEmpty)
   }
 
+  testGlobalAsync("bracket signals the error in use and logs the error from release") { params =>
+    val e1 = new RuntimeException("error in use")
+    val e2 = new RuntimeException("error in release")
+
+    var r: Option[Either[Throwable, Nothing]] = None
+    val sysErr                                = catchSystemErr {
+      val caio =
+        Caio.unit
+          .bracket[C, L, Unit, Nothing](_ => Caio.raiseError(e1))(_ => Caio.raiseError(e2))
+          .attempt
+
+      r = Some(params.CE.unsafeRunSync(caio))
+    }
+
+    assertEquals(r, Some(Left(e1)))
+    assert(sysErr.contains("error in release"))
+    assert(e1.getSuppressed.isEmpty)
+    assert(e2.getSuppressed.isEmpty)
+  }
+
+  testAsync("bracket does not evaluate use on cancel") { params =>
+    import params._
+
+    var use     = false
+    var release = false
+
+    val task = Caio
+      .sleep(2.second)
+      .bracket[C, L, Unit, Unit](_ => Caio { use = true })(_ => Caio { release = true })
+      .timeoutTo[C, L, Unit](1.second, Caio.never)
+
+    val f = CE.unsafeToFuture(task)
+
+    EC.tick()
+
+    assertEquals(f.value, None)
+    assertEquals(use, false)
+    assertEquals(release, false)
+  }
+
   testAsync("start forks automatically") { params =>
     import params._
     val value = RealCE.unsafeRunSync(Caio(1).start.flatMap(_.joinWith(Caio.pure(0))))
@@ -330,10 +384,11 @@ class CaioCatsEffectTests extends TestInstances {
   testAsync("background cancels the action in cleanup") { params =>
     import params._
 
-    val caio: CaioT[OutcomeCaio[C, L, Unit]] = 
+    val caio: CaioT[OutcomeCaio[C, L, Unit]] =
       Deferred[CaioT, Unit].flatMap { started =>
         Deferred[CaioT, OutcomeCaio[C, L, Unit]].flatMap { result =>
-          val bg: CaioT[Unit] = started.complete(()) *> Caio.never[Unit].guaranteeCase[C, L, Unit](result.complete(_).void)
+          val bg: CaioT[Unit] =
+            started.complete(()) *> Caio.never[Unit].guaranteeCase[C, L, Unit](result.complete(_).void)
 
           bg.background.use((_: CaioT[OutcomeCaio[C, L, Unit]]) => started.get) *> result.get
         }
@@ -365,10 +420,10 @@ class CaioCatsEffectTests extends TestInstances {
     import params._
 
     val caio = for {
-      pa <- Deferred[CaioT, Unit]
+      pa    <- Deferred[CaioT, Unit]
       fiber <- Caio.unit.guarantee(pa.complete(()) *> Caio.sleep(200.millis)).start
-      _ <- pa.get
-      _ <- fiber.cancel
+      _     <- pa.get
+      _     <- fiber.cancel
     } yield ()
 
     val value = RealCE.unsafeRunSync(caio)
@@ -382,10 +437,10 @@ class CaioCatsEffectTests extends TestInstances {
     val dummy = new RuntimeException("dummy")
 
     val caio = for {
-      pa <- Deferred[CaioT, Unit]
+      pa    <- Deferred[CaioT, Unit]
       fiber <- Caio.unit.guarantee(pa.complete(()) *> Caio.sleep(200.millis) *> Caio.raiseError(dummy)).start
-      _ <- pa.get
-      _ <- fiber.cancel
+      _     <- pa.get
+      _     <- fiber.cancel
     } yield ()
 
     val value = RealCE.unsafeRunSync(caio)
@@ -397,12 +452,13 @@ class CaioCatsEffectTests extends TestInstances {
     import params._
 
     val caio = for {
-      pa <- Deferred[CaioT, Unit]
-      fibA <- Caio.unit
-        .bracket[C, L, Unit, Unit](_ => Caio.unit.guarantee(pa.complete(()) *> Caio.sleep(200.millis)))(_ => Caio.unit)
-        .start
-      _ <- pa.get
-      _ <- fibA.cancel
+      pa   <- Deferred[CaioT, Unit]
+      fibA <-
+        Caio.unit
+          .bracket[C, L, Unit, Unit](_ => Caio.unit.guarantee(pa.complete(()) *> Caio.sleep(200.millis)))(_ => Caio.unit)
+          .start
+      _    <- pa.get
+      _    <- fibA.cancel
     } yield ()
 
     val value = RealCE.unsafeRunSync(caio)
@@ -414,12 +470,14 @@ class CaioCatsEffectTests extends TestInstances {
     import params._
 
     val caio = for {
-      pa <- Deferred[CaioT, Unit]
+      pa    <- Deferred[CaioT, Unit]
       fiber <- Caio.unit
-        .bracket[C, L, Unit, Unit](_ => (pa.complete(()) *> Caio.never).guarantee(Caio.sleep(200.millis)))(_ => Caio.unit)
-        .start
-      _ <- pa.get
-      _ <- Caio.race(fiber.cancel, fiber.cancel)
+                 .bracket[C, L, Unit, Unit](_ => (pa.complete(()) *> Caio.never).guarantee(Caio.sleep(200.millis)))(_ =>
+                   Caio.unit
+                 )
+                 .start
+      _     <- pa.get
+      _     <- Caio.race(fiber.cancel, fiber.cancel)
     } yield ()
 
     val value = RealCE.unsafeRunSync(caio)
@@ -431,12 +489,12 @@ class CaioCatsEffectTests extends TestInstances {
     import params._
 
     val caio = for {
-      pa <- Deferred[CaioT, Unit]
+      pa    <- Deferred[CaioT, Unit]
       fiber <- (pa.complete(()) *> Caio.sleep(200.millis))
-        .bracket[C, L, Unit, Unit](_ => Caio.unit)(_ => Caio.sleep(200.millis))
-        .start
-      _ <- pa.get
-      _ <- Caio.race(fiber.cancel, fiber.cancel)
+                 .bracket[C, L, Unit, Unit](_ => Caio.unit)(_ => Caio.sleep(200.millis))
+                 .start
+      _     <- pa.get
+      _     <- Caio.race(fiber.cancel, fiber.cancel)
     } yield ()
 
     val value = RealCE.unsafeRunSync(caio)
@@ -452,8 +510,8 @@ class CaioCatsEffectTests extends TestInstances {
 
     val caio = for {
       fiber <- sleep.start
-      _ <- fiber.cancel
-      _ <- fiber.cancel
+      _     <- fiber.cancel
+      _     <- fiber.cancel
     } yield ()
 
     val value = RealCE.unsafeRunSync(caio)

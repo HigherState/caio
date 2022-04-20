@@ -1,5 +1,6 @@
 package caio
 
+import cats.Monoid
 import cats.effect.IO
 
 sealed trait FoldCaio[C, L, +A] {
@@ -13,7 +14,7 @@ sealed trait FoldCaio[C, L, +A] {
    */
   def contextMap[C2](f: C => C2): FoldCaio[C2, L, A]
 
-  def flatMap[B](f: (C, Option[L], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B]
+  def flatMap[B](f: (C, Option[(L, Monoid[L])], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B]
 
   def toIO: IO[A]
 
@@ -32,18 +33,19 @@ sealed trait FoldCaioPure[C, L, +A] extends FoldCaio[C, L, A] {
 
   def c: C
 
-  def opt: Option[L]
+  def opt: Option[(L, Monoid[L])]
 
   def contextMap[C2](f: C => C2): FoldCaioPure[C2, L, A]
 
   def map[B](f: A => B): FoldCaioPure[C, L, B]
 
-  def flatMap[B](f: (C, Option[L], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B]
+  def flatMap[B](f: (C, Option[(L, Monoid[L])], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B]
 
   def mapL[B](f: L => L): FoldCaioPure[C, L, A]
 }
 
-final private[caio] case class FoldCaioSuccess[C, L, +A](c: C, opt: Option[L], a: A) extends FoldCaioPure[C, L, A] {
+final private[caio] case class FoldCaioSuccess[C, L, +A](c: C, opt: Option[(L, Monoid[L])], a: A)
+    extends FoldCaioPure[C, L, A] {
 
   def toIO: IO[A] =
     IO.pure(a)
@@ -54,14 +56,14 @@ final private[caio] case class FoldCaioSuccess[C, L, +A](c: C, opt: Option[L], a
   def map[B](f: A => B): FoldCaioPure[C, L, B] =
     this.copy(a = f(a))
 
-  def flatMap[B](f: (C, Option[L], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
+  def flatMap[B](f: (C, Option[(L, Monoid[L])], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
     f(c, opt, a)
 
-  def mapL[B](f: L => L): FoldCaioPure[C, L, A] =
-    this.copy(opt = opt.map(f))
+  def mapL[B](f: L => L): FoldCaioSuccess[C, L, A] =
+    this.copy(opt = opt.map { case (l, g) => (f(l), g) })
 }
 
-final private[caio] case class FoldCaioError[C, L, +A](c: C, opt: Option[L], e: Throwable)
+final private[caio] case class FoldCaioError[C, L, +A](c: C, opt: Option[(L, Monoid[L])], e: Throwable)
     extends FoldCaioPure[C, L, Nothing] {
 
   def toIO: IO[Nothing] =
@@ -73,18 +75,18 @@ final private[caio] case class FoldCaioError[C, L, +A](c: C, opt: Option[L], e: 
   def map[B](f: Nothing => B): FoldCaioPure[C, L, B] =
     this
 
-  def flatMap[B](f: (C, Option[L], Nothing) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
+  def flatMap[B](f: (C, Option[(L, Monoid[L])], Nothing) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
     this
 
-  def mapL[B](f: L => L): FoldCaioPure[C, L, Nothing] =
-    this.copy(opt = opt.map(f))
+  def mapL[B](f: L => L): FoldCaioError[C, L, A] =
+    this.copy(opt = opt.map { case (l, g) => (f(l), g) })
 }
 
 final private[caio] case class FoldCaioIO[C, L, +A](io: IO[FoldCaioPure[C, L, A]]) extends FoldCaio[C, L, A] {
   def contextMap[C2](f: C => C2): FoldCaioIO[C2, L, A] =
     FoldCaioIO[C2, L, A](io.map(_.contextMap(f)))
 
-  def flatMap[B](f: (C, Option[L], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
+  def flatMap[B](f: (C, Option[(L, Monoid[L])], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
     FoldCaioIO {
       io.flatMap(_.flatMap(f) match {
         case FoldCaioIO(io2)          =>

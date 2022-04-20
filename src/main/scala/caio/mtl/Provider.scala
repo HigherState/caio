@@ -2,7 +2,7 @@ package caio.mtl
 
 import caio.<~>
 import cats.{~>, Applicative, Functor, Monad, MonadError}
-import cats.effect.{Async, Concurrent, LiftIO, Sync}
+import cats.effect.{Async, Concurrent, LiftIO, MonadCancel, Sync}
 import cats.mtl.{Censor, Listen, Stateful, Tell}
 import io.typechecked.alphabetsoup.Mixer
 import shapeless.=:!=
@@ -54,6 +54,8 @@ trait Extends[F[_], E1, E2] {
   implicit def transformFunctor(implicit F: Functor[F]): Functor[FE]
 
   implicit def transformMonad(implicit M: Monad[F]): Monad[FE]
+
+  implicit def transformMonadCancel(implicit M: MonadCancel[F, Throwable]): MonadCancel[FE, Throwable]
 
   implicit def transformMonadError[E](implicit M: MonadError[F, E]): MonadError[FE, E]
 

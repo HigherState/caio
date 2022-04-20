@@ -3,12 +3,12 @@ package caio
 import java.util.concurrent.atomic.AtomicBoolean
 
 import cats.data.Kleisli
-import cats.{MonadError, ~>}
-import cats.effect.{Deferred, Resource, Outcome}
+import cats.{~>, MonadError}
+import cats.effect.{Deferred, Outcome, Resource}
 import cats.effect.Resource._
 import cats.kernel.laws.discipline.MonoidTests
 import cats.laws.IsEqArrow
-import cats.laws.discipline.{MonadErrorTests, SemigroupKTests, catsLawsIsEqToProp}
+import cats.laws.discipline.{catsLawsIsEqToProp, MonadErrorTests, ParallelTests, SemigroupKTests}
 import cats.syntax.apply._
 import cats.syntax.applicative._
 import cats.syntax.applicativeError._
@@ -24,17 +24,17 @@ class ResourceTests extends TestInstances {
   import arbitrary._
   import cats.laws.discipline.arbitrary._
 
-  checkAllAsync("Resource[Caio, *]"){ params =>
+  checkAllAsync("Resource[Caio, *]") { params =>
     import params._
     MonadErrorTests[Resource[CaioT, *], Throwable].monadError[Int, Int, Int]
   }
 
-  checkAllAsync("Resource[Caio, Int]"){ params =>
+  checkAllAsync("Resource[Caio, Int]") { params =>
     import params._
     MonoidTests[Resource[CaioT, Int]].monoid
   }
 
-  checkAllAsync("Resource[Caio, *]"){ params =>
+  checkAllAsync("Resource[Caio, *]") { params =>
     import params._
     SemigroupKTests[Resource[CaioT, *]].semigroupK[Int]
   }
@@ -46,15 +46,20 @@ class ResourceTests extends TestInstances {
     }
   }
 
+  checkAllAsync("Resource[Caio, *]") { params =>
+    import params._
+    val module = ParallelTests[Resource[CaioT, *]]
+    module.parallel[Int, Int]
+  }
+
   testAsync("releases resources in reverse order of acquisition") { params =>
     import params._
 
     forAll { (as: List[(Int, Either[Throwable, Unit])]) =>
       var released: List[Int] = Nil
 
-      val r: Resource[CaioT, List[Int]] = as.traverse {
-        case (a, e) =>
-          Resource.make[CaioT, Int](Caio(a))(a => Caio { released = a :: released } *> Caio.fromEither(e))
+      val r: Resource[CaioT, List[Int]] = as.traverse { case (a, e) =>
+        Resource.make[CaioT, Int](Caio(a))(a => Caio { released = a :: released } *> Caio.fromEither(e))
       }
 
       val caio = r.use(Caio.pure).attempt
@@ -67,12 +72,12 @@ class ResourceTests extends TestInstances {
     import params._
 
     forAll { (rx: Resource[CaioT, Int], ry: Resource[CaioT, Int]) =>
-      var acquired: Set[Int] = Set.empty
-      var released: Set[Int] = Set.empty
+      var acquired: Set[Int]               = Set.empty
+      var released: Set[Int]               = Set.empty
       def observe(r: Resource[CaioT, Int]) = r.flatMap { a =>
         Resource.make[CaioT, Int](Caio(acquired += a) *> Caio.pure(a))(a => Caio(released += a)).as(())
       }
-      val caio = observe(rx).combine(observe(ry)).use(_ => Caio.unit).attempt
+      val caio                             = observe(rx).combine(observe(ry)).use(_ => Caio.unit).attempt
       CE.unsafeRunSync(caio)
       released <-> acquired
     }
@@ -81,35 +86,36 @@ class ResourceTests extends TestInstances {
   testAsync("releases both resources on combineK") { params =>
     import params._
     forAll { (rx: Resource[CaioT, Int], ry: Resource[CaioT, Int]) =>
-      var acquired: Set[Int] = Set.empty
-      var released: Set[Int] = Set.empty
+      var acquired: Set[Int]               = Set.empty
+      var released: Set[Int]               = Set.empty
       def observe(r: Resource[CaioT, Int]) = r.flatMap { a =>
         Resource.make[CaioT, Int](Caio(acquired += a) *> Caio.pure(a))(a => Caio(released += a)).as(())
       }
-      val caio = observe(rx).combineK(observe(ry)).use(_ => Caio.unit).attempt
+      val caio                             = observe(rx).combineK(observe(ry)).use(_ => Caio.unit).attempt
       CE.unsafeRunSync(caio)
       released <-> acquired
     }
   }
 
-  testAsync("releases both resources on combineK when using a SemigroupK instance that discards allocated values") { params =>
-    import params._
-    forAll { (rx: Resource[CaioT, Int], ry: Resource[CaioT, Int]) =>
-      var acquired: Set[Int] = Set.empty
-      var released: Set[Int] = Set.empty
-      def observe(r: Resource[CaioT, Int]) = r.flatMap { a =>
-        Resource.make[CaioT, Int](Caio(acquired += a) *> Caio.pure(a))(a => Caio(released += a)).as(())
+  testAsync("releases both resources on combineK when using a SemigroupK instance that discards allocated values") {
+    params =>
+      import params._
+      forAll { (rx: Resource[CaioT, Int], ry: Resource[CaioT, Int]) =>
+        var acquired: Set[Int]               = Set.empty
+        var released: Set[Int]               = Set.empty
+        def observe(r: Resource[CaioT, Int]) = r.flatMap { a =>
+          Resource.make[CaioT, Int](Caio(acquired += a) *> Caio.pure(a))(a => Caio(released += a)).as(())
+        }
+        val caio                             = observe(rx).combineK(observe(ry)).use(_ => Caio.unit).attempt
+        CE.unsafeRunSync(caio)
+        released <-> acquired
       }
-      val caio = observe(rx).combineK(observe(ry)).use(_ => Caio.unit).attempt
-      CE.unsafeRunSync(caio)
-      released <-> acquired
-    }
   }
 
   testGlobalAsync("resource from AutoCloseable is auto closed") { params =>
     import params._
 
-    var closed = false
+    var closed        = false
     val autoCloseable = new AutoCloseable {
       override def close(): Unit = closed = true
     }
@@ -219,12 +225,12 @@ class ResourceTests extends TestInstances {
 
     def sideEffectyResource: (AtomicBoolean, Resource[CaioT, Unit]) = {
       val cleanExit = new java.util.concurrent.atomic.AtomicBoolean(false)
-      val res = Resource.makeCase[CaioT, Unit](Caio.unit) {
+      val res       = Resource.makeCase[CaioT, Unit](Caio.unit) {
         case (_, ExitCase.Succeeded) =>
           Caio {
             cleanExit.set(true)
           }
-        case _ => Caio.unit
+        case _                       => Caio.unit
       }
       (cleanExit, res)
     }
@@ -238,7 +244,7 @@ class ResourceTests extends TestInstances {
     assertEquals(clean1.get(), false)
 
     val (clean2, res2) = sideEffectyResource
-    val caio =
+    val caio           =
       res2
         .mapK(takeAnInteger)
         .use(_ => Kleisli.liftF[CaioT, Int, Unit](Caio.raiseError(new Throwable("oh no"))))
@@ -264,17 +270,17 @@ class ResourceTests extends TestInstances {
     import params._
 
     val released = new java.util.concurrent.atomic.AtomicBoolean(false)
-    val release = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
+    val release  = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
     val resource = Resource.eval[CaioT, Unit](Caio.unit)
 
     val allocated = (release *> resource).allocated
 
     val prog = for {
-      res <- allocated
+      res       <- allocated
       (_, close) = res
-      _ <- Caio(assertEquals(released.get(), false))
-      _ <- close
-      _ <- Caio(assertEquals(released.get(), true))
+      _         <- Caio(assertEquals(released.get(), false))
+      _         <- close
+      _         <- Caio(assertEquals(released.get(), true))
     } yield ()
 
     CE.unsafeRunSync(prog)
@@ -285,28 +291,28 @@ class ResourceTests extends TestInstances {
 
     val released = new java.util.concurrent.atomic.AtomicBoolean(false)
 
-    val runWithTwo = new ~>[Kleisli[CaioT, Int, *], CaioT] {
+    val runWithTwo                        = new ~>[Kleisli[CaioT, Int, *], CaioT] {
       override def apply[A](fa: Kleisli[CaioT, Int, A]): CaioT[A] = fa(2)
     }
-    val takeAnInteger = new ~>[CaioT, Kleisli[CaioT, Int, *]] {
+    val takeAnInteger                     = new ~>[CaioT, Kleisli[CaioT, Int, *]] {
       override def apply[A](fa: CaioT[A]): Kleisli[CaioT, Int, A] = Kleisli.liftF(fa)
     }
     val plusOne: Kleisli[CaioT, Int, Int] = Kleisli { (i: Int) =>
       Caio(i + 1)
     }
-    val plusOneResource = Resource.eval[Kleisli[CaioT, Int, *], Int](plusOne)
+    val plusOneResource                   = Resource.eval[Kleisli[CaioT, Int, *], Int](plusOne)
 
-    val release = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
+    val release  = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
     val resource = Resource.eval[CaioT, Unit](Caio.unit)
 
     val allocated = ((release *> resource).mapK(takeAnInteger) *> plusOneResource).mapK(runWithTwo).allocated
 
     val prog = for {
-      res <- allocated
+      res       <- allocated
       (_, close) = res
-      _ <- Caio(assertEquals(released.get(), false))
-      _ <- close
-      _ <- Caio(assertEquals(released.get(), true))
+      _         <- Caio(assertEquals(released.get(), false))
+      _         <- close
+      _         <- Caio(assertEquals(released.get(), true))
     } yield ()
 
     CE.unsafeRunSync(prog)
@@ -315,8 +321,8 @@ class ResourceTests extends TestInstances {
   testGlobalAsync("safe attempt suspended resource") { params =>
     import params._
     val exception = new Exception("boom!")
-    val suspend = Resource.suspend[CaioT, Int](Caio.raiseError(exception))
-    val attempt = MonadError[Resource[CaioT, *], Throwable].attempt(suspend)
+    val suspend   = Resource.suspend[CaioT, Int](Caio.raiseError(exception))
+    val attempt   = MonadError[Resource[CaioT, *], Throwable].attempt(suspend)
     assertEquals(CE.unsafeRunSync(attempt.use(Caio.pure)), Left(exception))
   }
 
@@ -355,12 +361,11 @@ class ResourceTests extends TestInstances {
     forAll { (as: List[(Int, Either[Throwable, Unit])], rhs: Boolean) =>
       var released: List[Int] = Nil
 
-      val r = as.traverse {
-        case (a, e) =>
-          Resource.make[CaioT, Int](Caio(a))(a => Caio { released = a :: released } *> Caio.fromEither(e))
+      val r    = as.traverse { case (a, e) =>
+        Resource.make[CaioT, Int](Caio(a))(a => Caio { released = a :: released } *> Caio.fromEither(e))
       }
       val unit = ().pure[Resource[CaioT, *]]
-      val p = if (rhs) r.both(unit) else unit.both(r)
+      val p    = if (rhs) r.both(unit) else unit.both(r)
 
       CE.unsafeToFuture(p.use(Caio.pure).attempt)
       EC.tick()
@@ -371,18 +376,18 @@ class ResourceTests extends TestInstances {
   testAsync("parZip - parallel acquisition and release") { params =>
     import params._
 
-    var leftAllocated = false
+    var leftAllocated  = false
     var rightAllocated = false
-    var leftReleasing = false
+    var leftReleasing  = false
     var rightReleasing = false
-    var leftReleased = false
-    var rightReleased = false
+    var leftReleased   = false
+    var rightReleased  = false
 
     val wait = Caio.sleep(200.millis)
-    val lhs = Resource.make[CaioT, Unit](wait *> Caio { leftAllocated = true }) { _ =>
+    val lhs  = Resource.make[CaioT, Unit](wait *> Caio { leftAllocated = true }) { _ =>
       Caio { leftReleasing = true } *> wait *> Caio { leftReleased = true }
     }
-    val rhs = Resource.make[CaioT, Unit](wait *> Caio { rightAllocated = true }) { _ =>
+    val rhs  = Resource.make[CaioT, Unit](wait *> Caio { rightAllocated = true }) { _ =>
       Caio { rightReleasing = true } *> wait *> Caio { rightReleased = true }
     }
 
@@ -395,25 +400,25 @@ class ResourceTests extends TestInstances {
   testAsync("parZip - safety: lhs error during rhs interruptible region") { params =>
     import params._
 
-    var leftAllocated = false
+    var leftAllocated  = false
     var rightAllocated = false
-    var leftReleasing = false
+    var leftReleasing  = false
     var rightReleasing = false
-    var leftReleased = false
-    var rightReleased = false
+    var leftReleased   = false
+    var rightReleased  = false
 
     def wait(n: Int): CaioT[Unit] = Caio.sleep(n.millis)
-    val lhs = for {
+    val lhs                       = for {
       _ <- Resource.make(wait(1) *> Caio { leftAllocated = true }) { _ =>
-        Caio { leftReleasing = true } *> wait(1) *> Caio { leftReleased = true }
-      }
+             Caio { leftReleasing = true } *> wait(1) *> Caio { leftReleased = true }
+           }
       _ <- Resource.eval[CaioT, Unit](wait(1) *> Caio.raiseError(new Exception))
     } yield ()
 
     val rhs = for {
       _ <- Resource.make(wait(100) *> Caio { rightAllocated = true }) { _ =>
-        Caio { rightReleasing = true } *> wait(1) *> Caio { rightReleased = true }
-      }
+             Caio { rightReleasing = true } *> wait(1) *> Caio { rightReleased = true }
+           }
       _ <- Resource.eval(wait(200))
     } yield ()
 
@@ -433,23 +438,25 @@ class ResourceTests extends TestInstances {
   testAsync("parZip - safety: rhs error during lhs uninterruptible region") { params =>
     import params._
 
-    var leftAllocated = false
+    var leftAllocated  = false
     var rightAllocated = false
-    var rightErrored = false
-    var leftReleasing = false
+    var rightErrored   = false
+    var leftReleasing  = false
     var rightReleasing = false
-    var leftReleased = false
-    var rightReleased = false
+    var leftReleased   = false
+    var rightReleased  = false
 
     def wait(n: Int): CaioT[Unit] = Caio.sleep(n.millis)
-    val lhs = Resource.make(wait(300) *> Caio { leftAllocated = true }) { _ =>
+    val lhs                       = Resource.make(wait(300) *> Caio { leftAllocated = true }) { _ =>
       Caio { leftReleasing = true } *> wait(100) *> Caio { leftReleased = true }
     }
-    val rhs = for {
+    val rhs                       = for {
       _ <- Resource.make[CaioT, Unit](wait(100) *> Caio { rightAllocated = true }) { _ =>
-        Caio { rightReleasing = true } *> wait(100) *> Caio { rightReleased = true }
-      }
-      _ <- Resource.make[CaioT, Unit](wait(100) *> Caio { rightErrored = true } *> Caio.raiseError(new Exception))(_ => Caio.unit)
+             Caio { rightReleasing = true } *> wait(100) *> Caio { rightReleased = true }
+           }
+      _ <- Resource.make[CaioT, Unit](wait(100) *> Caio { rightErrored = true } *> Caio.raiseError(new Exception))(_ =>
+             Caio.unit
+           )
     } yield ()
 
     val caio =
