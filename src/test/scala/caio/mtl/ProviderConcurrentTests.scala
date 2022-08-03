@@ -45,10 +45,6 @@ class ProviderConcurrentTests {
     def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
-  class AskFail[M[_]: InvariantAsk[*[_], Int]: ApplicativeFail[*[_], V], V] {
-    def run: M[Int] = InvariantAsk[M, Int].ask
-  }
-
   class FunctorCheck[M[_]: Provider: Monad] {
     val functor = implicitly[Functor[M]]
 
@@ -258,7 +254,7 @@ class ProviderConcurrentTests {
     val stateConcurrent = new StateConcurrent[E.FE]
   }
 
-  class TotalCheck[M[_]: Provider: Concurrent: ApplicativeFail[*[_], V]: Censor[*[_], L], V, L] {
+  class TotalCheck[M[_]: Provider: Concurrent: Censor[*[_], L], L] {
 
     val functor = implicitly[Functor[M]]
 
@@ -277,8 +273,6 @@ class ProviderConcurrentTests {
     val concurrent = implicitly[Concurrent[M]]
 
     val liftIO = implicitly[LiftIO[M]]
-
-    val fail = implicitly[ApplicativeFail[M, V]]
 
     val tell = implicitly[Tell[M, L]]
 
@@ -306,8 +300,6 @@ class ProviderConcurrentTests {
     val askLiftIO = new AskLiftIO[E.FE]
 
     val stateConcurrent = new StateConcurrent[E.FE]
-
-    val askFail = new AskFail[E.FE, V]
 
     val T       = new ProviderWriterTests
     val askTell = new T.AskTell[E.FE, L]

@@ -4,13 +4,13 @@ import caio.Caio
 import caio.mtl.InvariantAsk
 import cats.CommutativeApplicative
 
-class CaioAsk[C, V, L] extends InvariantAsk[Caio[C, V, L, *], C] {
-  val applicative: CommutativeApplicative[Caio[C, V, L, *]] =
-    new CaioApplicative[C, V, L]
+class CaioAsk[C, L] extends InvariantAsk[Caio[C, L, *], C] {
+  val applicative: CommutativeApplicative[Caio[C, L, *]] =
+    new CaioApplicative[C, L]
 
-  def ask[C1 >: C]: Caio[C, V, L, C1] =
+  def ask[C1 >: C]: Caio[C, L, C1] =
     Caio.getContext
 
-  override def reader[A](f: C => A): Caio[C, V, L, A] =
+  override def reader[A](f: C => A): Caio[C, L, A] =
     Caio.getContext.map(f)
 }

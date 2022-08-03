@@ -70,8 +70,6 @@ trait Extends[F[_], E1, E2] {
 
   implicit def transformConcurrent(implicit C: Concurrent[F]): Concurrent[FE]
 
-  implicit def transformApplicativeFail[V](implicit A: ApplicativeFail[F, V]): ApplicativeFail[FE, V]
-
   implicit def transformTell[L](implicit F: Tell[F, L]): Tell[FE, L]
 
   implicit def transformListen[L](implicit F: Listen[F, L]): Listen[FE, L]

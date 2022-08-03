@@ -4,13 +4,13 @@ import caio.{Caio, ParCaio}
 import cats.{CommutativeApplicative, Monoid}
 import cats.effect.{ContextShift, IO}
 
-class CaioParApplicative[C, V, L: Monoid](C: CaioConcurrent[C, V, L])(implicit CS: ContextShift[IO])
-    extends CommutativeApplicative[ParCaio[C, V, L, *]] {
+class CaioParApplicative[C, L: Monoid](C: CaioConcurrent[C, L])(implicit CS: ContextShift[IO])
+    extends CommutativeApplicative[ParCaio[C, L, *]] {
 
-  override def pure[A](x: A): ParCaio[C, V, L, A] =
+  override def pure[A](x: A): ParCaio[C, L, A] =
     Par(Caio.pure(x))
 
-  override def map2[A, B, D](fa: ParCaio[C, V, L, A], fb: ParCaio[C, V, L, B])(f: (A, B) => D): ParCaio[C, V, L, D] =
+  override def map2[A, B, D](fa: ParCaio[C, L, A], fb: ParCaio[C, L, B])(f: (A, B) => D): ParCaio[C, L, D] =
     Par {
       C.racePair(Par.unwrap(fa), Par.unwrap(fb)).flatMap {
         case Left((a, fiberB))  =>
@@ -20,15 +20,15 @@ class CaioParApplicative[C, V, L: Monoid](C: CaioConcurrent[C, V, L])(implicit C
       }
     }
 
-  override def ap[A, B](ff: ParCaio[C, V, L, A => B])(fa: ParCaio[C, V, L, A]): ParCaio[C, V, L, B] =
+  override def ap[A, B](ff: ParCaio[C, L, A => B])(fa: ParCaio[C, L, A]): ParCaio[C, L, B] =
     map2(ff, fa)(_(_))
 
-  override def product[A, B](fa: ParCaio[C, V, L, A], fb: ParCaio[C, V, L, B]): ParCaio[C, V, L, (A, B)] =
+  override def product[A, B](fa: ParCaio[C, L, A], fb: ParCaio[C, L, B]): ParCaio[C, L, (A, B)] =
     map2(fa, fb)((_, _))
 
-  override def map[A, B](fa: ParCaio[C, V, L, A])(f: A => B): ParCaio[C, V, L, B] =
+  override def map[A, B](fa: ParCaio[C, L, A])(f: A => B): ParCaio[C, L, B] =
     Par(Par.unwrap(fa).map(f))
 
-  override def unit: ParCaio[C, V, L, Unit] =
+  override def unit: ParCaio[C, L, Unit] =
     pure(())
 }
