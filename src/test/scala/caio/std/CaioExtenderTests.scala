@@ -1,6 +1,6 @@
 package caio.std
 
-import caio.{Caio, Failure}
+import caio.Caio
 import caio.Event.EventLog
 import caio.mtl.{ContextProjector, Extender, ExtendsOn, InvariantAsk, Provider}
 import cats.effect.{Effect, Sync}
@@ -9,11 +9,11 @@ import org.scalatest.{AsyncFunSpec, Matchers}
 
 class CaioExtenderTests extends AsyncFunSpec with Matchers {
   import cats.implicits._
-  type CaioT[A] = Caio[Unit, Failure, EventLog, A]
+  type CaioT[A] = Caio[Unit, EventLog, A]
 
-  implicit val caioMonad: Monad[CaioT] = new CaioMonad[Unit, Failure, EventLog]
+  implicit val caioMonad: Monad[CaioT] = new CaioMonad[Unit, EventLog]
 
-  val effect: Effect[CaioT] = new CaioEffect[Unit, Failure, EventLog](())()()()
+  val effect: Effect[CaioT] = new CaioEffect[Unit, EventLog](())()()
 
   class AskInt[M[_]: InvariantAsk[*[_], Int]] {
     def run: M[Int] = InvariantAsk[M, Int].ask
@@ -241,9 +241,9 @@ class CaioExtenderTests extends AsyncFunSpec with Matchers {
   }
 
   /*describe("Extends On") {
-    type CI[A] = Caio[Int, Failure, EventLog, A]
-    type CIC[A] = Caio[(Int, String), Failure, EventLog, A]
-    val a = new StaticImplicits[Int, Failure, EventLog] {
+    type CI[A] = Caio[Int, EventLog, A]
+    type CIC[A] = Caio[(Int, String), EventLog, A]
+    val a = new StaticImplicits[Int, EventLog] {
       protected def ML: Monoid[EventLog] = Event.EventMonoid
     }
     //import a._
