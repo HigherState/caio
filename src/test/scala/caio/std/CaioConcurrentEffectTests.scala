@@ -136,15 +136,5 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
       List(1, 2) should contain(run(program(true, true)))
       run(program(false, false)) shouldBe 0
     }
-
-    it("Should handle logs properly when continual is used") {
-      val caio =
-        Tell[CaioT, EventLog].tell(Vector(event1)).continual {
-          case Right(_) => Caio.unit
-          case Left(ex) => Caio.raiseError(ex)
-        }
-
-      run(caio.listen.map(_._2)) shouldBe Vector(event1)
-    }
   }
 }

@@ -35,20 +35,11 @@ sealed trait Caio[-C, +L, +A] {
   )(implicit M: Monoid[L1]): Caio[C1, L1, B] =
     new CaioBracket[C1, L1].bracketCase[A1, B](this)(use)(release)
 
-  def continual[C1 <: C, L1 >: L, B](f: Either[Throwable, A] => Caio[C1, L1, B])(implicit
-    M: Monoid[L1],
-    CS: ContextShift[IO]
-  ): Caio[C1, L1, B] =
-    new CaioConcurrent[C1, L1].continual[A, B](this)(f)
-
   @inline def map[B](f: A => B): Caio[C, L, B] =
     MapCaio(this, f)
 
   @inline def flatMap[C1 <: C, L1 >: L, B](f: A => Caio[C1, L1, B]): Caio[C1, L1, B] =
     BindCaio(this, f)
-
-  def flatTap[C1 <: C, L1 >: L](f: A => Caio[C1, L1, Any]): Caio[C1, L1, A] =
-    flatMap[C1, L1, A](a => f(a).as(a))
 
   @inline def <*[C1 <: C, L1 >: L](fb: => Caio[C1, L1, Any]): Caio[C1, L1, A] =
     BindCaio[C1, L1, A, A](this, a => MapCaio[C1, L1, Any, A](fb, _ => a))
@@ -105,9 +96,6 @@ sealed trait Caio[-C, +L, +A] {
 
   @inline def void: Caio[C, L, Unit] =
     as(())
-
-  def rethrow[A1 >: A, B](implicit ev: A1 =:= Either[Throwable, B]): Caio[C, L, B] =
-    flatMap(Caio.fromEither(_))
 
   /**
    * Exceptions in stack will get thrown
