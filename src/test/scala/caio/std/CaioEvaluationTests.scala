@@ -12,16 +12,18 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
   import caio.mtl.ContextProjector._
   import Event._
   import Exception._
+  import Failure._
 
   type L = Vector[Event]
   type C = (String, Int)
+  type V = Failure
 
-  type CaioT[A] = Caio[C, L, A]
+  type CaioT[A] = Caio[C, V, L, A]
 
-  def run[A](c: C, caio: CaioT[A]): (C, L, Either[Throwable, A]) =
+  def run[A](c: C, caio: CaioT[A]): (C, L, Either[EoF, A]) =
     caio.runContext(c).unsafeRunSync()
 
-  val implicits = new StaticImplicits[C, L] {
+  val implicits = new StaticImplicits[C, V, L] {
     implicit protected def ML: Monoid[L] = EventMonoid
   }
 
@@ -82,21 +84,21 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
       intercept[Exception](Caio.pure[Unit](throw Exception.exception1)) shouldBe Exception.exception1
     }
     it("Should capture exception if delay") {
-      run("1" -> 1, Caio(throw Exception.exception1)) shouldBe ("1" -> 1, Vector.empty, Left(Exception.exception1))
+      run("1" -> 1, Caio(throw Exception.exception1)) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
     it("Should capture exception if flatMap") {
       val f =
         Applicative[CaioT]
           .pure("a")
           .flatMap(_ => throw Exception.exception1)
-      run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Exception.exception1))
+      run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
     it("Should capture exception if map") {
       val f =
         Applicative[CaioT]
           .pure("a")
           .map(_ => throw Exception.exception1)
-      run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Exception.exception1))
+      run("1" -> 1, f) shouldBe ("1" -> 1, Vector.empty, Left(Left(Exception.exception1)))
     }
   }
 
@@ -143,7 +145,7 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
           i3 <- InvariantAsk.ask[CaioT, Int]
           a3 <- Stateful[CaioT, String].get
         } yield (i3 + b) -> a3
-      run("Testing" -> 321, result) shouldBe ("value" -> 321, Vector(event1, event2), (Left(exception1)))
+      run("Testing" -> 321, result) shouldBe ("value" -> 321, Vector(event1, event2), (Left(Left(exception1))))
     }
 
     it("should handle IO") {
@@ -188,7 +190,7 @@ class CaioEvaluationTests extends AsyncFunSpec with Matchers {
           i3 <- InvariantAsk.ask[CaioT, Int]
           a3 <- Stateful[CaioT, String].get
         } yield (i3 + b) -> a3
-      run("Testing" -> 321, result) shouldBe (("value" -> 321, Vector(event1, event2), Left(exception1)))
+      run("Testing" -> 321, result) shouldBe (("value" -> 321, Vector(event1, event2), Left(Left(exception1))))
     }
   }
 }

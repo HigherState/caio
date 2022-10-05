@@ -4,9 +4,9 @@ import caio.Caio
 import cats.Monoid
 import cats.effect.{Async, IO}
 
-class CaioAsync[C, L: Monoid] extends CaioSync[C, L] with Async[Caio[C, L, *]] {
+class CaioAsync[C, V, L: Monoid] extends CaioSync[C, V, L] with Async[Caio[C, V, L, *]] {
 
-  def async[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[C, L, A] =
+  def async[A](k: (Either[Throwable, A] => Unit) => Unit): Caio[C, V, L, A] =
     Caio.async[A](k)
 
   /**
@@ -15,8 +15,8 @@ class CaioAsync[C, L: Monoid] extends CaioSync[C, L] with Async[Caio[C, L, *]] {
    * @tparam A
    * @return
    */
-  def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, L, Unit]): Caio[C, L, A] =
-    Caio.asyncF[C, L, A](k)
+  def asyncF[A](k: (Either[Throwable, A] => Unit) => Caio[C, V, L, Unit]): Caio[C, V, L, A] =
+    Caio.asyncF[C, V, L, A](k)
 
   /**
    * Important override otherwise can get caught in an infinite loop
@@ -24,6 +24,6 @@ class CaioAsync[C, L: Monoid] extends CaioSync[C, L] with Async[Caio[C, L, *]] {
    * @tparam A
    * @return
    */
-  override def liftIO[A](io: IO[A]): Caio[C, L, A] =
+  override def liftIO[A](io: IO[A]): Caio[C, V, L, A] =
     Caio.liftIO(io)
 }

@@ -26,25 +26,29 @@ import scala.util.control.NonFatal
 class TestInstances extends DisciplineSuite with CatsTestInstances {
   type C        = Map[String, String]
   type L        = EventLog
-  type CaioT[A] = Caio[C, L, A]
+  type V        = Failure
+  type CaioT[A] = Caio[C, V, L, A]
 
-  val implicits: DynamicContextImplicits[L] = new DynamicContextImplicits[L]
+  val implicits: DynamicContextImplicits[V, L] = new DynamicContextImplicits[V, L]
 
   implicit val C           = Map.empty[String, String]
   implicit val isomorphism = invariant[CaioT](implicits.dynamicCaioMonad[C])
 
   protected class TestParams(testContext: TestContext, contextShift: ContextShift[IO]) {
     def this(testContext: TestContext) = this(testContext, testContext.ioContextShift)
-    implicit val EC: TestContext                = testContext
-    implicit val CS: ContextShift[IO]           = contextShift
-    implicit val CE: CaioConcurrentEffect[C, L] = concurrentEffect(CS)
-    implicit val SGK: SemigroupK[CaioT]         = new SemigroupK[CaioT] {
+    implicit val EC: TestContext                   = testContext
+    implicit val CS: ContextShift[IO]              = contextShift
+    implicit val CE: CaioConcurrentEffect[C, V, L] = concurrentEffect(CS)
+    implicit val SGK: SemigroupK[CaioT]            = new SemigroupK[CaioT] {
       override def combineK[A](x: CaioT[A], y: CaioT[A]): CaioT[A] = x <* y
     }
   }
 
-  def concurrentEffect(cs: ContextShift[IO]): CaioConcurrentEffect[C, L] =
-    new CaioConcurrentEffect[C, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)(Event.EventMonoid, cs)
+  def concurrentEffect(cs: ContextShift[IO]): CaioConcurrentEffect[C, V, L] =
+    new CaioConcurrentEffect[C, V, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) => IO.unit)(
+      Event.EventMonoid,
+      cs
+    )
 
   def checkAllAsync(name: String)(f: TestParams => Laws#RuleSet): Unit = {
     val context = TestContext()
@@ -65,7 +69,7 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
     property(name)(silenceSystemErr { () => f(new TestParams(context, CS)); () })(Location.empty)
   }
 
-  def getTimer(ioTimer: Timer[IO])(implicit CS: ContextShift[IO], CE: CaioConcurrentEffect[C, L]): Timer[CaioT] =
+  def getTimer(ioTimer: Timer[IO])(implicit CS: ContextShift[IO], CE: CaioConcurrentEffect[C, V, L]): Timer[CaioT] =
     new Timer[CaioT] {
       val clock: Clock[CaioT]                          = Clock.create[CaioT]
       def sleep(duration: FiniteDuration): CaioT[Unit] =
@@ -108,23 +112,23 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
     }
   }
 
-  implicit def eqCaio[C, L: Monoid, A: Eq](implicit C: C, ec: TestContext): Eq[Caio[C, L, A]] =
-    (x: Caio[C, L, A], y: Caio[C, L, A]) => eqIO[A].eqv(x.run(C), y.run(C))
+  implicit def eqCaio[C, V, L: Monoid, A: Eq](implicit C: C, ec: TestContext): Eq[Caio[C, V, L, A]] =
+    (x: Caio[C, V, L, A], y: Caio[C, V, L, A]) => eqIO[A].eqv(x.run(C), y.run(C))
 
-  implicit def eqCaioPar[C, L: Monoid, A: Eq](implicit C: C, ec: TestContext): Eq[ParCaio[C, L, A]] =
-    (x: ParCaio[C, L, A], y: ParCaio[C, L, A]) => eqCaio[C, L, A].eqv(unwrap(x), unwrap(y))
+  implicit def eqCaioPar[C, V, L: Monoid, A: Eq](implicit C: C, ec: TestContext): Eq[ParCaio[C, V, L, A]] =
+    (x: ParCaio[C, V, L, A], y: ParCaio[C, V, L, A]) => eqCaio[C, V, L, A].eqv(unwrap(x), unwrap(y))
 
-  implicit def caioIsEqToProp[C, L: Monoid, A: Eq](implicit
+  implicit def caioIsEqToProp[C, V, L: Monoid, A: Eq](implicit
     C: C,
     ec: TestContext,
-    pp: Caio[C, L, A] => Pretty
-  ): IsEq[Caio[C, L, A]] => Prop =
+    pp: Caio[C, V, L, A] => Pretty
+  ): IsEq[Caio[C, V, L, A]] => Prop =
     isEq =>
-      if (eqCaio[C, L, A].eqv(isEq.lhs, isEq.rhs)) Prop.proved
+      if (eqCaio[C, V, L, A].eqv(isEq.lhs, isEq.rhs)) Prop.proved
       else
         Prop.falsified :| {
-          val exp = Pretty.pretty[Caio[C, L, A]](isEq.lhs, Pretty.Params(0))
-          val act = Pretty.pretty[Caio[C, L, A]](isEq.rhs, Pretty.Params(0))
+          val exp = Pretty.pretty[Caio[C, V, L, A]](isEq.lhs, Pretty.Params(0))
+          val act = Pretty.pretty[Caio[C, V, L, A]](isEq.rhs, Pretty.Params(0))
           s"Expected: $exp\n" + s"Received: $act"
         }
 }
