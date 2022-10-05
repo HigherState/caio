@@ -8,35 +8,35 @@ trait CaioNewtype {
   type Base
   trait Tag extends Any
 
-  type Type[C, L, +A] <: Base with Tag
+  type Type[C, V, L, +A] <: Base with Tag
 
-  def apply[C, L, A](caio: Caio[C, L, A]): Type[C, L, A] =
-    caio.asInstanceOf[Type[C, L, A]]
+  def apply[C, V, L, A](caio: Caio[C, V, L, A]): Type[C, V, L, A] =
+    caio.asInstanceOf[Type[C, V, L, A]]
 
-  def unwrap[C, L, A](`type`: Type[C, L, A]): Caio[C, L, A] =
-    `type`.asInstanceOf[Caio[C, L, A]]
+  def unwrap[C, V, L, A](`type`: Type[C, V, L, A]): Caio[C, V, L, A] =
+    `type`.asInstanceOf[Caio[C, V, L, A]]
 }
 
 object Par extends CaioNewtype
 
-class CaioParallel[C, L: Monoid](implicit CS: ContextShift[IO])
-    extends CaioConcurrent[C, L]
-    with Parallel[Caio[C, L, *]] {
-  override type F[A] = ParCaio[C, L, A]
+class CaioParallel[C, V, L: Monoid](implicit CS: ContextShift[IO])
+    extends CaioConcurrent[C, V, L]
+    with Parallel[Caio[C, V, L, *]] {
+  override type F[A] = ParCaio[C, V, L, A]
 
-  override val applicative: CommutativeApplicative[ParCaio[C, L, *]] =
-    new CaioParApplicative[C, L](this)
+  override val applicative: CommutativeApplicative[ParCaio[C, V, L, *]] =
+    new CaioParApplicative[C, V, L](this)
 
-  override val monad: Monad[Caio[C, L, *]] =
-    new CaioMonad[C, L]
+  override val monad: Monad[Caio[C, V, L, *]] =
+    new CaioMonad[C, V, L]
 
-  override val sequential: ParCaio[C, L, *] ~> Caio[C, L, *] =
-    new (ParCaio[C, L, *] ~> Caio[C, L, *]) {
-      def apply[A](fa: ParCaio[C, L, A]): Caio[C, L, A] = Par.unwrap(fa)
+  override val sequential: ParCaio[C, V, L, *] ~> Caio[C, V, L, *] =
+    new (ParCaio[C, V, L, *] ~> Caio[C, V, L, *]) {
+      def apply[A](fa: ParCaio[C, V, L, A]): Caio[C, V, L, A] = Par.unwrap(fa)
     }
 
-  override val parallel: Caio[C, L, *] ~> ParCaio[C, L, *] =
-    new (Caio[C, L, *] ~> ParCaio[C, L, *]) {
-      def apply[A](fa: Caio[C, L, A]): ParCaio[C, L, A] = Par(fa)
+  override val parallel: Caio[C, V, L, *] ~> ParCaio[C, V, L, *] =
+    new (Caio[C, V, L, *] ~> ParCaio[C, V, L, *]) {
+      def apply[A](fa: Caio[C, V, L, A]): ParCaio[C, V, L, A] = Par(fa)
     }
 }

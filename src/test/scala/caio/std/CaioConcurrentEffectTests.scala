@@ -2,7 +2,8 @@ package caio.std
 
 import caio.Event._
 import caio.implicits.StaticImplicits
-import caio.Caio
+import caio.mtl.ApplicativeFail
+import caio.{Caio, Failure}
 
 import cats.{Applicative, ApplicativeError, Monoid}
 import cats.syntax.parallel._
@@ -17,17 +18,19 @@ import scala.concurrent.duration._
 
 class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
 
-  type CaioT[A] = Caio[Int, EventLog, A]
+  type CaioT[A] = Caio[Int, Failure, EventLog, A]
 
   implicit val CS: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
 
-  val C = new StaticImplicits[Int, EventLog] {
+  val C = new StaticImplicits[Int, Failure, EventLog] {
     implicit protected def ML: Monoid[EventLog] = EventMonoid
   }
 
   import C._
 
-  val effect = new CaioConcurrentEffect[Int, EventLog](0)((_, _) => IO.unit)((_, _, _) => IO.unit)
+  val effect = new CaioConcurrentEffect[Int, Failure, EventLog](0)((_, _) => IO.unit)((_, _, _) => IO.unit)((_, _, _) =>
+    IO.unit
+  )
 
   val T: Timer[IO] = IO.timer(ExecutionContext.global)
 
@@ -60,6 +63,24 @@ class CaioConcurrentEffectTests extends AsyncFunSpec with Matchers {
 
       result should not be equal(numbers)
       result.toList should contain theSameElementsAs (numbers.toList)
+    }
+
+    it("Should handle failures properly") {
+      def makeIOList(failFirst: Boolean, failSecond: Boolean): NonEmptyList[CaioT[Int]] =
+        NonEmptyList.of(
+          if (failFirst) ApplicativeFail[CaioT, Failure].fail[Int](new Failure("1")) else Applicative[CaioT].pure(1),
+          if (failSecond) ApplicativeFail[CaioT, Failure].fail[Int](new Failure("2")) else Applicative[CaioT].pure(2)
+        )
+
+      def program(failFirst: Boolean, failSecond: Boolean): CaioT[NonEmptyList[Int]] =
+        ApplicativeFail[CaioT, Failure].resolve(makeIOList(failFirst, failSecond).parSequence) { case failures =>
+          failures.map(failure => -failure.value.toInt)
+        }
+
+      (run(program(true, false)) should be).equals(NonEmptyList.of(-1))
+      (run(program(false, true)) should be).equals(NonEmptyList.of(-2))
+      run(program(false, false)).toList should contain theSameElementsAs List(1, 2)
+      run(program(true, true)).toList should contain oneOf (-1, -2)
     }
 
     it("Should handle errors properly") {

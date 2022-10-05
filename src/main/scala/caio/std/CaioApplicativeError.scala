@@ -3,10 +3,12 @@ package caio.std
 import caio.Caio
 import cats.ApplicativeError
 
-class CaioApplicativeError[C, L] extends CaioApplicative[C, L] with ApplicativeError[Caio[C, L, *], Throwable] {
-  def raiseError[A](ex: Throwable): Caio[C, L, A] =
+class CaioApplicativeError[C, V, L]
+    extends CaioApplicative[C, V, L]
+    with ApplicativeError[Caio[C, V, L, *], Throwable] {
+  def raiseError[A](ex: Throwable): Caio[C, V, L, A] =
     Caio.raiseError(ex)
 
-  def handleErrorWith[A](fa: Caio[C, L, A])(f: Throwable => Caio[C, L, A]): Caio[C, L, A] =
+  def handleErrorWith[A](fa: Caio[C, V, L, A])(f: Throwable => Caio[C, V, L, A]): Caio[C, V, L, A] =
     fa.handleErrorWith(f)
 }
