@@ -1,4 +1,5 @@
 import sbt.util
+
 name := "caio"
 
 organization := "io.higherstate"
@@ -23,7 +24,7 @@ Test / packageSrc / publishArtifact := true
 
 ThisBuild / evictionErrorLevel := util.Level.Warn
 
-val currentScalaVersion_ = "2.13.7"
+val currentScalaVersion_ = "2.13.8"
 ThisBuild / scalaVersion := currentScalaVersion_
 
 scalacOptions ++= Seq(
@@ -65,11 +66,11 @@ scalacOptions ++= Seq(
 javacOptions ++= Seq("-target", "1.11", "-source", "1.11", "-Xlint:deprecation")
 
 libraryDependencies ++= Seq(
-  "org.typelevel"        %% "cats-mtl"            % "1.2.1",
-  "org.typelevel"        %% "cats-effect"         % "3.3.8",
-  "org.typelevel"        %% "cats-mtl-laws"       % "1.2.1" % "test",
-  "org.typelevel"        %% "cats-effect-laws"    % "3.3.8" % "test",
-  "org.typelevel"        %% "cats-effect-testkit" % "3.3.8" % "test",
+  "org.typelevel"        %% "cats-mtl"            % "1.3.0",
+  "org.typelevel"        %% "cats-effect"         % "3.4.8",
+  "org.typelevel"        %% "cats-mtl-laws"       % "1.3.0" % "test",
+  "org.typelevel"        %% "cats-effect-laws"    % "3.4.8" % "test",
+  "org.typelevel"        %% "cats-effect-testkit" % "3.4.8" % "test",
   "org.typelevel"        %% "discipline-munit"    % "1.0.6" % "test",
   "com.github.alterego7" %% "alphabet-soup"       % "0.4.0",
   "org.scalatest"        %% "scalatest"           % "3.0.8" % "test"

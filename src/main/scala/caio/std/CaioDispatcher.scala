@@ -48,7 +48,9 @@ object CaioDispatcher {
   def unsafe[C, L](c: C)(onSuccess: (C, Option[L]) => IO[Unit] = (_: C, _: Option[L]) => IO.unit)(
     onError: (Throwable, C, Option[L]) => IO[Unit] = (_: Throwable, _: C, _: Option[L]) => IO.unit
   ): CaioDispatcher[C, L] =
-    Dispatcher[IO].allocated
+    Dispatcher
+      .parallel[IO]
+      .allocated
       .map { case (dispatcher, close) => new CaioDispatcher[C, L](c)(onSuccess)(onError)(dispatcher, close) }
       .unsafeRunSync()
 }
