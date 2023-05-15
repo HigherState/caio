@@ -7,7 +7,7 @@ import cats.effect.kernel.{Fiber, Outcome, Spawn}
 import cats.effect.unsafe.implicits.global
 
 trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
-  import CaioSpawn.{fiber2Caio, setLogsAndContext, toOutcomeCaio}
+  import CaioSpawn.{fiber2Caio, toOutcomeCaio}
 
   def start[A](fa: Caio[C, L, A]): Caio[C, L, Fiber[Caio[C, L, *], Throwable, A]] =
     Caio.KleisliCaio[C, L, FiberCaio[C, L, A]] { c =>
@@ -25,15 +25,15 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
   ): Caio[C, L, Either[(OutcomeCaio[C, L, A], FiberCaio[C, L, B]), (FiberCaio[C, L, A], OutcomeCaio[C, L, B])]] =
     Caio
       .KleisliCaio[C, L, Either[
-        ((Option[C], Option[(L, Monoid[L])], OutcomeCaio[C, L, A]), FiberCaio[C, L, B]),
-        (FiberCaio[C, L, A], (Option[C], Option[(L, Monoid[L])], OutcomeCaio[C, L, B]))
+        (OutcomeCaio[C, L, A], FiberCaio[C, L, B]),
+        (FiberCaio[C, L, A], OutcomeCaio[C, L, B])
       ]] { case c =>
         val sa = Caio.foldIO[C, L, A](fa, c)
         val sb = Caio.foldIO[C, L, B](fb, c)
 
         IO.racePair(sa, sb).flatMap {
           case Left((outcomeIO @ (Outcome.Canceled() | Outcome.Errored(_)), fiberB)) =>
-            IO.pure(FoldCaioSuccess(c, None, Left((toOutcomeCaio[C, L, A](outcomeIO).copy(_1 = Some(c)), fiber2Caio(fiberB)))))
+            IO.pure(FoldCaioSuccess(c, None, Left((toOutcomeCaio[C, L, A](outcomeIO)._3, fiber2Caio(fiberB)))))
 
           case Left((Outcome.Succeeded(io), fiberB)) =>
             io.flatMap {
@@ -43,7 +43,7 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
                 IO.pure(
                   s.map(a =>
                     Left(
-                      (Some(s.c), s.opt, Outcome.succeeded[Caio[C, L, *], Throwable, A](Caio.pure(a))) -> fiber2Caio(
+                      Outcome.succeeded[Caio[C, L, *], Throwable, A](Caio.pure(a)) -> fiber2Caio(
                         fiberB
                       )
                     )
@@ -52,7 +52,7 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
             }
 
           case Right((fiberA, outcomeIO @ (Outcome.Canceled() | Outcome.Errored(_)))) =>
-            IO.pure(FoldCaioSuccess(c, None, Right((fiber2Caio(fiberA), toOutcomeCaio[C, L, B](outcomeIO).copy(_1 = Some(c))))))
+            IO.pure(FoldCaioSuccess(c, None, Right((fiber2Caio(fiberA), toOutcomeCaio[C, L, B](outcomeIO)._3))))
 
           case Right((fiberA, Outcome.Succeeded(io))) =>
             io.flatMap {
@@ -62,18 +62,12 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
                 IO.pure(
                   s.map(b =>
                     Right(
-                      (fiber2Caio(fiberA), (Some(s.c), s.opt, Outcome.succeeded[Caio[C, L, *], Throwable, B](Caio.pure(b))))
+                      (fiber2Caio(fiberA), Outcome.succeeded[Caio[C, L, *], Throwable, B](Caio.pure(b)))
                     )
                   )
                 )
             }
         }
-      }
-      .flatMap {
-        case Left((tuple, fiber))  =>
-          setLogsAndContext(tuple).map(outcomeCaio => Left((outcomeCaio, fiber)))
-        case Right((fiber, tuple)) =>
-          setLogsAndContext(tuple).map(outcomeCaio => Right((fiber, outcomeCaio)))
       }
 }
 
