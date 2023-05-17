@@ -1,8 +1,9 @@
 package caio.implicits
 
 import caio.Caio
-import caio.mtl.InvariantAsk
-import caio.std.{CaioAsk, CaioAsync, CaioConcurrent, CaioLiftIO, CaioLocal, CaioStateful, CaioSync}
+import caio.mtl.{Effectful, InvariantAsk}
+import caio.std.{CaioAsk, CaioAsync, CaioConcurrent, CaioEffectful, CaioLiftIO, CaioLocal, CaioStateful, CaioSync}
+import cats.effect.std.Dispatcher
 import cats.{CommutativeMonad, Monoid, Parallel}
 import cats.effect.{Async, Concurrent, LiftIO, Sync}
 import cats.mtl.{Censor, Local, Stateful}
@@ -40,4 +41,7 @@ class DynamicContextImplicits[L] {
 
   implicit def dynamicCaioParallel[C]: Parallel.Aux[Caio[C, L, *], Caio.Par[C, L, *]] =
     static.staticCaioParallel.asInstanceOf[Parallel.Aux[Caio[C, L, *], Caio.Par[C, L, *]]]
+
+  implicit def dynamicCaioEffectful[C](implicit D: Dispatcher[Caio[Unit, L, *]]): Effectful[Caio[C, L, *]] =
+    new CaioEffectful[C, L](dynamicCaioLocal[C], D)
 }
