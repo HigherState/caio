@@ -538,7 +538,7 @@ object Caio {
               c,
               l,
               OnSuccess((_, l, a) =>
-                BindCaio(SetCaio(l.map(_._1).map(f).getOrElse(Some(monoid.empty)), monoid), (_: Unit) => PureCaio(a))
+                BindCaio(SetCaio(l.map(_._1).map(f).getOrElse(monoid.empty), monoid), (_: Unit) => PureCaio(a))
               ) :: handlers
             )
 
