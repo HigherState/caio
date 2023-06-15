@@ -26,7 +26,7 @@ sealed trait FoldCaio[C, L, +A] {
    * @param f
    * @return
    */
-  def mapL[B](f: L => L): FoldCaio[C, L, A]
+  def mapL(f: L => L): FoldCaio[C, L, A]
 }
 
 sealed trait FoldCaioPure[C, L, +A] extends FoldCaio[C, L, A] {
@@ -41,7 +41,7 @@ sealed trait FoldCaioPure[C, L, +A] extends FoldCaio[C, L, A] {
 
   def flatMap[B](f: (C, Option[(L, Monoid[L])], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B]
 
-  def mapL[B](f: L => L): FoldCaioPure[C, L, A]
+  def mapL(f: L => L): FoldCaioPure[C, L, A]
 }
 
 final private[caio] case class FoldCaioSuccess[C, L, +A](c: C, opt: Option[(L, Monoid[L])], a: A)
@@ -59,7 +59,7 @@ final private[caio] case class FoldCaioSuccess[C, L, +A](c: C, opt: Option[(L, M
   def flatMap[B](f: (C, Option[(L, Monoid[L])], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
     f(c, opt, a)
 
-  def mapL[B](f: L => L): FoldCaioSuccess[C, L, A] =
+  def mapL(f: L => L): FoldCaioSuccess[C, L, A] =
     this.copy(opt = opt.map { case (l, g) => (f(l), g) })
 }
 
@@ -78,30 +78,6 @@ final private[caio] case class FoldCaioError[C, L, +A](c: C, opt: Option[(L, Mon
   def flatMap[B](f: (C, Option[(L, Monoid[L])], Nothing) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
     this
 
-  def mapL[B](f: L => L): FoldCaioError[C, L, A] =
+  def mapL(f: L => L): FoldCaioError[C, L, A] =
     this.copy(opt = opt.map { case (l, g) => (f(l), g) })
-}
-
-final private[caio] case class FoldCaioIO[C, L, +A](io: IO[FoldCaioPure[C, L, A]]) extends FoldCaio[C, L, A] {
-  def contextMap[C2](f: C => C2): FoldCaioIO[C2, L, A] =
-    FoldCaioIO[C2, L, A](io.map(_.contextMap(f)))
-
-  def flatMap[B](f: (C, Option[(L, Monoid[L])], A) => FoldCaio[C, L, B]): FoldCaio[C, L, B] =
-    FoldCaioIO {
-      io.flatMap(_.flatMap(f) match {
-        case FoldCaioIO(io2)          =>
-          io2
-        case p: FoldCaioPure[C, L, B] =>
-          IO.pure(p)
-      })
-    }
-
-  def map[B](f: A => B): FoldCaio[C, L, B] =
-    FoldCaioIO(io.map(_.map(f)))
-
-  def mapL[B](f: L => L): FoldCaio[C, L, A] =
-    FoldCaioIO(io.map(_.mapL(f)))
-
-  def toIO: IO[A] =
-    io.flatMap(_.toIO)
 }
