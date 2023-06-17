@@ -234,6 +234,13 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
       program.run(Map.empty[String, String]).unsafeRunSync()._2 shouldBe List(LogEvent0, LogEvent1)
     }
+
+    it("should preserve logs when context is provided") {
+      val program: Caio[Any, List[LogEvent], Unit] =
+        (Caio.tell(List(LogEvent0)) *> Caio.tell(List(LogEvent1))).provideContext(5)
+
+      program.runContext(()).unsafeRunSync()._2 shouldBe Some(List(LogEvent0, LogEvent1))
+    }
   }
 
   //including context should effect tests
