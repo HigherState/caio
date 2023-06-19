@@ -1,16 +1,7 @@
 package caio
 
-import caio.std.{
-  CaioApplicative,
-  CaioAsync,
-  CaioClock,
-  CaioConcurrent,
-  CaioFunctor,
-  CaioMonad,
-  CaioMonadCancel,
-  CaioSpawn,
-  CaioTemporal
-}
+import caio.Caio.KleisliCaio
+import caio.std.{CaioApplicative, CaioAsync, CaioClock, CaioConcurrent, CaioFunctor, CaioMonad, CaioMonadCancel, CaioSpawn, CaioTemporal}
 import cats.{Align, CommutativeApplicative, Functor, Monoid, Parallel, SemigroupK, Traverse}
 import cats.data.Ior
 import cats.effect.{Async, Deferred, IO, Ref, Resource, Unique}
@@ -168,7 +159,7 @@ sealed trait Caio[-C, +L, +A] {
     map(Left.apply).orElse(that.map(Right.apply))
 
   final def provideContext(c: C): Caio[Any, L, A] =
-    Caio.liftIO[A](Caio.run[C, L, A](this, c))
+    KleisliCaio[Any, L, A](_ => Caio.foldIO[C, L, A](this, c).map(_.contextMap[Any](_ => ())))
 
   final def race[C1 <: C, L1 >: L, B](that: Caio[C1, L1, B]): Caio[C1, L1, Either[A, B]] =
     CaioSpawn[C1, L1].race(this, that)
