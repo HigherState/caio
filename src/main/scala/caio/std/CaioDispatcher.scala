@@ -18,7 +18,7 @@ class CaioDispatcher[C, L](
   dispatcher: Dispatcher[IO],
   closeDispatcher: IO[Unit]
 )
-    extends Dispatcher[Caio[C, L, *]] {
+    extends Dispatcher[Caio[C, L, _]] {
 
   import cats.instances.vector._
   import cats.syntax.parallel._
@@ -54,8 +54,8 @@ class CaioDispatcher[C, L](
 object CaioDispatcher {
   def apply[C, L](c: C)(onSuccess: (C, Option[L]) => IO[Unit] = (_: C, _: Option[L]) => IO.unit)(
     onError: (Throwable, C, Option[L]) => IO[Unit] = (_: Throwable, _: C, _: Option[L]) => IO.unit
-  ): Resource[Caio[C, L, *], CaioDispatcher[C, L]] =
-    Resource.make[Caio[C, L, *], CaioDispatcher[C, L]](Caio.liftIO(unsafeIO(c)(onSuccess)(onError)))(_.unsafeClose)
+  ): Resource[Caio[C, L, _], CaioDispatcher[C, L]] =
+    Resource.make[Caio[C, L, _], CaioDispatcher[C, L]](Caio.liftIO(unsafeIO(c)(onSuccess)(onError)))(_.unsafeClose)
 
   def unsafe[C, L](c: C)(onSuccess: (C, Option[L]) => IO[Unit] = (_: C, _: Option[L]) => IO.unit)(
     onError: (Throwable, C, Option[L]) => IO[Unit] = (_: Throwable, _: C, _: Option[L]) => IO.unit

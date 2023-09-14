@@ -3,7 +3,7 @@ package caio.std
 import caio.Caio
 import cats.MonadError
 
-trait CaioMonadError[C, L] extends CaioMonad[C, L] with MonadError[Caio[C, L, *], Throwable] {
+trait CaioMonadError[C, L] extends CaioMonad[C, L] with MonadError[Caio[C, L, _], Throwable] {
   def raiseError[A](ex: Throwable): Caio[C, L, A] =
     Caio.raiseError(ex)
 

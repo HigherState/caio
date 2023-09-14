@@ -3,11 +3,11 @@ package caio
 import caio.implicits.DynamicContextImplicits
 import caio.mtl.InvariantAsk
 import cats.effect.{IO, LiftIO, Sync}
-
 import caio.std.{CaioDispatcher, CaioListen}
 import cats.mtl.{Listen, Tell}
 import cats.{Applicative, ApplicativeError}
-import org.scalatest.{AsyncFunSpec, Matchers}
+import org.scalatest.funspec.AsyncFunSpec
+import org.scalatest.matchers.should.Matchers
 
 class CaioTests extends AsyncFunSpec with Matchers {
 
@@ -24,7 +24,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
   val implicits = new DynamicContextImplicits[L]
   import implicits.{dynamicCaioAsk, dynamicCaioAsync, dynamicLiftIO}
 
-  val dispatcher = CaioDispatcher.unsafe[C, L](Map.empty)((_, _) => IO.unit)((_, _, _) => IO.unit)
+  val dispatcher: CaioDispatcher[C,L] = CaioDispatcher.unsafe[C, L](Map.empty)((_, _) => IO.unit)((_, _, _) => IO.unit)
 
   /*val emptyState:Store[C, L] =
     EmptyStore
@@ -155,9 +155,9 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
       val program: CaioC[Any, Int] =
         for {
-          a <- Applicative[CaioC[Any, *]].pure(1)
-          b <- Applicative[CaioC[Any, *]].pure(2)
-          c <- Applicative[CaioC[Any, *]].pure(3)
+          a <- Applicative[CaioC[Any, _]].pure(1)
+          b <- Applicative[CaioC[Any, _]].pure(2)
+          c <- Applicative[CaioC[Any, _]].pure(3)
         } yield a + b + c
 
       program.run(()).unsafeRunSync() shouldBe 6
@@ -170,7 +170,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
       val program: CaioT[Int] =
         for {
           a <- Applicative[CaioT].pure(1)
-          b <- Applicative[CaioC[Any, *]].pure(2)
+          b <- Applicative[CaioC[Any, _]].pure(2)
           c <- Applicative[CaioT].pure(3)
         } yield a + b + c
 
@@ -185,9 +185,9 @@ class CaioTests extends AsyncFunSpec with Matchers {
 
       val program: CaioC[Context0 with Context1, Int] =
         for {
-          c0 <- InvariantAsk[CaioC[Context0, *], Context0].ask[Context0]
-          c1 <- InvariantAsk[CaioC[Context1, *], Context1].ask[Context1]
-          c  <- Applicative[CaioC[Any, *]].pure(3)
+          c0 <- InvariantAsk[CaioC[Context0, _], Context0].ask[Context0]
+          c1 <- InvariantAsk[CaioC[Context1, _], Context1].ask[Context1]
+          c  <- Applicative[CaioC[Any, _]].pure(3)
         } yield c0.x + c1.y + c
 
       val context = new Context0 with Context1 { def x = 1; def y = 2; }
@@ -199,7 +199,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
       import cats.effect.unsafe.implicits.global
 
       val program: CaioC[Any, Int] =
-        InvariantAsk[CaioC[(Int, Int, Int), *], (Int, Int, Int)]
+        InvariantAsk[CaioC[(Int, Int, Int), _], (Int, Int, Int)]
           .ask[(Int, Int, Int)]
           .map { case (a, b, c) => a + b + c }
           .provideContext((1, 2, 3))
@@ -221,14 +221,14 @@ class CaioTests extends AsyncFunSpec with Matchers {
     case object LogEvent0 extends LogEvent
     case object LogEvent1 extends LogEvent
 
-    implicit def implicits[A] = CaioListen[C, List[A]]
+    implicit def implicits[A]: CaioListen[C, List[A]] = CaioListen[C, List[A]]
 
     it("Should combine different log events") {
       val program: CaioL[List[LogEvent], (Unit, List[LogEvent])] =
-        Listen[CaioL[List[LogEvent], *], List[LogEvent]].listen {
+        Listen[CaioL[List[LogEvent], _], List[LogEvent]].listen {
           for {
-            _ <- Tell[CaioL[List[LogEvent0.type], *], List[LogEvent0.type]].tell(List(LogEvent0))
-            _ <- Tell[CaioL[List[LogEvent1.type], *], List[LogEvent1.type]].tell(List(LogEvent1))
+            _ <- Tell[CaioL[List[LogEvent0.type], _], List[LogEvent0.type]].tell(List(LogEvent0))
+            _ <- Tell[CaioL[List[LogEvent1.type], _], List[LogEvent1.type]].tell(List(LogEvent1))
           } yield ()
         }
 

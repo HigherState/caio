@@ -5,11 +5,11 @@ import cats.effect.kernel.{CancelScope, Poll}
 import cats.effect.{IO, MonadCancel}
 import cats.effect.kernel.Outcome
 
-trait CaioMonadCancel[C, L] extends CaioMonadError[C, L] with MonadCancel[Caio[C, L, *], Throwable] {
+trait CaioMonadCancel[C, L] extends CaioMonadError[C, L] with MonadCancel[Caio[C, L, _], Throwable] {
   def forceR[A, B](caioA: Caio[C, L, A])(caioB: Caio[C, L, B]): Caio[C, L, B] =
     caioA.forceR(caioB)
 
-  def uncancelable[A](body: Poll[Caio[C, L, *]] => Caio[C, L, A]): Caio[C, L, A] =
+  def uncancelable[A](body: Poll[Caio[C, L, _]] => Caio[C, L, A]): Caio[C, L, A] =
     Caio.uncancelable(body)
 
   def canceled: Caio[C, L, Unit] =

@@ -4,10 +4,10 @@ import caio.Caio
 import cats.{Functor, Monoid}
 import cats.mtl.Tell
 
-trait CaioTell[C, L] extends Tell[Caio[C, L, *], L] {
+trait CaioTell[C, L] extends Tell[Caio[C, L, _], L] {
   val monoid: Monoid[L]
 
-  override def functor: Functor[Caio[C, L, *]] =
+  override def functor: Functor[Caio[C, L, _]] =
     CaioFunctor[C, L]
 
   def tell(l: L): Caio[C, L, Unit] =

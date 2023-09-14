@@ -24,6 +24,8 @@ import org.typelevel.discipline.Laws
 import scala.util.control.NonFatal
 import scala.concurrent.{Await, Future, TimeoutException}
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import cats.laws.discipline.SemigroupalTests
+import scala.concurrent.ExecutionContext
 
 class TestInstances extends DisciplineSuite with CatsTestInstances {
   type C        = Map[String, String]
@@ -31,22 +33,22 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
   type CaioT[A] = Caio[C, L, A]
 
   val implicits: DynamicContextImplicits[L] = new DynamicContextImplicits[L]
-  implicit val isomorphism                  = invariant[CaioT](implicits.dynamicCaioMonad[C])
+  implicit val isomorphism: SemigroupalTests.Isomorphisms[CaioT]                  = invariant[CaioT](implicits.dynamicCaioMonad[C])
 
-  implicit val C = Map.empty[String, String]
+  implicit val C: Map[String,String] = Map.empty[String, String]
 
   protected class TestParams {
     implicit val T: Ticker        = Ticker()
     implicit val EC: TestContext  = T.ctx
     implicit val CA: Async[CaioT] = implicits.dynamicCaioAsync[C]
-    implicit val RealCE           = CaioDispatcher.unsafe[C, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)
+    implicit val RealCE: CaioDispatcher[C,L]           = CaioDispatcher.unsafe[C, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)
 
-    val blocking         = IORuntime.createDefaultBlockingExecutionContext("blocking")._1
-    val scheduler        = Scheduler.createDefaultScheduler()._1
-    val runtimeConfig    = IORuntimeConfig()
-    implicit val runtime = IORuntime.apply(EC, blocking, scheduler, () => (), runtimeConfig)
+    val blocking: ExecutionContext         = IORuntime.createDefaultBlockingExecutionContext("blocking")._1
+    val scheduler: Scheduler        = Scheduler.createDefaultScheduler()._1
+    val runtimeConfig: IORuntimeConfig    = IORuntimeConfig()
+    implicit val runtime: IORuntime = IORuntime.apply(EC, blocking, scheduler, () => (), runtimeConfig)
 
-    implicit val CE = new Dispatcher[Caio[C, L, *]] {
+    implicit val CE: Dispatcher[Caio[Map[String,String],Vector[Event], _]] = new Dispatcher[Caio[C, L, _]] {
       def unsafeToFutureCancelable[A](fa: Caio[C, L, A]): (Future[A], () => Future[Unit]) =
         (fa.run(C).unsafeToFuture()(runtime), () => Future.successful(()))
 
@@ -159,7 +161,7 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
         }
 
   implicit def orderCaioFiniteDuration(implicit T: Ticker): Order[CaioT[FiniteDuration]] =
-    Order by { caio => unsafeRun(caio.run(C)).fold(None, _ => None, fa => fa) }
+    Order by { (caio: CaioT[FiniteDuration]) => unsafeRun(caio.run(C)).fold(None, _ => None, fa => fa) }
 
   implicit def caioBooleanToProp(caio: CaioT[Boolean])(implicit T: Ticker): Prop =
     Prop(unsafeRun(caio.run(C)).fold(false, _ => false, _.getOrElse(false)))

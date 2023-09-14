@@ -102,7 +102,7 @@ class AsyncIsomorphism[F[_], G[_]](async: Async[G], isomorphism: F <~> G) extend
     invert {
       async.cont {
         new Cont[G, K, R] {
-          def apply[GG[_]: MonadCancel[*[_], Throwable]]: (Either[Throwable, K] => Unit, GG[K], G ~> GG) => GG[R] = {
+          def apply[GG[_]: MonadCancelThrow]: (Either[Throwable, K] => Unit, GG[K], G ~> GG) => GG[R] = {
             (resume, get, lift) =>
               body[GG].apply(resume, get, isomorphism.andThen(lift))
           }

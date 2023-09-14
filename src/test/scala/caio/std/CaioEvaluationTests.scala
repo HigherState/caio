@@ -6,7 +6,8 @@ import caio.mtl.InvariantAsk
 import cats.effect.{IO, LiftIO}
 import cats.{Applicative, MonadError}
 import cats.mtl.{Censor, Stateful, Tell}
-import org.scalatest.{AsyncFunSpec, Matchers}
+import org.scalatest.funspec.AsyncFunSpec
+import org.scalatest.matchers.should.Matchers
 
 class CaioEvaluationTests extends AsyncFunSpec with Matchers {
   import caio.mtl.ContextProjector._

@@ -5,8 +5,8 @@ import cats.{CommutativeMonad, StackSafeMonad}
 
 trait CaioMonad[C, L]
     extends CaioApplicative[C, L]
-    with StackSafeMonad[Caio[C, L, *]]
-    with CommutativeMonad[Caio[C, L, *]] {
+    with StackSafeMonad[Caio[C, L, _]]
+    with CommutativeMonad[Caio[C, L, _]] {
   def flatMap[A, B](fa: Caio[C, L, A])(f: A => Caio[C, L, B]): Caio[C, L, B] =
     fa.flatMap(f)
 

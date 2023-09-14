@@ -2,12 +2,12 @@ package caio.std
 
 import caio.Caio
 import cats.{Monoid, ~>}
-import cats.effect.{Async, IO, Ref, Sync}
-import cats.effect.kernel.{Cont, MonadCancel}
+import cats.effect.{Async, IO, MonadCancelThrow, Ref, Sync}
+import cats.effect.kernel.Cont
 
 import scala.concurrent.ExecutionContext
 
-class CaioAsync[C, L] extends CaioTemporal[C, L] with Async[Caio[C, L, *]] {
+class CaioAsync[C, L] extends CaioTemporal[C, L] with Async[Caio[C, L, _]] {
   final def suspend[A](hint: Sync.Type)(thunk: => A): Caio[C, L, A] =
     Caio.liftIO(IO.suspend(hint)(thunk))
 
@@ -19,7 +19,7 @@ class CaioAsync[C, L] extends CaioTemporal[C, L] with Async[Caio[C, L, *]] {
   final def executionContext: Caio[C, L, ExecutionContext] =
     Caio.liftIO(IO.executionContext)
 
-  final def cont[K, R](body: Cont[Caio[C, L, *], K, R]): Caio[C, L, R] =
+  final def cont[K, R](body: Cont[Caio[C, L, _], K, R]): Caio[C, L, R] =
     Caio.getContext[C].flatMap { c =>
       Caio
         .liftIO[(Either[Throwable, R], C, Option[(L, Monoid[L])])] {
@@ -27,13 +27,13 @@ class CaioAsync[C, L] extends CaioTemporal[C, L] with Async[Caio[C, L, *]] {
             new Cont[IO, K, (Either[Throwable, R], C, Option[(L, Monoid[L])])] {
               import cats.syntax.all._
 
-              def apply[G[_]: MonadCancel[*[_], Throwable]]
+              def apply[G[_]: MonadCancelThrow]
                 : (Either[Throwable, K] => Unit, G[K], IO ~> G) => G[(Either[Throwable, R], C, Option[(L, Monoid[L])])] =
                 (resume, get, lift) =>
                   for {
                     state  <- lift(Ref.of[IO, C](c))
                     logs   <- lift(Ref.of[IO, Option[(L, Monoid[L])]](None))
-                    newCont = new (Caio[C, L, *] ~> G) {
+                    newCont = new (Caio[C, L, _] ~> G) {
                                 def apply[A](fa: Caio[C, L, A]): G[A] =
                                   for {
                                     foldPureCaio <- lift(Caio.foldIO[C, L, A](fa, c))

@@ -54,7 +54,7 @@ sealed trait Caio[-C, +L, +A] {
   final def attempt: Caio[C, L, Either[Throwable, A]] =
     map(Right.apply).handleErrorWith(ex => Caio.pure(Left(ex)))
 
-  final def background: Resource[Caio[C @uncheckedVariance, L @uncheckedVariance, *] @uncheckedVariance, Caio[
+  final def background: Resource[Caio[C @uncheckedVariance, L @uncheckedVariance, _] @uncheckedVariance, Caio[
     C,
     L,
     OutcomeCaio[C @uncheckedVariance, L @uncheckedVariance, A @uncheckedVariance]
@@ -231,7 +231,7 @@ sealed trait Caio[-C, +L, +A] {
 }
 
 object Caio {
-  type Par[C, L, A] = ParallelF[Caio[C, L, *], A]
+  type Par[C, L, A] = ParallelF[Caio[C, L, _], A]
 
   def apply[A](thunk: => A): Caio[Any, Nothing, A] =
     IOCaio[A](IO.apply(thunk))
@@ -245,7 +245,7 @@ object Caio {
   def blocking[A](thunk: => A): Caio[Any, Nothing, A] =
     IOCaio[A](IO.blocking(thunk))
 
-  def bracketFull[C, L, A, B](acquire: Poll[Caio[C, L, *]] => Caio[C, L, A])(use: A => Caio[C, L, B])(
+  def bracketFull[C, L, A, B](acquire: Poll[Caio[C, L, _]] => Caio[C, L, A])(use: A => Caio[C, L, B])(
     release: (A, OutcomeCaio[C, L, B]) => Caio[C, L, Unit]
   ): Caio[C, L, B] =
     CaioMonadCancel[C, L].bracketFull(acquire)(use)(release)
@@ -262,8 +262,8 @@ object Caio {
   def defer[C, L, A](thunk: => Caio[C, L, A]): Caio[C, L, A] =
     delay(thunk).flatten
 
-  def deferred[C, L, A]: Caio[C, Nothing, Deferred[Caio[C, L, *], A]] =
-    delay(Deferred.unsafe[Caio[C, L, *], A])
+  def deferred[C, L, A]: Caio[C, Nothing, Deferred[Caio[C, L, _], A]] =
+    delay(Deferred.unsafe[Caio[C, L, _], A])
 
   def delay[A](thunk: => A): Caio[Any, Nothing, A] =
     apply(thunk)
@@ -325,8 +325,8 @@ object Caio {
   def realTime: Caio[Any, Nothing, FiniteDuration] =
     liftIO(IO.realTime)
 
-  def ref[C, L, A](a: A): Caio[Any, Nothing, Ref[Caio[C, L, *], A]] =
-    delay(Ref.unsafe[Caio[C, L, *], A](a))
+  def ref[C, L, A](a: A): Caio[Any, Nothing, Ref[Caio[C, L, _], A]] =
+    delay(Ref.unsafe[Caio[C, L, _], A](a))
 
   def setContext[C](context: C): Caio[C, Nothing, Unit] =
     SetContextCaio(context)
@@ -346,10 +346,10 @@ object Caio {
   def traverse[C, L, T[_]: Traverse, A, B](ta: T[A])(f: A => Caio[C, L, B]): Caio[C, L, T[B]] =
     Traverse[T].traverse(ta)(f)
 
-  def uncancelable[C, L, A](body: Poll[Caio[C, L, *]] => Caio[C, L, A]): Caio[C, L, A] =
+  def uncancelable[C, L, A](body: Poll[Caio[C, L, _]] => Caio[C, L, A]): Caio[C, L, A] =
     Caio.KleisliCaio[C, L, A] { c =>
       IO.uncancelable { poll =>
-        val newPoll = new Poll[Caio[C, L, *]] {
+        val newPoll = new Poll[Caio[C, L, _]] {
           def apply[X](fa: Caio[C, L, X]): Caio[C, L, X] =
             KleisliCaio[C, L, X] { cc =>
               poll(foldIO(fa, cc))
@@ -372,12 +372,12 @@ object Caio {
   def whenA[C, L](cond: Boolean)(action: => Caio[C, L, Unit]): Caio[C, L, Unit] =
     CaioApplicative[C, L].whenA(cond)(action)
 
-  implicit def commutativeApplicativeForCaioPar[C, L]: CommutativeApplicative[Caio.Par[C, L, *]] =
+  implicit def commutativeApplicativeForCaioPar[C, L]: CommutativeApplicative[Caio.Par[C, L, _]] =
     cats.effect.instances.spawn.commutativeApplicativeForParallelF
 
-  implicit def alignForCaio[C, L]: Align[Caio[C, L, *]] =
-    new Align[Caio[C, L, *]] {
-      val functor: Functor[Caio[C, L, *]] =
+  implicit def alignForCaio[C, L]: Align[Caio[C, L, _]] =
+    new Align[Caio[C, L, _]] {
+      val functor: Functor[Caio[C, L, _]] =
         CaioFunctor[C, L]
 
       def align[A, B](fa: Caio[C, L, A], fb: Caio[C, L, B]): Caio[C, L, Ior[A, B]] =
@@ -387,7 +387,7 @@ object Caio {
         )
     }
 
-  implicit def asyncForCaio[C, L]: Async[Caio[C, L, *]] =
+  implicit def asyncForCaio[C, L]: Async[Caio[C, L, _]] =
     CaioAsync[C, L]
 
   implicit def monoidForCaio[C, L, A](implicit M: Monoid[A]): Monoid[Caio[C, L, A]] =
@@ -399,11 +399,11 @@ object Caio {
         Caio.pure(M.empty)
     }
 
-  implicit def parallelForCaio[C, L]: Parallel.Aux[Caio[C, L, *], Par[C, L, *]] =
-    cats.effect.instances.spawn.parallelForGenSpawn[Caio[C, L, *], Throwable]
+  implicit def parallelForCaio[C, L]: Parallel.Aux[Caio[C, L, _], Par[C, L, _]] =
+    cats.effect.instances.spawn.parallelForGenSpawn[Caio[C, L, _], Throwable]
 
-  implicit def semigroupKForIO[C, L]: SemigroupK[Caio[C, L, *]] =
-    new SemigroupK[Caio[C, L, *]] {
+  implicit def semigroupKForIO[C, L]: SemigroupK[Caio[C, L, _]] =
+    new SemigroupK[Caio[C, L, _]] {
       final override def combineK[A](a: Caio[C, L, A], b: Caio[C, L, A]): Caio[C, L, A] =
         a.handleErrorWith(_ => b)
     }
@@ -461,13 +461,13 @@ object Caio {
           case BindCaio(PureCaio(a), f) =>
             foldCaio(tryOrError(f(a)), c, l, handlers)
 
-          case BindCaio(caio: IOCaio[_], f) =>
+          case BindCaio(caio: IOCaio[?], f) =>
             caio
               .f()
               .redeemWith(e => safeFold(ErrorCaio(e), c, l, handlers), a => safeFold(tryOrError(f(a)), c, l, handlers))
 
-          case BindCaio(source, f) =>
-            foldCaio(source, c, l, OnSuccess((_, _, a) => f(a)) :: handlers)
+          case x: BindCaio[?, ?, Any, ?] @unchecked =>
+            foldCaio(x.source, c, l, OnSuccess((_, _, a) => x.f(a)) :: handlers)
 
           case PureCaio(a) =>
             nextHandler(handlers) match {
@@ -477,7 +477,7 @@ object Caio {
                 IO.pure(FoldCaioSuccess(c, l, a))
             }
 
-          case caio: IOCaio[_] =>
+          case caio: IOCaio[?] =>
             //The IO monad will bring this back into stack safety
             caio.f().redeemWith(e => safeFold(ErrorCaio(e), c, l, handlers), a => safeFold(PureCaio(a), c, l, handlers))
 
@@ -489,9 +489,9 @@ object Caio {
                   .flatMap {
                     case FoldCaioSuccess(c, l2, a) =>
                       //The IO monad will bring this back into stack safety
-                      safeFold(PureCaio(a), c, combineL(l, l2), handlers)
+                      safeFold(PureCaio(a), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)
                     case FoldCaioError(c, l2, ex)  =>
-                      safeFold(ErrorCaio(ex), c, combineL(l, l2), handlers)
+                      safeFold(ErrorCaio(ex), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)
                   }
                   .handleErrorWith(ex => safeFold(ErrorCaio(ex), c, l, handlers))
               case scala.util.Failure(ex)     =>
@@ -510,10 +510,10 @@ object Caio {
             foldCaio(source, c, l, OnError((_, _, e) => if (f.isDefinedAt(e)) f(e) else ErrorCaio(e)) :: handlers)
 
           case SetCaio(l2, monoid) =>
-            foldCaio(Caio.unit, c, Some((l2, monoid)), handlers)
+            foldCaio(Caio.unit, c, Some((l2, monoid.asInstanceOf[Monoid[Any]])), handlers)
 
           case TellCaio(l2, monoid) =>
-            foldCaio(Caio.unit, c, combineL(l, Some((l2, monoid))), handlers)
+            foldCaio(Caio.unit, c, combineL(l, Some((l2, monoid.asInstanceOf[Monoid[Any]]))), handlers)
 
           case ListenCaio(source, monoid) =>
             foldCaio(
@@ -529,7 +529,7 @@ object Caio {
               c,
               l,
               OnSuccess((_, l, a) =>
-                BindCaio(SetCaio(l.map(_._1).map(f).getOrElse(monoid.empty), monoid), (_: Unit) => PureCaio(a))
+                BindCaio(SetCaio(l.map(_._1).map(f.asInstanceOf[Any => Any]).getOrElse(monoid.empty), monoid.asInstanceOf[Monoid[Any]]), (_: Unit) => PureCaio(a))
               ) :: handlers
             )
 

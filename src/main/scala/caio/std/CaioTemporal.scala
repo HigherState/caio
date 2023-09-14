@@ -4,7 +4,7 @@ import caio.Caio
 import cats.effect.Temporal
 import scala.concurrent.duration.FiniteDuration
 
-trait CaioTemporal[C, L] extends CaioConcurrent[C, L] with CaioClock[C, L] with Temporal[Caio[C, L, *]] {
+trait CaioTemporal[C, L] extends CaioConcurrent[C, L] with CaioClock[C, L] with Temporal[Caio[C, L, _]] {
   def sleep(duration: FiniteDuration): Caio[C, L, Unit] =
     Caio.sleep(duration)
 }

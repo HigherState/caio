@@ -7,13 +7,13 @@ import cats.effect.unsafe.implicits.global
 
 import scala.util.{Failure, Success, Try}
 
-class CaioFiber[C, L, A](fiber: FiberIO[A]) extends Fiber[Caio[C, L, *], Throwable, A] {
+class CaioFiber[C, L, A](fiber: FiberIO[A]) extends Fiber[Caio[C, L, _], Throwable, A] {
   import CaioFiber.toOutcomeCaio
 
   override def cancel: Caio[C, L, Unit] =
     Caio.liftIO(fiber.cancel)
 
-  override def join: Caio[C, L, Outcome[Caio[C, L, *], Throwable, A]] =
+  override def join: Caio[C, L, Outcome[Caio[C, L, _], Throwable, A]] =
     Caio.liftIO(fiber.join.map(toOutcomeCaio[C, L, A]))
 }
 
@@ -26,13 +26,13 @@ object CaioFiber {
   ): OutcomeCaio[C, L, A] =
     outcomeIO match {
       case Outcome.Canceled() =>
-        Outcome.canceled[Caio[C, L, *], Throwable, A]
+        Outcome.canceled[Caio[C, L, _], Throwable, A]
       case Outcome.Errored(ex) =>
-        Outcome.errored[Caio[C, L, *], Throwable, A](ex)
+        Outcome.errored[Caio[C, L, _], Throwable, A](ex)
       case Outcome.Succeeded(io) =>
         Try(io.unsafeRunSync()) match {
           case Failure(e) =>
-            Outcome.errored[Caio[C, L, *], Throwable, A](e)
+            Outcome.errored[Caio[C, L, _], Throwable, A](e)
           case Success(a) =>
             Outcome.succeeded(Caio.pure(a))
         }

@@ -3,14 +3,13 @@ package caio.std
 import caio.Event._
 import caio.implicits.StaticImplicits
 import caio.Caio
-
 import cats.{Applicative, ApplicativeError}
 import cats.syntax.parallel._
 import cats.data.NonEmptyList
 import cats.mtl.{Listen, Stateful, Tell}
 import cats.effect.Ref
-
-import org.scalatest.{AsyncFunSpec, Matchers}
+import org.scalatest.funspec.AsyncFunSpec
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration._
 
