@@ -4,8 +4,8 @@ import caio.Caio
 import cats.Monad
 import cats.mtl.Stateful
 
-trait CaioStateful[C, L] extends Stateful[Caio[C, L, *], C] {
-  val monad: Monad[Caio[C, L, *]] =
+trait CaioStateful[C, L] extends Stateful[Caio[C, L, _], C] {
+  val monad: Monad[Caio[C, L, _]] =
     CaioMonad[C, L]
 
   def get: Caio[C, L, C] =

@@ -24,9 +24,9 @@ class ResourceTests extends TestInstances {
   import arbitrary._
   import cats.laws.discipline.arbitrary._
 
-  checkAllAsync("Resource[Caio, *]") { params =>
+  checkAllAsync("Resource[Caio, _]") { params =>
     import params._
-    MonadErrorTests[Resource[CaioT, *], Throwable].monadError[Int, Int, Int]
+    MonadErrorTests[Resource[CaioT, _], Throwable].monadError[Int, Int, Int]
   }
 
   checkAllAsync("Resource[Caio, Int]") { params =>
@@ -34,9 +34,9 @@ class ResourceTests extends TestInstances {
     MonoidTests[Resource[CaioT, Int]].monoid
   }
 
-  checkAllAsync("Resource[Caio, *]") { params =>
+  checkAllAsync("Resource[Caio, _]") { params =>
     import params._
-    SemigroupKTests[Resource[CaioT, *]].semigroupK[Int]
+    SemigroupKTests[Resource[CaioT, _]].semigroupK[Int]
   }
 
   testAsync("Resource.make is equivalent to a partially applied bracket") { params =>
@@ -46,9 +46,9 @@ class ResourceTests extends TestInstances {
     }
   }
 
-  checkAllAsync("Resource[Caio, *]") { params =>
+  checkAllAsync("Resource[Caio, _]") { params =>
     import params._
-    val module = ParallelTests[Resource[CaioT, *]]
+    val module = ParallelTests[Resource[CaioT, _]]
     module.parallel[Int, Int]
   }
 
@@ -209,17 +209,17 @@ class ResourceTests extends TestInstances {
     import params._
 
     forAll { (fa: Kleisli[CaioT, Int, Int]) =>
-      val runWithTwo = new ~>[Kleisli[CaioT, Int, *], CaioT] {
+      val runWithTwo = new ~>[Kleisli[CaioT, Int, _], CaioT] {
         override def apply[A](fa: Kleisli[CaioT, Int, A]): CaioT[A] = fa(2)
       }
-      Resource.eval[Kleisli[CaioT, Int, *], Int](fa).mapK(runWithTwo).use(Caio.pure) <-> fa(2)
+      Resource.eval[Kleisli[CaioT, Int, _], Int](fa).mapK(runWithTwo).use(Caio.pure) <-> fa(2)
     }
   }
 
   testGlobalAsync("mapK should preserve ExitCode-specific behaviour") { params =>
     import params._
 
-    val takeAnInteger = new ~>[CaioT, Kleisli[CaioT, Int, *]] {
+    val takeAnInteger = new ~>[CaioT, Kleisli[CaioT, Int, _]] {
       override def apply[A](fa: CaioT[A]): Kleisli[CaioT, Int, A] = Kleisli.liftF(fa)
     }
 
@@ -291,16 +291,16 @@ class ResourceTests extends TestInstances {
 
     val released = new java.util.concurrent.atomic.AtomicBoolean(false)
 
-    val runWithTwo                        = new ~>[Kleisli[CaioT, Int, *], CaioT] {
+    val runWithTwo                        = new ~>[Kleisli[CaioT, Int, _], CaioT] {
       override def apply[A](fa: Kleisli[CaioT, Int, A]): CaioT[A] = fa(2)
     }
-    val takeAnInteger                     = new ~>[CaioT, Kleisli[CaioT, Int, *]] {
+    val takeAnInteger                     = new ~>[CaioT, Kleisli[CaioT, Int, _]] {
       override def apply[A](fa: CaioT[A]): Kleisli[CaioT, Int, A] = Kleisli.liftF(fa)
     }
     val plusOne: Kleisli[CaioT, Int, Int] = Kleisli { (i: Int) =>
       Caio(i + 1)
     }
-    val plusOneResource                   = Resource.eval[Kleisli[CaioT, Int, *], Int](plusOne)
+    val plusOneResource                   = Resource.eval[Kleisli[CaioT, Int, _], Int](plusOne)
 
     val release  = Resource.make[CaioT, Unit](Caio.unit)(_ => Caio(released.set(true)))
     val resource = Resource.eval[CaioT, Unit](Caio.unit)
@@ -322,7 +322,7 @@ class ResourceTests extends TestInstances {
     import params._
     val exception = new Exception("boom!")
     val suspend   = Resource.suspend[CaioT, Int](Caio.raiseError(exception))
-    val attempt   = MonadError[Resource[CaioT, *], Throwable].attempt(suspend)
+    val attempt   = MonadError[Resource[CaioT, _], Throwable].attempt(suspend)
     assertEquals(CE.unsafeRunSync(attempt.use(Caio.pure)), Left(exception))
   }
 
@@ -342,10 +342,10 @@ class ResourceTests extends TestInstances {
     import cats.data.OptionT
     forAll { (ot1: OptionT[CaioT, Int], ot2: OptionT[CaioT, Int]) =>
       val lhs: Either[Throwable, Option[Int]] =
-        CE.unsafeRunSync(Resource.eval[OptionT[CaioT, *], Int](ot1 <+> ot2).use(OptionT.pure[CaioT](_)).value.attempt)
+        CE.unsafeRunSync(Resource.eval[OptionT[CaioT, _], Int](ot1 <+> ot2).use(OptionT.pure[CaioT](_)).value.attempt)
       val rhs: Either[Throwable, Option[Int]] =
         CE.unsafeRunSync(
-          (Resource.eval[OptionT[CaioT, *], Int](ot1) <+> Resource.eval[OptionT[CaioT, *], Int](ot2))
+          (Resource.eval[OptionT[CaioT, _], Int](ot1) <+> Resource.eval[OptionT[CaioT, _], Int](ot2))
             .use(OptionT.pure[CaioT](_))
             .value
             .attempt
@@ -364,7 +364,7 @@ class ResourceTests extends TestInstances {
       val r    = as.traverse { case (a, e) =>
         Resource.make[CaioT, Int](Caio(a))(a => Caio { released = a :: released } *> Caio.fromEither(e))
       }
-      val unit = ().pure[Resource[CaioT, *]]
+      val unit = ().pure[Resource[CaioT, _]]
       val p    = if (rhs) r.both(unit) else unit.both(r)
 
       CE.unsafeToFuture(p.use(Caio.pure).attempt)

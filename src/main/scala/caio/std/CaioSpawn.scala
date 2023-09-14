@@ -6,10 +6,10 @@ import cats.effect.{FiberIO, IO, OutcomeIO}
 import cats.effect.kernel.{Fiber, Outcome, Spawn}
 import cats.effect.unsafe.implicits.global
 
-trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
+trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, _]] {
   import CaioSpawn.{fiber2Caio, toOutcomeCaio}
 
-  def start[A](fa: Caio[C, L, A]): Caio[C, L, Fiber[Caio[C, L, *], Throwable, A]] =
+  def start[A](fa: Caio[C, L, A]): Caio[C, L, Fiber[Caio[C, L, _], Throwable, A]] =
     Caio.KleisliCaio[C, L, FiberCaio[C, L, A]] { c =>
       Caio.foldIO[C, L, A](fa, c).start.map { fiber =>
         FoldCaioSuccess(c, None, fiber2Caio(fiber))
@@ -37,13 +37,13 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
 
           case Left((Outcome.Succeeded(io), fiberB)) =>
             io.flatMap {
-              case e: FoldCaioError[C, L, _]   =>
+              case e: FoldCaioError[C, L, ?]   =>
                 fiberB.cancel.map(_ => e)
               case s: FoldCaioSuccess[C, L, A] =>
                 IO.pure(
                   s.map(a =>
                     Left(
-                      Outcome.succeeded[Caio[C, L, *], Throwable, A](Caio.pure(a)) -> fiber2Caio(
+                      Outcome.succeeded[Caio[C, L, _], Throwable, A](Caio.pure(a)) -> fiber2Caio(
                         fiberB
                       )
                     )
@@ -56,13 +56,13 @@ trait CaioSpawn[C, L] extends CaioMonadCancel[C, L] with Spawn[Caio[C, L, *]] {
 
           case Right((fiberA, Outcome.Succeeded(io))) =>
             io.flatMap {
-              case e: FoldCaioError[C, L, _]   =>
+              case e: FoldCaioError[C, L, ?]   =>
                 fiberA.cancel.map(_ => e)
               case s: FoldCaioSuccess[C, L, B] =>
                 IO.pure(
                   s.map(b =>
                     Right(
-                      (fiber2Caio(fiberA), Outcome.succeeded[Caio[C, L, *], Throwable, B](Caio.pure(b)))
+                      (fiber2Caio(fiberA), Outcome.succeeded[Caio[C, L, _], Throwable, B](Caio.pure(b)))
                     )
                   )
                 )
@@ -97,20 +97,20 @@ object CaioSpawn {
   ): (Option[C], Option[(L, Monoid[L])], OutcomeCaio[C, L, A]) =
     outcomeIO match {
       case Outcome.Canceled() =>
-        (None, None, Outcome.canceled[Caio[C, L, *], Throwable, A])
+        (None, None, Outcome.canceled[Caio[C, L, _], Throwable, A])
       case Outcome.Errored(ex) =>
-        (None, None, Outcome.errored[Caio[C, L, *], Throwable, A](ex))
+        (None, None, Outcome.errored[Caio[C, L, _], Throwable, A](ex))
       case Outcome.Succeeded(io) =>
         io.unsafeRunSync() match {
           case FoldCaioError(c, l, e) =>
-            (Some(c), l, Outcome.errored[Caio[C, L, *], Throwable, A](e))
+            (Some(c), l, Outcome.errored[Caio[C, L, _], Throwable, A](e))
           case FoldCaioSuccess(c, l, a) =>
             (Some(c), l, Outcome.succeeded(Caio.pure(a)))
         }
     }
 
   def fiber2Caio[C, L, A](fiber: FiberIO[FoldCaioPure[C, L, A]]): FiberCaio[C, L, A] =
-    new Fiber[Caio[C, L, *], Throwable, A] {
+    new Fiber[Caio[C, L, _], Throwable, A] {
       final def cancel: Caio[C, L, Unit] =
         Caio.liftIO(fiber.cancel)
 

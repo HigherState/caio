@@ -390,7 +390,7 @@ class CaioCatsEffectTests extends TestInstances {
           val bg: CaioT[Unit] =
             started.complete(()) *> Caio.never[Unit].guaranteeCase[C, L, Unit](result.complete(_).void)
 
-          bg.background.use((_: CaioT[OutcomeCaio[C, L, Unit]]) => started.get) *> result.get
+          bg.background.use[Unit](_ => started.get) *> result.get
         }
       }
 

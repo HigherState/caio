@@ -16,7 +16,7 @@ import cats.arrow.FunctionK
  * @tparam V
  * @tparam L
  */
-class CaioBijectionK[C1, C2, L](f: C2 => C1, invF: C1 => C2) extends (Caio[C1, L, *] <~> Caio[C2, L, *]) {
+class CaioBijectionK[C1, C2, L](f: C2 => C1, invF: C1 => C2) extends (Caio[C1, L, _] <~> Caio[C2, L, _]) {
   def apply[A](fa: Caio[C1, L, A]): Caio[C2, L, A] =
     Caio.KleisliCaio[C2, L, A] { c2 =>
       Caio.foldIO[C1, L, A](fa, f(c2)).map(_.contextMap(invF))
@@ -27,8 +27,8 @@ class CaioBijectionK[C1, C2, L](f: C2 => C1, invF: C1 => C2) extends (Caio[C1, L
       Caio.foldIO[C2, L, A](fa, invF(c1)).map(_.contextMap(f))
     }
 
-  def invert: Caio[C2, L, *] ~> Caio[C1, L, *] =
-    new FunctionK[Caio[C2, L, *], Caio[C1, L, *]] {
+  def invert: Caio[C2, L, _] ~> Caio[C1, L, _] =
+    new FunctionK[Caio[C2, L, _], Caio[C1, L, _]] {
       def apply[A](fa: Caio[C2, L, A]): Caio[C1, L, A] =
         Caio.KleisliCaio[C1, L, A] { c1 =>
           Caio.foldIO[C2, L, A](fa, invF(c1)).map(_.contextMap(f))

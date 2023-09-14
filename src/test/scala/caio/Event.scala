@@ -21,8 +21,8 @@ object Event {
   implicit val EventEq: Eq[EventLog] =
     (x: EventLog, y: EventLog) => x.equals(y)
 
-  val event1 = TestEvent(1)
-  val event2 = TestEvent(2)
-  val event3 = TestEvent(3)
-  val event4 = TestEvent(4)
+  val event1: TestEvent = TestEvent(1)
+  val event2: TestEvent = TestEvent(2)
+  val event3: TestEvent = TestEvent(3)
+  val event4: TestEvent = TestEvent(4)
 }

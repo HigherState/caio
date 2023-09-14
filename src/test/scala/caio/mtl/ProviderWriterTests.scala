@@ -3,28 +3,29 @@ package caio.mtl
 import cats.mtl.{Censor, Listen, Tell}
 
 class ProviderWriterTests {
+  type InvariantAskInt[F[_]] = InvariantAsk[F, Int]
 
-  class AskTell[M[_]: InvariantAsk[*[_], Int]: Tell[*[_], L], L] {
+  class AskTell[M[_]: InvariantAskInt, L](implicit T: Tell[M, L]) {
     def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
-  class AskListen[M[_]: InvariantAsk[*[_], Int]: Listen[*[_], L], L] {
+  class AskListen[M[_]: InvariantAskInt, L](implicit L: Listen[M, L]) {
     def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
-  class AskCensor[M[_]: InvariantAsk[*[_], Int]: Censor[*[_], L], L] {
+  class AskCensor[M[_]: InvariantAskInt, L](implicit C: Censor[M, L]) {
     def run: M[Int] = InvariantAsk[M, Int].ask
   }
 
-  class CensorWriter[M[_]: Provider: Censor[*[_], L], L] {
+  class CensorWriter[M[_]: Provider, L](implicit C: Censor[M, L]) {
 
-    val tell = implicitly[Tell[M, L]]
+    val tell: Tell[M,L] = implicitly[Tell[M, L]]
 
-    val listen = implicitly[Listen[M, L]]
+    val listen: Listen[M,L] = implicitly[Listen[M, L]]
 
-    val censor = implicitly[Censor[M, L]]
+    val censor: Censor[M,L] = implicitly[Censor[M, L]]
 
-    val E = implicitly[Provider[M]].apply[Int]
+    val E: Extends[M,Unit,Int] = implicitly[Provider[M]].apply[Int]
     import E._
 
     val askTell = new AskTell[E.FE, L]
@@ -34,9 +35,9 @@ class ProviderWriterTests {
     val askCensor = new AskCensor[E.FE, L]
   }
 
-  class ListenerWriter[M[_]: Provider: Listen[*[_], L], L] {
+  class ListenerWriter[M[_]: Provider, L](implicit L: Listen[M, L]) {
 
-    val E = implicitly[Provider[M]].apply[Int]
+    val E: Extends[M,Unit,Int] = implicitly[Provider[M]].apply[Int]
     import E._
 
     val askTell = new AskTell[E.FE, L]
@@ -45,9 +46,9 @@ class ProviderWriterTests {
 
   }
 
-  class TellWriter[M[_]: Provider: Tell[*[_], L], L] {
+  class TellWriter[M[_]: Provider, L](implicit T: Tell[M, L]) {
 
-    val E = implicitly[Provider[M]].apply[Int]
+    val E: Extends[M,Unit,Int] = implicitly[Provider[M]].apply[Int]
     import E._
 
     val askTell = new AskTell[E.FE, L]

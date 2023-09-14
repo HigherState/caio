@@ -4,7 +4,7 @@ import caio.Caio
 import cats.Monoid
 import cats.mtl.Listen
 
-trait CaioListen[C, L] extends CaioTell[C, L] with Listen[Caio[C, L, *], L] {
+trait CaioListen[C, L] extends CaioTell[C, L] with Listen[Caio[C, L, _], L] {
   def listen[A](fa: Caio[C, L, A]): Caio[C, L, (A, L)] =
     fa.listen(monoid)
 }

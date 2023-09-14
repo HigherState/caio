@@ -2,11 +2,10 @@ package caio.std
 
 import caio._
 import caio.std.CaioMonadCancel
-
 import cats.Monad
 import cats.effect.kernel.Outcome
-
-import org.scalatest.{AsyncFunSpec, Matchers}
+import org.scalatest.funspec.AsyncFunSpec
+import org.scalatest.matchers.should.Matchers
 
 class CaioBracketTests extends AsyncFunSpec with Matchers {
   import Event._
