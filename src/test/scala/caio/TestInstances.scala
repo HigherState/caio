@@ -87,11 +87,11 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
     val realCE     = testParams.RealCE
 
     property(name) {
-      silenceSystemErr { () =>
+      silenceSystemErr[Prop] { () =>
         f(testParams)
         try realCE.toIO(realCE.unsafeClose).unsafeRunSync()
         catch { case _: Exception => }
-        ()
+        Prop.passed
       }
     }(Location.empty)
   }
@@ -105,7 +105,7 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
   }
 
   def testGlobalAsync(name: String)(f: TestParams => Any): Unit =
-    property(name)(silenceSystemErr { () => f(new TestParams); () })(Location.empty)
+    property(name)(silenceSystemErr[Prop] { () => f(new TestParams); Prop.passed })(Location.empty)
 
   protected def silenceSystemErr[A](thunk: () => A): A = synchronized {
     val oldErr    = System.err
