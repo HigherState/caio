@@ -1,7 +1,17 @@
 package caio
 
 import caio.Caio.KleisliCaio
-import caio.std.{CaioApplicative, CaioAsync, CaioClock, CaioConcurrent, CaioFunctor, CaioMonad, CaioMonadCancel, CaioSpawn, CaioTemporal}
+import caio.std.{
+  CaioApplicative,
+  CaioAsync,
+  CaioClock,
+  CaioConcurrent,
+  CaioFunctor,
+  CaioMonad,
+  CaioMonadCancel,
+  CaioSpawn,
+  CaioTemporal
+}
 import cats.{Align, CommutativeApplicative, Functor, Monoid, Parallel, SemigroupK, Traverse}
 import cats.data.Ior
 import cats.effect.{Async, Deferred, IO, Ref, Resource, Unique}
@@ -485,15 +495,15 @@ object Caio {
             Try(f(c)) match {
               //Doesnt support Error or Failure handling
               case scala.util.Success(foldIO) =>
-                foldIO
-                  .flatMap {
-                    case FoldCaioSuccess(c, l2, a) =>
-                      //The IO monad will bring this back into stack safety
-                      safeFold(PureCaio(a), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)
-                    case FoldCaioError(c, l2, ex)  =>
-                      safeFold(ErrorCaio(ex), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)
-                  }
-                  .handleErrorWith(ex => safeFold(ErrorCaio(ex), c, l, handlers))
+                foldIO.attempt.flatMap {
+                  case Right(FoldCaioSuccess(c, l2, a)) =>
+                    //The IO monad will bring this back into stack safety
+                    safeFold(PureCaio(a), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)
+                  case Right(FoldCaioError(c, l2, ex))  =>
+                    safeFold(ErrorCaio(ex), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)
+                  case Left(ex)                         =>
+                    safeFold(ErrorCaio(ex), c, l, handlers)
+                }
               case scala.util.Failure(ex)     =>
                 foldCaio(ErrorCaio(ex), c, l, handlers)
             }
@@ -529,7 +539,13 @@ object Caio {
               c,
               l,
               OnSuccess((_, l, a) =>
-                BindCaio(SetCaio(l.map(_._1).map(f.asInstanceOf[Any => Any]).getOrElse(monoid.empty), monoid.asInstanceOf[Monoid[Any]]), (_: Unit) => PureCaio(a))
+                BindCaio(
+                  SetCaio(
+                    l.map(_._1).map(f.asInstanceOf[Any => Any]).getOrElse(monoid.empty),
+                    monoid.asInstanceOf[Monoid[Any]]
+                  ),
+                  (_: Unit) => PureCaio(a)
+                )
               ) :: handlers
             )
 

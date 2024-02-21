@@ -32,23 +32,23 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
   type L        = EventLog
   type CaioT[A] = Caio[C, L, A]
 
-  val implicits: DynamicContextImplicits[L] = new DynamicContextImplicits[L]
-  implicit val isomorphism: SemigroupalTests.Isomorphisms[CaioT]                  = invariant[CaioT](implicits.dynamicCaioMonad[C])
+  val implicits: DynamicContextImplicits[L]                      = new DynamicContextImplicits[L]
+  implicit val isomorphism: SemigroupalTests.Isomorphisms[CaioT] = invariant[CaioT](implicits.dynamicCaioMonad[C])
 
-  implicit val C: Map[String,String] = Map.empty[String, String]
+  implicit val C: Map[String, String] = Map.empty[String, String]
 
   protected class TestParams {
-    implicit val T: Ticker        = Ticker()
-    implicit val EC: TestContext  = T.ctx
-    implicit val CA: Async[CaioT] = implicits.dynamicCaioAsync[C]
-    implicit val RealCE: CaioDispatcher[C,L]           = CaioDispatcher.unsafe[C, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)
+    implicit val T: Ticker                    = Ticker()
+    implicit val EC: TestContext              = T.ctx
+    implicit val CA: Async[CaioT]             = implicits.dynamicCaioAsync[C]
+    implicit val RealCE: CaioDispatcher[C, L] = CaioDispatcher.unsafe[C, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)
 
-    val blocking: ExecutionContext         = IORuntime.createDefaultBlockingExecutionContext("blocking")._1
-    val scheduler: Scheduler        = Scheduler.createDefaultScheduler()._1
-    val runtimeConfig: IORuntimeConfig    = IORuntimeConfig()
-    implicit val runtime: IORuntime = IORuntime.apply(EC, blocking, scheduler, () => (), runtimeConfig)
+    val blocking: ExecutionContext     = IORuntime.createDefaultBlockingExecutionContext("blocking")._1
+    val scheduler: Scheduler           = Scheduler.createDefaultScheduler()._1
+    val runtimeConfig: IORuntimeConfig = IORuntimeConfig()
+    implicit val runtime: IORuntime    = IORuntime.apply(EC, blocking, scheduler, () => (), runtimeConfig)
 
-    implicit val CE: Dispatcher[Caio[Map[String,String],Vector[Event], _]] = new Dispatcher[Caio[C, L, _]] {
+    implicit val CE: Dispatcher[Caio[Map[String, String], Vector[Event], _]] = new Dispatcher[Caio[C, L, _]] {
       def unsafeToFutureCancelable[A](fa: Caio[C, L, A]): (Future[A], () => Future[Unit]) =
         (fa.run(C).unsafeToFuture()(runtime), () => Future.successful(()))
 
