@@ -41,7 +41,8 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
     implicit val T: Ticker                    = Ticker()
     implicit val EC: TestContext              = T.ctx
     implicit val CA: Async[CaioT]             = implicits.dynamicCaioAsync[C]
-    implicit val RealCE: CaioDispatcher[C, L] = CaioDispatcher.unsafe[C, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)
+    implicit val RealCE: CaioDispatcher[C, L] =
+      CaioDispatcher.unsafe[C, L](C)((_, _) => IO.unit)((_, _, _) => IO.unit)(global)
 
     val blocking: ExecutionContext     = IORuntime.createDefaultBlockingExecutionContext("blocking")._1
     val scheduler: Scheduler           = Scheduler.createDefaultScheduler()._1
@@ -105,7 +106,9 @@ class TestInstances extends DisciplineSuite with CatsTestInstances {
   }
 
   def testGlobalAsync(name: String)(f: TestParams => Any): Unit =
-    property(name)(silenceSystemErr[Prop] { () => f(new TestParams); Prop.passed })(Location.empty)
+    property(name)(silenceSystemErr[Prop] { () =>
+      f(new TestParams); Prop.passed
+    })(Location.empty)
 
   protected def silenceSystemErr[A](thunk: () => A): A = synchronized {
     val oldErr    = System.err
