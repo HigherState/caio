@@ -8,6 +8,7 @@ import cats.syntax.parallel._
 import cats.data.NonEmptyList
 import cats.mtl.{Listen, Stateful, Tell}
 import cats.effect.Ref
+import cats.effect.unsafe.implicits.global
 import org.scalatest.funspec.AsyncFunSpec
 import org.scalatest.matchers.should.Matchers
 

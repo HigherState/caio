@@ -37,13 +37,13 @@ sealed trait Caio[-C, +L, +A] {
   final def *>[C1 <: C, L1 >: L, B](fb: => Caio[C1, L1, B]): Caio[C1, L1, B] =
     flatMap[C1, L1, B](_ => fb)
 
-  final def <&[C1 <: C, L1 >: L](that: Caio[C1, L1, Any]): Caio[C1, L1, A]        =
+  final def <&[C1 <: C, L1 >: L](that: Caio[C1, L1, Any]): Caio[C1, L1, A] =
     both(that).map { case (a, _) => a }
 
   final def <&>[C1 <: C, L1 >: L, B](that: Caio[C1, L1, B]): Caio[C1, L1, (A, B)] =
     both(that)
 
-  final def &>[C1 <: C, L1 >: L, B](that: Caio[C1, L1, B]): Caio[C1, L1, B]    =
+  final def &>[C1 <: C, L1 >: L, B](that: Caio[C1, L1, B]): Caio[C1, L1, B] =
     both(that).map { case (_, b) => b }
 
   final def >>=[C1 <: C, L1 >: L, B](f: A => Caio[C1, L1, B]): Caio[C1, L1, B] =
@@ -64,11 +64,10 @@ sealed trait Caio[-C, +L, +A] {
   final def attempt: Caio[C, L, Either[Throwable, A]] =
     map(Right.apply).handleErrorWith(ex => Caio.pure(Left(ex)))
 
-  final def background: Resource[Caio[C @uncheckedVariance, L @uncheckedVariance, _] @uncheckedVariance, Caio[
-    C,
-    L,
-    OutcomeCaio[C @uncheckedVariance, L @uncheckedVariance, A @uncheckedVariance]
-  ]] =
+  final def background: Resource[
+    Caio[C @uncheckedVariance, L @uncheckedVariance, _] @uncheckedVariance,
+    Caio[C, L, OutcomeCaio[C @uncheckedVariance, L @uncheckedVariance, A @uncheckedVariance]]
+  ] =
     CaioSpawn[C, L].background(this)
 
   final def bracket[C1 <: C, L1 >: L, A1 >: A, B](use: A1 => Caio[C1, L1, B])(
@@ -130,7 +129,7 @@ sealed trait Caio[-C, +L, +A] {
 
   final def ifM[C1 <: C, L1 >: L, B](ifTrue: => Caio[C1, L1, B], ifFalse: => Caio[C1, L1, B])(implicit
     ev: A <:< Boolean
-  ): Caio[C1, L1, B]                                                                                       =
+  ): Caio[C1, L1, B] =
     flatMap(a => if (ev(a)) ifTrue else ifFalse)
 
   final def iterateUntil(p: A => Boolean): Caio[C, L, A] =
@@ -207,7 +206,10 @@ sealed trait Caio[-C, +L, +A] {
   final def start: Caio[C, L, FiberCaio[C @uncheckedVariance, L @uncheckedVariance, A @uncheckedVariance]] =
     CaioSpawn[C, L].start[A](this)
 
-  final def timeoutTo[C1 <: C, L1 >: L, A1 >: A](duration: FiniteDuration, fallback: Caio[C1, L1, A1]): Caio[C1, L1, A1] =
+  final def timeoutTo[C1 <: C, L1 >: L, A1 >: A](
+    duration: FiniteDuration,
+    fallback: Caio[C1, L1, A1]
+  ): Caio[C1, L1, A1] =
     CaioTemporal[C1, L1].timeoutTo(this, duration, fallback)
 
   final def timeout(duration: FiniteDuration): Caio[C, L, A] =
@@ -436,7 +438,7 @@ object Caio {
       case (None, None)                      => None
     }
 
-  @inline private def tryOrError(value: => Caio[Any, Any, Any]): Caio[Any, Any, Any]                 =
+  @inline private def tryOrError(value: => Caio[Any, Any, Any]): Caio[Any, Any, Any] =
     try value
     catch { case NonFatal(ex) => ErrorCaio(ex) }
 
@@ -488,16 +490,16 @@ object Caio {
             }
 
           case caio: IOCaio[?] =>
-            //The IO monad will bring this back into stack safety
+            // The IO monad will bring this back into stack safety
             caio.f().redeemWith(e => safeFold(ErrorCaio(e), c, l, handlers), a => safeFold(PureCaio(a), c, l, handlers))
 
           case KleisliCaio(f) =>
             Try(f(c)) match {
-              //Doesnt support Error or Failure handling
+              // Doesnt support Error or Failure handling
               case scala.util.Success(foldIO) =>
                 foldIO.attempt.flatMap {
                   case Right(FoldCaioSuccess(c, l2, a)) =>
-                    //The IO monad will bring this back into stack safety
+                    // The IO monad will bring this back into stack safety
                     safeFold(PureCaio(a), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)
                   case Right(FoldCaioError(c, l2, ex))  =>
                     safeFold(ErrorCaio(ex), c, combineL(l, l2.asInstanceOf[Option[(Any, Monoid[Any])]]), handlers)

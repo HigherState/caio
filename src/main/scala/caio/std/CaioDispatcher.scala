@@ -3,21 +3,15 @@ package caio.std
 import caio._
 import cats.effect._
 import cats.effect.std.Dispatcher
-import cats.effect.unsafe.implicits.global
+import cats.effect.unsafe.IORuntime
 
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.Future
 
-class CaioDispatcher[C, L](
-  context: C,
-  closed: AtomicBoolean
-)(
+class CaioDispatcher[C, L](context: C, closed: AtomicBoolean)(
   onSuccess: (C, Option[L]) => IO[Unit] = (_: C, _: Option[L]) => IO.unit,
   onError: (Throwable, C, Option[L]) => IO[Unit] = (_: Throwable, _: C, _: Option[L]) => IO.unit
-)(
-  dispatcher: Dispatcher[IO],
-  closeDispatcher: IO[Unit]
-)
+)(dispatcher: Dispatcher[IO], closeDispatcher: IO[Unit])
     extends Dispatcher[Caio[C, L, _]] {
 
   import cats.instances.vector._
@@ -59,7 +53,7 @@ object CaioDispatcher {
 
   def unsafe[C, L](c: C)(onSuccess: (C, Option[L]) => IO[Unit] = (_: C, _: Option[L]) => IO.unit)(
     onError: (Throwable, C, Option[L]) => IO[Unit] = (_: Throwable, _: C, _: Option[L]) => IO.unit
-  ): CaioDispatcher[C, L] =
+  )(implicit runtime: IORuntime): CaioDispatcher[C, L] =
     unsafeIO[C, L](c)(onSuccess)(onError).unsafeRunSync()
 
   def unsafeIO[C, L](c: C)(onSuccess: (C, Option[L]) => IO[Unit] = (_: C, _: Option[L]) => IO.unit)(

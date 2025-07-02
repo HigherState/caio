@@ -3,6 +3,7 @@ package caio
 import caio.implicits.DynamicContextImplicits
 import caio.mtl.InvariantAsk
 import cats.effect.{IO, LiftIO, Sync}
+import cats.effect.unsafe.implicits.global
 import caio.std.{CaioDispatcher, CaioListen}
 import cats.mtl.{Listen, Tell}
 import cats.{Applicative, ApplicativeError}
@@ -24,7 +25,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
   val implicits = new DynamicContextImplicits[L]
   import implicits.{dynamicCaioAsk, dynamicCaioAsync, dynamicLiftIO}
 
-  val dispatcher: CaioDispatcher[C,L] = CaioDispatcher.unsafe[C, L](Map.empty)((_, _) => IO.unit)((_, _, _) => IO.unit)
+  val dispatcher: CaioDispatcher[C, L] = CaioDispatcher.unsafe[C, L](Map.empty)((_, _) => IO.unit)((_, _, _) => IO.unit)
 
   /*val emptyState:Store[C, L] =
     EmptyStore
@@ -250,7 +251,7 @@ class CaioTests extends AsyncFunSpec with Matchers {
     }
   }
 
-  //including context should effect tests
+  // including context should effect tests
   /*def getResult[A](c:CaioT[A]):(Either[EoF, A], Store[C, L]) =
     c.toResult(Map.empty).toIO.unsafeRunSync() match {
       case SuccessResult(a, state) =>
