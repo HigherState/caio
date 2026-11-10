@@ -103,10 +103,10 @@ javacOptions ++= Seq("-target", "1.11", "-source", "1.11", "-Xlint:deprecation")
 
 libraryDependencies ++= Seq(
   "org.typelevel"        %% "cats-mtl"            % "1.3.1",
-  "org.typelevel"        %% "cats-effect"         % "3.5.1",
+  "org.typelevel"        %% "cats-effect"         % "3.6.4",
   "org.typelevel"        %% "cats-mtl-laws"       % "1.3.1" % "test",
-  "org.typelevel"        %% "cats-effect-laws"    % "3.5.1" % "test",
-  "org.typelevel"        %% "cats-effect-testkit" % "3.5.1" % "test",
+  "org.typelevel"        %% "cats-effect-laws"    % "3.6.4" % "test",
+  "org.typelevel"        %% "cats-effect-testkit" % "3.6.4" % "test",
   "org.typelevel"        %% "discipline-munit"    % "1.0.9" % "test",
   "org.scalatest"        %% "scalatest"           % "3.2.17" % "test"
 )
