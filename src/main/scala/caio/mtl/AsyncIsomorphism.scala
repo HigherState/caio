@@ -81,7 +81,7 @@ class AsyncIsomorphism[F[_], G[_]](async: Async[G], isomorphism: F <~> G) extend
 
   def ref[A](a: A): F[Ref[F, A]] =
     invert {
-      async.map(async.ref(a))(_.mapK[F](invert)(async))
+      async.map(async.ref(a))(_.mapK[F](invert)(this, DummyImplicit.dummyImplicit))
     }
 
   def deferred[A]: F[Deferred[F, A]] =

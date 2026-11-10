@@ -27,7 +27,7 @@ class CaioDispatcher[C, L](context: C, closed: AtomicBoolean)(
     if (closed.get()) {
       throw new CaioDispatcherAlreadyClosedException
     } else {
-      val io = IO.async[A](cb => toIO(fa).attempt.flatMap(handle(_, cb)))
+      val io = toIO(fa).attempt.flatMap(either => IO.async[A](cb => handle(either, cb)))
       dispatcher.unsafeToFutureCancelable[A](io)
     }
 
